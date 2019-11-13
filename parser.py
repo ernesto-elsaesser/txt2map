@@ -20,13 +20,18 @@ class Geoparser:
     self.geonames_client = geonames.GeoNamesClient()
     self.osm_client = osm.OverpassClient()
     self.anchor_re = regex.compile(r'\s\p{Lu}(\.)*[^\s\.!?,:;\)"\']+')
+    with open('data/stopwords.txt') as f:
+      self.stopwords = f.read().split('\n')
 
   def parse(self, text):
 
     anchors = []
     for match in self.anchor_re.finditer(' ' + text):
       (start, end) = match.span()
-      anchors.append((start, end - 1)) # correct offsets from regex and ' ' at start
+      end -= 1  # correct for initial ' '
+      lower_span = text[start:end].lower()
+      if lower_span not in self.stopwords:
+        anchors.append((start, end))
 
     logging.info('parsing on global level ...')
     geonames_db = geonames.GeoNamesDatabase()
