@@ -1,6 +1,6 @@
 import logging
 import hashlib
-import document
+import model
 import geonames
 import osm
 
@@ -11,7 +11,7 @@ class Geoparser:
     self.osm_client = osm.OverpassClient()
 
   def parse(self, text):
-    doc = document.Document(text)
+    doc = model.Document(text)
 
     logging.info('parsing on global level ...')
     geonames_db = geonames.GeoNamesDatabase()
@@ -19,9 +19,9 @@ class Geoparser:
     clusters = self.get_bounding_box_clusters(geonames_matches, geonames_db)
 
     all_matches = []
-    for names, boxes in clusters:
-      logging.info('entering local context: %s ', names)
-      db_identifier = self.hash_for_names(names)
+    for context, boxes in clusters:
+      logging.info('entering local context: %s ', context)
+      db_identifier = self.hash_for_context(context)
       osm_db = osm.OSMDatabase(db_identifier)
 
       if not osm_db.data_exists:
@@ -31,27 +31,32 @@ class Geoparser:
 
       logging.info('parsing on local level ...')
       osm_matches = self.find_names(doc, osm_db)
-      resolved_matches = []
-      for start, name in osm_matches:
+      for name, positions in osm_matches.items():
           refs = osm_db.get_refs(name)
           logging.info('OSM match: %s', name)
-          resolved_matches.append((start, name, refs))
-      all_matches += resolved_matches
+          match = model.Match(name, positions, refs, context)
+          all_matches.append(match)
 
     logging.info('finished.')
     return all_matches
 
   def find_names(self, doc, db):
-    matches = []
+    matches = {}
     prev_match_end = 0
+
+    names_for_anchor = {}
 
     for anchor, start, end in doc.anchors:
       if start < prev_match_end:
         continue
 
-      names_with_prefix = db.find_names(anchor)
+      if anchor in names_for_anchor:
+        found_names = names_for_anchor[anchor]
+      else:
+        found_names = db.find_names(anchor)
+
       suffixes = {}
-      for name in names_with_prefix:
+      for name in found_names:
         suffixes[name] = name[len(anchor):]
 
       text_pos = end
@@ -72,7 +77,9 @@ class Geoparser:
 
       if longest_match != None:
         prev_match_end = text_pos
-        matches.append((start, longest_match))
+        if longest_match not in matches:
+          matches[longest_match] = []
+        matches[longest_match].append(start)
 
     return matches
 
@@ -80,7 +87,7 @@ class Geoparser:
 
     bounding_boxes = {}
     names = {}
-    for _, name in matches:
+    for name in matches:
       geoname_ids = db.get_geoname_ids(name)
       for geoname_id in geoname_ids:
         geoname = self.geonames_client.get_geoname(geoname_id)
@@ -132,7 +139,7 @@ class Geoparser:
   def bounds_around(self, lat, lng, delta):
     return [lat - delta, lng - delta, lat + delta, lng + delta]
 
-  def hash_for_names(self, names):
-    binary = '|'.join(sorted(names)).encode()
+  def hash_for_context(self, context):
+    binary = '|'.join(sorted(context)).encode()
     return hashlib.md5(binary).hexdigest()
 

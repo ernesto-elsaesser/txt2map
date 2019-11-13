@@ -1,5 +1,5 @@
 import sqlite3
-from document import Document
+from model import Document
 
 class NameDatabase:
 

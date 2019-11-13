@@ -27,3 +27,25 @@ class Document:
       return True
     else:
       return False
+
+
+class Match:
+
+  def __init__(self, name, positions, refs, context):
+    self.name = name
+    self.positions = positions
+    self.refs = refs
+    self.context = context
+
+  def to_json(self):
+    nodes = self.inflate_ref_urls('node', self.refs[0])
+    ways = self.inflate_ref_urls('way', self.refs[1])
+    relations = self.inflate_ref_urls('relation', self.refs[2])
+    return {'name': self.name,
+            'positions': self.positions,
+            'elements': nodes + ways + relations,
+            'context': self.context}
+
+  def inflate_ref_urls(self, type_name, refs):
+    # NOTE: base URL can probably be dropped
+    return list(map(lambda r: f'https://www.openstreetmap.org/{type_name}/{r}', refs))
