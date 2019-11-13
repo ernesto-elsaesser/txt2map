@@ -71,6 +71,7 @@ class OverpassClient:
 
   def fetch_data(self, query):
     req = requests.post(url=self.api_url, data=query)
+    req.encoding = 'utf-8'
     return req.text.split('\n')[1:-1]
 
   def insert_data(self, db, reader, name_cols, type_col):
