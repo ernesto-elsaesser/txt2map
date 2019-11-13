@@ -24,7 +24,7 @@ with open(geonames_csv_path, 'r') as f:
       continue
 
     population = int(row[14])
-    if population < 50000:
+    if population < 150000:
       continue
 
     id = row[0]
