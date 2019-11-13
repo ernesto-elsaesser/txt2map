@@ -1,21 +1,36 @@
 import logging
 import hashlib
-import model
+import regex
 import geonames
 import osm
+
+
+class Match:
+
+  def __init__(self, name, positions, refs, context):
+    self.name = name
+    self.positions = positions
+    self.refs = refs
+    self.context = context
+
 
 class Geoparser:
 
   def __init__(self):
     self.geonames_client = geonames.GeoNamesClient()
     self.osm_client = osm.OverpassClient()
+    self.anchor_re = regex.compile(r'\s\p{Lu}(\.)*[^\s\.!?,:;\)"\']+')
 
   def parse(self, text):
-    doc = model.Document(text)
+
+    anchors = []
+    for match in self.anchor_re.finditer(' ' + text):
+      (start, end) = match.span()
+      anchors.append((start, end - 1)) # correct offsets from regex and ' ' at start
 
     logging.info('parsing on global level ...')
     geonames_db = geonames.GeoNamesDatabase()
-    geonames_matches = self.find_names(doc, geonames_db)
+    geonames_matches = self.find_names(text, anchors, geonames_db)
     clusters = self.get_bounding_box_clusters(geonames_matches, geonames_db)
 
     all_matches = []
@@ -30,39 +45,42 @@ class Geoparser:
         self.osm_client.load_all_names(boxes, osm_db)
 
       logging.info('parsing on local level ...')
-      osm_matches = self.find_names(doc, osm_db)
+      osm_matches = self.find_names(text, anchors, osm_db)
       for name, positions in osm_matches.items():
           refs = osm_db.get_refs(name)
           logging.info('OSM match: %s', name)
-          match = model.Match(name, positions, refs, context)
+          match = Match(name, positions, refs, context)
           all_matches.append(match)
 
     logging.info('finished.')
     return all_matches
 
-  def find_names(self, doc, db):
+  def find_names(self, text, anchors, db):
     matches = {}
+    text_len = len(text)
     prev_match_end = 0
 
-    names_for_anchor = {}
+    names_for_prefixes = {}
 
-    for anchor, start, end in doc.anchors:
+    for start, end in anchors:
       if start < prev_match_end:
         continue
 
-      if anchor in names_for_anchor:
-        found_names = names_for_anchor[anchor]
+      prefix = text[start:end]
+      if prefix in names_for_prefixes:
+        found_names = names_for_prefixes[prefix]
       else:
-        found_names = db.find_names(anchor)
+        found_names = db.find_names(prefix)
+        names_for_prefixes[prefix] = found_names
 
       suffixes = {}
       for name in found_names:
-        suffixes[name] = name[len(anchor):]
+        suffixes[name] = name[len(prefix):]
 
       text_pos = end
       longest_match = None
-      while text_pos < doc.l and len(suffixes) > 0:
-        next_char = doc.text[text_pos]
+      while text_pos < text_len and len(suffixes) > 0:
+        next_char = text[text_pos]
         names = list(suffixes.keys())
         for name in names:
           suffix = suffixes[name]
@@ -91,13 +109,9 @@ class Geoparser:
       geoname_ids = db.get_geoname_ids(name)
       for geoname_id in geoname_ids:
         geoname = self.geonames_client.get_geoname(geoname_id)
-        fcl = geoname['fcl']
-        if fcl != 'P':
-          continue # TODO: use As for disambiguation
-        lat = float(geoname['lat'])
-        lng = float(geoname['lng'])
-        # TODO: utilize GeoName data: fcode, countryCode, adminName1-3, population, bbox, ...
-        bounding_boxes[geoname_id] = self.bounds_around(lat, lng, 0.1)
+        if not geoname.is_city_like:
+          continue # TODO: use admin types for disambiguation
+        bounding_boxes[geoname_id] = self.bounds_around(geoname.lat, geoname.lng, 0.1)
         names[geoname_id] = name
 
     clusters = []

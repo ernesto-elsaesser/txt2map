@@ -1,5 +1,4 @@
 import sqlite3
-from model import Document
 
 class NameDatabase:
 
@@ -18,7 +17,10 @@ class NameDatabase:
     self.commit_changes()
 
   def insert_name(self, name):
-    if name == '' or not Document.is_anchor(name, 0):
+    if name == '':
+      return (None, False)
+    first = name[0]
+    if not first.isupper() and not first.isdigit():
       return (None, False)
     try:
       self.cursor.execute('INSERT INTO names VALUES (?)', (name, ))

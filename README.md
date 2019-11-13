@@ -3,7 +3,7 @@
 ## Approach
 The Geoparser detects place names (toponyms) in a provided input text. The algorithm parses the text in three steps:
 
-1. Tokenize the input text and find all name "anchors", which are text spans starting with a capital letter or number
+1. Tokenize the input text and find all name "anchors", which are text spans starting with a capital letter
 2. Check if any anchor matches any commonly recognized toponyms
 3. For every match, load everything within a bounding box around the matches coordinate from OSM
 
