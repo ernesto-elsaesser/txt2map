@@ -1,5 +1,6 @@
 import logging
 import regex
+import csv
 import geonames
 import osm
 import linker
@@ -19,6 +20,13 @@ class Geoparser:
     self.linker = linker.GeoLinker()
     self.osm_client = osm.OverpassClient()
     self.anchor_re = regex.compile(r'\s\p{Lu}(\.)*[^\s\.!?,:;\)"\']+')
+
+    self.abbreviations = []
+    reader = csv.reader(open('data/abbreviations.txt'), delimiter=' ')
+    for row in reader:
+      re = regex.compile(row[0])
+      self.abbreviations.append((re, row[1]))
+
     with open('data/stopwords.txt') as f:
       self.stopwords = f.read().split('\n')
 
@@ -51,7 +59,7 @@ class Geoparser:
         self.osm_client.load_all_names(cluster.clustered_bounds, osm_db)
 
       logging.info('parsing on local level ...')
-      osm_matches = self.find_names(text, anchors, osm_db)
+      osm_matches = self.find_names(text, anchors, osm_db, True)
       for name, positions in osm_matches.items():
           refs = osm_db.get_refs(name)
           logging.info('OSM match: %s', name)
@@ -61,42 +69,34 @@ class Geoparser:
     logging.info('finished.')
     return clusters
 
-  def find_names(self, text, anchors, db):
+  def find_names(self, text, anchors, db, find_abbrvs=False):
     matches = {}
     text_len = len(text)
     prev_match_end = 0
-
-    names_for_prefixes = {}
+    suffixes_for_prefixes = {}
 
     for start, end in anchors:
       if start < prev_match_end:
         continue
 
       prefix = text[start:end]
-      if prefix in names_for_prefixes:
-        found_names = names_for_prefixes[prefix]
+      if prefix in suffixes_for_prefixes:
+        suffixes = suffixes_for_prefixes[prefix]
       else:
-        found_names = db.find_names(prefix)
-        names_for_prefixes[prefix] = found_names
-
-      suffixes = {}
-      for name in found_names:
-        suffixes[name] = name[len(prefix):]
+        suffixes = self.get_suffixes(prefix, db, find_abbrvs)
+        suffixes_for_prefixes[prefix] = suffixes
 
       text_pos = end
       longest_match = None
       while text_pos < text_len and len(suffixes) > 0:
         next_char = text[text_pos]
-        names = list(suffixes.keys())
-        for name in names:
-          suffix = suffixes[name]
+        trimmed_suffixes = []
+        for name, suffix in suffixes:
           if suffix == '':
-            del suffixes[name]
             longest_match = name
-          elif suffix[0] != next_char:
-            del suffixes[name]
-          else:
-            suffixes[name] = suffix[1:]
+          elif suffix[0] == next_char:
+            trimmed_suffixes.append((name, suffix[1:]))
+        suffixes = trimmed_suffixes
         text_pos += 1
 
       if longest_match != None:
@@ -106,3 +106,21 @@ class Geoparser:
         matches[longest_match].append(start)
 
     return matches
+
+  def get_suffixes(self, prefix, db, find_abbrvs):
+    found_names = db.find_names(prefix)
+    suffixes = []
+    for name in found_names:
+      suffix = name[len(prefix):]
+      suffixes.append((name, suffix))
+      if find_abbrvs:
+        short_version = self.abbreviated(suffix)
+        if short_version != suffix:
+          suffixes.append((name, short_version))
+    return suffixes
+  
+  def abbreviated(self, name):
+    short_version = name
+    for re, repl in self.abbreviations:
+      short_version = re.sub(repl, short_version)
+    return short_version

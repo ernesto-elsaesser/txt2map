@@ -41,16 +41,6 @@ class OverpassClient:
 
   api_url = 'http://overpass-api.de/api/interpreter'
 
-  def load_admin_boundaries(self, bounds_list, db):
-    query = '[out:csv(::id, "name", "name:en", "alt_name", "short_name")]; ('
-
-    for bounds in bounds_list:
-      bbox = ','.join(map(str, bounds))
-      query += f'rel["name"]["boundary" = "administrative"]({bbox}); '
-
-    query += '); out qt;'
-    return self.load(db, query, [1, 2, 3, 4])
-
   def load_all_names(self, bounds_list, db):
     query = '[out:csv(::id, ::type, "name", "name:en", "alt_name", "short_name")]; ('
 
@@ -59,13 +49,13 @@ class OverpassClient:
       query += f'node["name"][!"shop"]({bbox}); way["name"]({bbox}); rel["name"]({bbox}); '
 
     query += '); out qt;'
-    return self.load(db, query, [2, 3, 4, 5], 1)
+    return self.load(db, query, 1, [2, 3, 4, 5])
 
-  def load(self, db, query, name_cols, type_col=None):
+  def load(self, db, query, type_col, name_cols):
     csv_lines = self.fetch_data(query)
     logging.info('received %d lines.', len(csv_lines))
     reader = csv.reader(csv_lines, delimiter='\t')
-    name_count = self.insert_data(db, reader, name_cols, type_col)
+    name_count = self.insert_data(db, reader, type_col, name_cols)
     db.commit_changes()
     logging.info('inserted %d unique names.', name_count)
 
@@ -74,11 +64,11 @@ class OverpassClient:
     res.encoding = 'utf-8'
     return res.text.split('\n')[1:-1]
 
-  def insert_data(self, db, reader, name_cols, type_col):
+  def insert_data(self, db, reader, type_col, name_cols):
     name_count = 0
     for row in reader:
       ref = row[0]
-      ref_type = 'relation' if type_col == None else row[type_col]
+      ref_type = row[type_col]
       names = set(map(lambda c: row[c], name_cols))
       for name in names:
         name_count += db.insert_ref(name, ref, ref_type)

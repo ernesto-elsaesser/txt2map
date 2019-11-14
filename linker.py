@@ -41,9 +41,6 @@ class ContextCluster:
       i -= 1
     self.ancestor_names = self.ancestor_names[:i]
 
-  def clustered_ids(self):
-    return map(lambda g: g.id, self.geonames)
-
   def clustered_names(self):
     return map(lambda g: g.name, self.geonames)
 
@@ -53,7 +50,8 @@ class ContextCluster:
     return ancestor_path + ' > ' + joined_names
 
   def identifier(self):
-    return '-'.join(str(sorted(self.clustered_ids())))
+    sorted_ids = sorted(map(lambda g: str(g.id), self.geonames))
+    return '-'.join(sorted_ids)
 
 
 class GeoLinker:
