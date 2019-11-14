@@ -32,6 +32,8 @@ class Geoparser:
 
   def parse(self, text):
 
+    padded_text = text + ' ' # also catch matches in last word
+
     anchors = []
     for match in self.anchor_re.finditer(' ' + text):
       (start, end) = match.span()
@@ -42,7 +44,7 @@ class Geoparser:
 
     logging.info('parsing on global level ...')
     geonames_db = geonames.GeoNamesDatabase()
-    geonames_matches = self.find_names(text, anchors, geonames_db)
+    geonames_matches = self.find_names(padded_text, anchors, geonames_db)
     context_list = self.linker.build_context_list(geonames_matches, geonames_db)
     clusters = self.linker.cluster_context_list(context_list)
 
@@ -51,15 +53,10 @@ class Geoparser:
         continue
 
       logging.info('entering local level: %s ', cluster.context_path())
-      osm_db = osm.OSMDatabase(cluster.identifier())
-
-      if not osm_db.data_exists:
-        logging.info('loading OSM data ...')
-        osm_db.create_tables()
-        self.osm_client.load_all_names(cluster.clustered_bounds, osm_db)
+      osm_db = self.osm_client.load_name_database(cluster)
 
       logging.info('parsing on local level ...')
-      osm_matches = self.find_names(text, anchors, osm_db, True)
+      osm_matches = self.find_names(padded_text, anchors, osm_db, True)
       for name, positions in osm_matches.items():
           refs = osm_db.get_refs(name)
           logging.info('OSM match: %s', name)

@@ -14,7 +14,13 @@ The output is a list geographical contexts, each with a list of OSM matches. Not
 
 The [Geoparser](parser.py) can be used directly from Python code, or via the included web server.
 
-The [Web Server](server.py) listens on port 80 for POST requests with text as body. The server replies with the parsing results encoded as JSON. If the client sends an Accept header with MIME type `text/plain` the server will format the output as short and readable plain text.
+The [Web Server](server.py) listens on port 80 for POST requests with text as body. The server replies with the parsing results encoded as JSON. If the client sends an `Accept` header with MIME type `text/plain` the server will format the output as short and readable plain text.
+
+To test the server, you can run the following curl command:
+
+```
+$ curl -H "Accept: text/plain" -d "Walking in Memphis, but do I really feel the way I feel? Saw the ghost of Elvis on Union Avenue." localhost:80
+```
 
 The repository also provides a [Dockerfile](Dockerfile) which can be used to build a Docker container that runs the web server.
 

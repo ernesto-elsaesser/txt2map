@@ -2,16 +2,13 @@ import requests
 import csv
 import logging
 import os
+import regex
+import io
 from database import NameDatabase
 
 class OSMDatabase(NameDatabase):
 
   ref_types = ['node', 'way', 'relation']
-
-  def __init__(self, identifier):
-    path = f'data/osm_{identifier}.db'
-    self.data_exists = os.path.exists(path)
-    super().__init__(path)
 
   def create_tables(self):
     self.cursor.execute(
@@ -41,35 +38,45 @@ class OverpassClient:
 
   api_url = 'http://overpass-api.de/api/interpreter'
 
-  def load_all_names(self, bounds_list, db):
-    query = '[out:csv(::id, ::type, "name", "name:en", "alt_name", "short_name")]; ('
+  def load_name_database(self, cluster):
+    cluster_id = cluster.identifier()
+    db_path = f'data/osm_{cluster_id}.db'
+    data_cached = os.path.exists(db_path)
+    
+    if data_cached:
+      db = OSMDatabase(db_path)
+    else:
+      logging.info('requesting data from OSM ...')
+      query = self.query_for_cluster(cluster)
+      res = requests.post(url=self.api_url, data=query)
+      res.encoding = 'utf-8'
+      (db, name_count) = self.create_database(db_path, res.text, 1, [2, 3, 4, 5])
+      logging.info('created database with %d unique names.', name_count)
 
-    for bounds in bounds_list:
+    return db
+
+  def query_for_cluster(self, cluster):
+    query = '[out:csv(::id, ::type, "name", "name:en", "alt_name", "short_name"; false)]; ('
+    for bounds in cluster.clustered_bounds:
       bbox = ','.join(map(str, bounds))
       query += f'node["name"][!"shop"]({bbox}); way["name"]({bbox}); rel["name"]({bbox}); '
-
     query += '); out qt;'
-    return self.load(db, query, 1, [2, 3, 4, 5])
+    return query
 
-  def load(self, db, query, type_col, name_cols):
-    csv_lines = self.fetch_data(query)
-    logging.info('received %d lines.', len(csv_lines))
-    reader = csv.reader(csv_lines, delimiter='\t')
-    name_count = self.insert_data(db, reader, type_col, name_cols)
-    db.commit_changes()
-    logging.info('inserted %d unique names.', name_count)
-
-  def fetch_data(self, query):
-    res = requests.post(url=self.api_url, data=query)
-    res.encoding = 'utf-8'
-    return res.text.split('\n')[1:-1]
-
-  def insert_data(self, db, reader, type_col, name_cols):
+  def create_database(self, db_path, csv_text, type_col, name_cols):
+    csv_input = io.StringIO(csv_text, newline=None) # universal newlines mode
+    reader = csv.reader(csv_input, delimiter='\t')
+    db = OSMDatabase(db_path)
+    db.create_tables()
+    col_num = len(name_cols) + 2
     name_count = 0
     for row in reader:
+      if len(row) != col_num:
+        continue
       ref = row[0]
       ref_type = row[type_col]
       names = set(map(lambda c: row[c], name_cols))
       for name in names:
         name_count += db.insert_ref(name, ref, ref_type)
-    return name_count
+    db.commit_changes()
+    return (db, name_count)
