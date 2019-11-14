@@ -4,17 +4,12 @@ import requests
 class GeoName:
 
   def __init__(self, json):
+    self.id = json['geonameId']
+    self.name = json['name']
     self.feature_class = json['fcl']
-    self.is_city_like = self.feature_class == 'P'
     self.feature_code = json['fcode']
     self.lat = float(json['lat'])
     self.lng = float(json['lng'])
-    self.admin_name_1 = json['adminName1']
-    self.admin_name_2 = json['adminName2']
-    self.admin_name_3 = json['adminName3']
-    bbox = json['bbox']
-    self.bounds = [bbox['south'], bbox['west'],
-                   bbox['north'], bbox['east'], ]
 
 
 class GeoNamesDatabase(NameDatabase):
@@ -49,6 +44,15 @@ class GeoNamesClient:
   api_url = 'http://api.geonames.org'
 
   def get_geoname(self, id):
-    url = f'{self.api_url}/getJSON?username=map2txt&geonameId={id}'
-    req = requests.get(url=url)
-    return GeoName(req.json())
+    url = f'{self.api_url}/getJSON?geonameId={id}&username=map2txt'
+    res = requests.get(url=url)
+    res.encoding = 'utf-8'
+    return GeoName(res.json())
+
+  def get_hierarchy(self, id):
+    url = f'{self.api_url}/hierarchyJSON?geonameId={id}&username=map2txt'
+    res = requests.get(url=url)
+    res.encoding = 'utf-8'
+    json_dict = res.json()
+    geonames_array = json_dict['geonames']
+    return list(map(lambda d: GeoName(d), geonames_array))

@@ -70,9 +70,9 @@ class OverpassClient:
     logging.info('inserted %d unique names.', name_count)
 
   def fetch_data(self, query):
-    req = requests.post(url=self.api_url, data=query)
-    req.encoding = 'utf-8'
-    return req.text.split('\n')[1:-1]
+    res = requests.post(url=self.api_url, data=query)
+    res.encoding = 'utf-8'
+    return res.text.split('\n')[1:-1]
 
   def insert_data(self, db, reader, name_cols, type_col):
     name_count = 0

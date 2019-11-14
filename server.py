@@ -11,22 +11,26 @@ class PostHandler(http.server.BaseHTTPRequestHandler):
     content_length = int(self.headers['Content-Length'])
     req_data = self.rfile.read(content_length)
     req_text = req_data.decode('utf-8')
-    matches = self.parser.parse(req_text)
+    results = self.parser.parse(req_text)
 
     accept = self.headers['Accept']
-    if 'text/csv' in accept:
-      res_data = self.matches_to_csv(matches)
+    if 'text/plain' in accept:
+      res_data = self.results_to_text(results)
     else:
-      res_data=self.matches_to_json(matches)
+      res_data = self.results_to_json(results)
 
     self.send_response(200)
     self.send_header("Content-type", "application/json")
     self.end_headers()
     self.wfile.write(res_data)
 
-  def matches_to_json(self, matches):
-    array = list(map(self.match_to_dict, matches))
-    return json.dumps(array, indent=2).encode('utf-8')
+  def results_to_json(self, clusters):
+    cluster_json = list(map(self.cluster_to_dict, clusters))
+    return json.dumps(cluster_json, indent=2).encode('utf-8')
+
+  def cluster_to_dict(self, cluster):
+    matches_json = list(map(self.match_to_dict, cluster.matches))
+    return {'context': cluster.context_path(), 'matches': matches_json}
 
   def match_to_dict(self, match):
     nodes = self.inflate_ref_urls('node', match.refs[0])
@@ -34,32 +38,22 @@ class PostHandler(http.server.BaseHTTPRequestHandler):
     relations = self.inflate_ref_urls('relation', match.refs[2])
     return {'name': match.name,
             'positions': match.positions,
-            'elements': nodes + ways + relations,
-            'context': match.context}
+            'osm_elements': nodes + ways + relations}
 
   def inflate_ref_urls(self, type_name, refs):
     # NOTE: base URL can probably be dropped
     return list(map(lambda r: f'https://www.openstreetmap.org/{type_name}/{r}', refs))
 
-  def matches_to_csv(self, matches):
-    lines = list(map(self.match_to_csv_line, matches))
-    return '\n'.join(lines).encode('utf-8')
-
-  def match_to_csv_line(self, match):
-    str_pos = map(str, match.positions)
-    str_refs1 = map(str, match.refs[0])
-    str_refs2 = map(str, match.refs[1])
-    str_refs3 = map(str, match.refs[2])
-    columns = [
-        ','.join(match.context),
-        match.name,
-        ','.join(str_pos),
-        ','.join(str_refs1),
-        ','.join(str_refs2),
-        ','.join(str_refs3)
-    ]
-    columns = map(lambda c: '-' if len(c) == 0 else c, columns)
-    return '\t'.join(columns)
+  def results_to_text(self, clusters):
+    text = ''
+    for cluster in clusters:
+      text += cluster.context_path() + ':\n'
+      for match in cluster.matches:
+        count = len(match.positions)
+        ref_str = str(match.refs)
+        text += f'\t{match.name} ({count}x) - {ref_str}\n'
+      text += '\n'
+    return text.encode('utf-8')
 
 
 logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO, datefmt="%Y-%m-%d %H:%M:%S")
