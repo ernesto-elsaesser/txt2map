@@ -1,11 +1,12 @@
 # map2txt
 
 ## Approach
-The Geoparser detects place names (toponyms) in a provided input text. The algorithm parses the text in three steps:
+The Geoparser detects place names (toponyms) in a provided input text. The algorithm parses the text in four steps:
 
 1. Parse the text for "anchors", which are text spans starting with a capital letter, using regular expressions
 2. Check if any anchor matches any commonly recognized toponym from GeoNames
 3. For every match, load all named elements within a bounding box around the toponyms coordinate from OSM
+4. Check if any anchor matches any of the element names from OSM
 
 The output is a list geographical contexts, each with a list of OSM matches. Note that loading data from OSM can take some time.
 
