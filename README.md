@@ -19,7 +19,7 @@ The [Web Server](server.py) listens on port 80 for POST requests with text as bo
 To test the server, you can run the following curl command:
 
 ```
-$ curl -H "Accept: text/plain" -d "Walking in Memphis, but do I really feel the way I feel? Saw the ghost of Elvis on Union Avenue." localhost:80
+$ curl -H "Accept: text/plain" -d "Walking in Memphis, saw Elvis on Union Avenue." localhost:80
 ```
 
 The repository also provides a [Dockerfile](Dockerfile) which can be used to build a Docker container that runs the web server.
