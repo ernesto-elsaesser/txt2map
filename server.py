@@ -5,6 +5,7 @@ import parser
 
 logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO, datefmt="%Y-%m-%d %H:%M:%S")
 parser = parser.Geoparser()
+osm_url = 'https://www.openstreetmap.org'
 
 class PostHandler(http.server.BaseHTTPRequestHandler):
 
@@ -42,16 +43,9 @@ class PostHandler(http.server.BaseHTTPRequestHandler):
     return {'context': cluster.context_path(), 'matches': matches_json}
 
   def match_to_dict(self, match):
-    nodes = self.inflate_ref_urls('node', match.refs[0])
-    ways = self.inflate_ref_urls('way', match.refs[1])
-    relations = self.inflate_ref_urls('relation', match.refs[2])
     return {'name': match.name,
             'positions': match.positions,
-            'osm_elements': nodes + ways + relations}
-
-  def inflate_ref_urls(self, type_name, refs):
-    # NOTE: base URL can probably be dropped
-    return list(map(lambda r: f'https://www.openstreetmap.org/{type_name}/{r}', refs))
+            'osm_elements': self.ref_urls(match)}
 
   def results_to_text(self, clusters):
     text = ''
@@ -59,10 +53,21 @@ class PostHandler(http.server.BaseHTTPRequestHandler):
       text += cluster.context_path() + ':\n'
       for match in cluster.matches:
         count = len(match.positions)
-        ref_str = str(match.refs)
-        text += f'\t{match.name} ({count}x) - {ref_str}\n'
+        text += f'\t{match.name} ({count}x)\n'
+        for url in self.ref_urls(match):
+          text += f'\t\t{url}\n'
       text += '\n'
     return text.encode('utf-8')
+
+  def ref_urls(self, match):
+    urls = []
+    for ref in match.refs[0]:
+      urls.append(f'{osm_url}/node/{ref}')
+    for ref in match.refs[1]:
+      urls.append(f'{osm_url}/way/{ref}')
+    for ref in match.refs[2]:
+      urls.append(f'{osm_url}/relation/{ref}')
+    return urls
 
 
 server = http.server.HTTPServer(('', 80), PostHandler)
