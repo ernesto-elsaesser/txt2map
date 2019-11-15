@@ -1,0 +1,49 @@
+<html>
+  <head>
+    <style>
+      .container { margin: 20px auto; text-align: center; }
+      .box { width: 80%; height: 200px; margin: 0 auto 20px; }
+      a { color: blue; font-weight: bold; cursor: pointer; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Input</h1>
+      <textarea class="box" type="text" id="input"></textarea><br/>
+      <a onclick="post()" id="button">PARSE</a>
+      <h1>Output</h1>
+      <p class="box" id="output"></p>
+    </div>
+
+    <script>
+        var input = document.getElementById('input');
+        var button = document.getElementById('button');
+        var output = document.getElementById('output');
+
+        function post() {
+
+          button.innerHTML = 'LOADING ...';
+          button.style.color = 'grey';
+          button.onclick = '';
+
+          fetch('/', { 
+            method: 'POST',
+            body: input.innerHTML,
+            headers: { 'Accept': 'text/plain' }
+          }
+          ).then(function (res) {
+            res.text().then(function(text) {
+
+              if (text == '') {
+                text = 'Nothing found.'
+              }
+              output.innerHTML = text;
+              button.innerHTML = 'PARSE';
+              button.style.color = 'blue';
+              button.onclick = 'post()';
+            })
+          });
+        }
+    </script>
+  </body>
+</html>

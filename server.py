@@ -3,15 +3,24 @@ import json
 import logging
 import parser
 
+logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO, datefmt="%Y-%m-%d %H:%M:%S")
+parser = parser.Geoparser()
+
 class PostHandler(http.server.BaseHTTPRequestHandler):
 
-  parser = parser.Geoparser()
+  def do_GET(self):
+    self.send_response(200)
+    self.send_header("Content-type", "text/html")
+    self.end_headers()
+    
+    with open('index.html', 'rb') as f:
+      self.wfile.write(f.read())
 
   def do_POST(self):
     content_length = int(self.headers['Content-Length'])
     req_data = self.rfile.read(content_length)
     req_text = req_data.decode('utf-8')
-    results = self.parser.parse(req_text)
+    results = parser.parse(req_text)
 
     accept = self.headers['Accept']
     if 'text/plain' in accept:
@@ -55,8 +64,6 @@ class PostHandler(http.server.BaseHTTPRequestHandler):
       text += '\n'
     return text.encode('utf-8')
 
-
-logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO, datefmt="%Y-%m-%d %H:%M:%S")
 
 server = http.server.HTTPServer(('', 80), PostHandler)
 logging.info('map2txt server running on port 80')
