@@ -1,4 +1,5 @@
 import http.server
+import sys
 import json
 import logging
 import parser
@@ -9,13 +10,16 @@ osm_url = 'https://www.openstreetmap.org'
 
 class PostHandler(http.server.BaseHTTPRequestHandler):
 
+  def log_message(self, format, *args):
+    pass # disable default logging
+
   def do_GET(self):
     self.send_response(200)
     self.send_header("Content-type", "text/html")
     self.end_headers()
-    
     with open('index.html', 'rb') as f:
       self.wfile.write(f.read())
+    self.close_connection = True
 
   def do_POST(self):
     content_length = int(self.headers['Content-Length'])
@@ -33,6 +37,7 @@ class PostHandler(http.server.BaseHTTPRequestHandler):
     self.send_header("Content-type", "application/json")
     self.end_headers()
     self.wfile.write(res_data)
+    self.close_connection = True
 
   def results_to_json(self, clusters):
     cluster_json = list(map(self.cluster_to_dict, clusters))

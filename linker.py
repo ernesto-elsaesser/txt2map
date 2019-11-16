@@ -1,28 +1,28 @@
 import geonames
 
+class Ancestor:
+
+  def __init__(self, geoname):
+    self.name = geoname.name
+    self.id = geoname.id
+    self.mentions = 0
+
 
 class Context:
 
   box_side = 0.2
 
-  def __init__(self, hierarchy):
+  def __init__(self, hierarchy, mentions):
     self.geoname = hierarchy[-1]
-    self.hierarchy = hierarchy[:-1]
-    self.found_ancestor_ids = []
-    self.bounds = None
+    self.ancestors = list(map(lambda g: Ancestor(g), hierarchy[:-1]))
+    self.mentions = mentions
+
     if self.geoname.feature_class == 'P':
       d = self.box_side / 2
       self.bounds = [self.geoname.lat - d, self.geoname.lng - d,
-                           self.geoname.lat + d, self.geoname.lng + d]
-
-  def ancestor_names(self):
-    names = []
-    for geoname in self.hierarchy[1:]:
-      name = geoname.name
-      if geoname.id in self.found_ancestor_ids:
-        name += '*'
-      names.append(name)
-    return names
+                     self.geoname.lat + d, self.geoname.lng + d]
+    else:
+      self.bounds = None
 
 
 class ContextCluster:
@@ -30,24 +30,29 @@ class ContextCluster:
   def __init__(self, context):
     self.geonames = [context.geoname]
     self.clustered_bounds = [] if context.bounds == None else [context.bounds]
-    self.ancestor_names = context.ancestor_names()
+    self.ancestors = context.ancestors
+    self.mentions = context.mentions
     self.matches = []
 
   def merge_cluster(self, cluster):
     self.geonames += cluster.geonames
     self.clustered_bounds += cluster.clustered_bounds
-    i = min(len(self.ancestor_names), len(cluster.ancestor_names))
-    while self.ancestor_names[i-1] != cluster.ancestor_names[i-1]:
+    i = min(len(self.ancestors), len(cluster.ancestors))
+    while self.ancestors[i-1].id != cluster.ancestors[i-1].id:
       i -= 1
-    self.ancestor_names = self.ancestor_names[:i]
+    self.ancestors = self.ancestors[:i]
+    self.mentions += cluster.mentions
 
-  def clustered_names(self):
-    return map(lambda g: g.name, self.geonames)
+  def relevance(self):
+    total_ancestor_mentions = sum(map(lambda a: a.mentions , self.ancestors))
+    return self.mentions + total_ancestor_mentions
 
   def context_path(self):
-    ancestor_path = ' > '.join(self.ancestor_names)
-    joined_names = ' + '.join(self.clustered_names())
-    return ancestor_path + ' > ' + joined_names
+    names = map(lambda g: g.name, self.geonames)
+    ancestor_names = map(lambda g: g.name, self.ancestors[1:])
+    ancestor_path = ' > '.join(ancestor_names)
+    clustered_names = ' + '.join(names)
+    return ancestor_path + ' > ' + clustered_names
 
   def identifier(self):
     sorted_ids = sorted(map(lambda g: str(g.id), self.geonames))
@@ -61,23 +66,28 @@ class GeoLinker:
 
   def build_context_list(self, matches, db):
 
+    # create context objects
     context_map = {}
     for name in matches:
       geoname_ids = db.get_geoname_ids(name)
       for geoname_id in geoname_ids:
         hierarchy = self.geonames_client.get_hierarchy(geoname_id)
-        context = Context(hierarchy)
+        mentions = len(matches[name])
+        context = Context(hierarchy, mentions)
         context_map[context.geoname.id] = context
 
-    all_contexts = list(context_map.values())
-    all_ids = list(context_map.keys())
-    for context in all_contexts:
-      for ancestor in context.hierarchy:
-        if ancestor.id in all_ids:
-          context.found_ancestor_ids.append(ancestor.id)
-          # remove A level contexts with are ancestors of others
-          if ancestor.id in context_map and context_map[ancestor.id].bounds == None:
-            del context_map[ancestor.id]
+    # count ancestors mentions
+    covered_ids = set()
+    for context in context_map.values():
+      for ancestor in context.ancestors:
+        if ancestor.id in context_map:
+          ancestor.mentions = context_map[ancestor.id].mentions
+          covered_ids.add(ancestor.id)
+
+    # remove context objects that are in the hierarchy of others
+    for ancestor_id in covered_ids:
+      if ancestor_id in context_map and context_map[ancestor_id].bounds == None:
+        del context_map[ancestor_id]
 
     return list(context_map.values())
 
@@ -103,7 +113,7 @@ class GeoLinker:
       new_clusters.append(cluster)
       clusters = new_clusters
 
-    return clusters
+    return sorted(clusters, key=lambda c: c.relevance(), reverse=True)
 
   def bounding_boxes_overlap(self, box1, box2):
     if box1 == None or box2 == None:

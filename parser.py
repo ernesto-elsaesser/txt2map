@@ -16,6 +16,8 @@ class Match:
 
 class Geoparser:
 
+  max_osm_queries_per_request = 5
+
   def __init__(self):
     self.linker = linker.GeoLinker()
     self.osm_client = osm.OverpassClient()
@@ -48,11 +50,17 @@ class Geoparser:
     context_list = self.linker.build_context_list(geonames_matches, geonames_db)
     clusters = self.linker.cluster_context_list(context_list)
 
+    osm_query_count = 0
     for cluster in clusters:
+      if osm_query_count > self.max_osm_queries_per_request:
+        logging.info('aborted parsing after %s OSM queries', osm_query_count)
+        break
+
       if len(cluster.clustered_bounds) == 0:
         continue
 
       logging.info('entering local level: %s ', cluster.context_path())
+      osm_query_count += 1
       osm_db = self.osm_client.load_name_database(cluster)
 
       logging.info('parsing on local level ...')
