@@ -6,6 +6,7 @@ class GeoName:
   def __init__(self, json):
     self.id = json['geonameId']
     self.name = json['name']
+    self.population = json['population']
     self.feature_class = json['fcl']
     self.feature_code = json['fcode']
     self.lat = float(json['lat'])

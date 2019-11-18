@@ -16,7 +16,7 @@ class Match:
 
 class Geoparser:
 
-  max_osm_queries_per_request = 5
+  max_osm_queries_per_request = 3
 
   def __init__(self):
     self.linker = linker.GeoLinker()
@@ -47,19 +47,15 @@ class Geoparser:
     logging.info('parsing on global level ...')
     geonames_db = geonames.GeoNamesDatabase()
     geonames_matches = self.find_names(padded_text, anchors, geonames_db)
-    context_list = self.linker.build_context_list(geonames_matches, geonames_db)
-    clusters = self.linker.cluster_context_list(context_list)
+    clusters = self.linker.create_clusters(geonames_matches, geonames_db, text)
 
     osm_query_count = 0
     for cluster in clusters:
-      if osm_query_count > self.max_osm_queries_per_request:
+      if osm_query_count == self.max_osm_queries_per_request:
         logging.info('aborted parsing after %s OSM queries', osm_query_count)
         break
 
-      if len(cluster.clustered_bounds) == 0:
-        continue
-
-      logging.info('entering local level: %s ', cluster.context_path())
+      logging.info('entering local level: %s ', cluster.path())
       osm_query_count += 1
       osm_db = self.osm_client.load_name_database(cluster)
 
@@ -72,7 +68,7 @@ class Geoparser:
           cluster.matches.append(match)
 
     logging.info('finished.')
-    return clusters
+    return self.linker.calculate_confidences(clusters)
 
   def find_names(self, text, anchors, db, find_abbrvs=False):
     matches = {}

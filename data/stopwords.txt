@@ -125,3 +125,10 @@ just
 don
 should
 now
+monday
+tuesday
+wednesday
+thursday
+friday
+saturday
+sunday

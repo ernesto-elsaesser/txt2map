@@ -1,9 +1,19 @@
-import sys
 import os
+import requests
+import io
+import zipfile
 import csv
 import geonames
 
-geonames_csv_path = sys.argv[1]
+url = 'http://download.geonames.org/export/dump/cities5000.zip'
+res = requests.get(url=url)
+bin_stream = io.BytesIO(res.content)
+zipfile = zipfile.ZipFile(bin_stream)
+data = zipfile.read('cities5000.txt')
+text = data.decode('utf-8')
+str_stream = io.StringIO(text)
+reader = csv.reader(str_stream, delimiter='\t')
+print('names loaded.')
 
 if os.path.exists('data/geonames.db'):
   os.remove('data/geonames.db')
@@ -11,40 +21,21 @@ if os.path.exists('data/geonames.db'):
 db = geonames.GeoNamesDatabase()
 db.create_tables()
 
-with open(geonames_csv_path, 'r') as f:
-  reader = csv.reader(f, delimiter='\t')
-  row_num = 0
-  for row in reader:
-    row_num += 1
-    if row_num % 1000000 == 0:
-      print(f'processed {int(row_num / 1000000)}m rows')
+for row in reader:
 
-    feature_class = row[6]
-    if feature_class != 'A' and feature_class != 'P':
-      continue
+  id = row[0]
 
-    population = int(row[14])
-    if population < 150000:
-      continue
+  names = set()
+  official_name = row[1]
+  names.add(row[1])
+  names.add(row[2])
+  alternative_names = row[3].split(',')
+  for name in alternative_names:
+    if name[:3] == official_name[:3]:
+      names.add(name)
 
-    id = row[0]
-    lat = row[4]
-    lon = row[5]
-    feature_code = row[7]
-    country_code = row[8]
-
-    names = set()
-    official_name = row[1]
-    names.add(row[1])
-    names.add(row[2])
-    alternative_names = row[3].split(',')
-    for name in alternative_names:
-      if name[:3] == official_name[:3]:
-        names.add(name)
-
-    for name in names:
-      db.insert_geoname(name, id)
-      
-  db.commit_changes()
-
-print('done.')
+  for name in names:
+    db.insert_geoname(name, id)
+    
+db.commit_changes()
+print('names stored.')

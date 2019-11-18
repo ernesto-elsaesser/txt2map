@@ -57,8 +57,8 @@ class OverpassClient:
 
   def query_for_cluster(self, cluster):
     query = '[out:csv(::id, ::type, "name", "name:en", "alt_name", "short_name"; false)]; ('
-    for bounds in cluster.clustered_bounds:
-      bbox = ','.join(map(str, bounds))
+    for bounding_box in cluster.bounding_boxes():
+      bbox = ','.join(map(str, bounding_box))
       query += f'node["name"][!"shop"]({bbox}); way["name"]({bbox}); rel["name"]({bbox}); '
     query += '); out qt;'
     return query

@@ -1,5 +1,4 @@
 import http.server
-import sys
 import json
 import logging
 import parser
@@ -45,7 +44,9 @@ class PostHandler(http.server.BaseHTTPRequestHandler):
 
   def cluster_to_dict(self, cluster):
     matches_json = list(map(self.match_to_dict, cluster.matches))
-    return {'context': cluster.context_path(), 'matches': matches_json}
+    return {'context': cluster.context_path(), 
+            'confidence': cluster.confidence, 
+            'matches': matches_json}
 
   def match_to_dict(self, match):
     return {'name': match.name,
@@ -55,7 +56,8 @@ class PostHandler(http.server.BaseHTTPRequestHandler):
   def results_to_text(self, clusters):
     text = ''
     for cluster in clusters:
-      text += cluster.context_path() + ':\n'
+      path = cluster.path()
+      text += f'{path} (c={cluster.confidence:.2f}):\n'
       for match in cluster.matches:
         count = len(match.positions)
         text += f'\t{match.name} ({count}x)\n'
