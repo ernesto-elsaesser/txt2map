@@ -43,7 +43,7 @@ class Geoparser:
   def get_entity_names(self, doc):
     entity_names = {}
     for ent in doc.ents:
-      if ent.label_ not in ['GPE', 'LOC', 'ORG', 'PERSON', 'NORP'] or not ent.text[0].isupper():
+      if ent.label_ not in ['GPE', 'LOC', 'ORG', 'NORP'] or not ent.text[0].isupper():
         continue
       name = ent.text.replace('the ', '').replace('The ', '')
       count = 1 if name not in entity_names else entity_names[name] + 1
