@@ -3,7 +3,7 @@ import requests
 import io
 import zipfile
 import csv
-import geonames
+import sqlite3
 
 url = 'http://download.geonames.org/export/dump/cities5000.zip'
 res = requests.get(url=url)
@@ -15,27 +15,27 @@ str_stream = io.StringIO(text)
 reader = csv.reader(str_stream, delimiter='\t')
 print('names loaded.')
 
-if os.path.exists('data/geonames.db'):
-  os.remove('data/geonames.db')
+db_path = 'data/geonames.db'
+if os.path.exists(db_path):
+  os.remove(db_path)
 
-db = geonames.GeoNamesDatabase()
-db.create_tables()
+db = sqlite3.connect(db_path)
+cursor = db.cursor()
+
+cursor.execute('CREATE TABLE geonames (name VARCHAR(100) NOT NULL UNIQUE, ids TEXT NOT NULL)')
+cursor.execute('CREATE INDEX names_index ON geonames(name)')
 
 for row in reader:
-
   id = row[0]
+  name = row[1]
 
-  names = set()
-  official_name = row[1]
-  names.add(row[1])
-  names.add(row[2])
-  alternative_names = row[3].split(',')
-  for name in alternative_names:
-    if name[:3] == official_name[:3]:
-      names.add(name)
-
-  for name in names:
-    db.insert_geoname(name, id)
+  cursor.execute('SELECT ids FROM geonames WHERE name = ?', (name, ))
+  row = cursor.fetchone()
+  if row == None:
+    cursor.execute('INSERT INTO geonames VALUES (?, ?)', (name, str(id)))
+  else:
+    ids = row[0] + ',' + str(id)
+    cursor.execute('UPDATE geonames SET ids = ? WHERE name = ?', (ids, name))
     
-db.commit_changes()
+db.commit()
 print('names stored.')
