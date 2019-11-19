@@ -3,113 +3,134 @@ import sqlite3
 
 class GeoName:
 
-  def __init__(self, json):
-    self.id = json['geonameId']
-    self.name = json['name']
-    self.population = json['population']
-    self.feature_class = json['fcl']
-    self.feature_code = json['fcode']
-    self.lat = float(json['lat'])
-    self.lng = float(json['lng'])
+  def __init__(self, row=None, json=None):
+    if row != None:
+      self.name=row[0]
+      self.id=row[1]
+      self.cc=row[2]
+      self.adm1=row[3]
+      self.fcl = 'P'
+      self.lat = row[4]
+      self.lng=row[5]
+      self.population=row[6]
+    elif json != None:
+      self.id = json['geonameId']
+      self.name = json['name']
+      self.population = json['population']
+      self.fcl = json['fcl']
+      self.lat = float(json['lat'])
+      self.lng = float(json['lng'])
+      self.cc = '-' if 'countryCode' not in json else json['countryCode']
+      self.adm1 = '-' if 'adminCode1' not in json else json['adminCode1']
 
 
-class TreeRoot:
+class GraphNode:
 
-  def __init__(self):
-    self.children = {}
-
-
-class TreeNode:
-
-  def __init__(self, geoname, mentions):
+  def __init__(self, geoname, name):
     self.geoname = geoname
-    self.mentions = mentions
-    self.ancestor = None
-    self.children = {}
+    self.name = name
+    self.links = []
+
+  def bounding_box(self, d):
+    return [self.geoname.lat - d, self.geoname.lng - d, 
+            self.geoname.lat + d, self.geoname.lng + d]
 
 
 class NodeCluster:
 
-  def __init__(self, nodes, ancestor):
+  def __init__(self, nodes, hierarchy):
     self.nodes = nodes
-    self.ancestors = []
-    next_ancestor = ancestor
-    while isinstance(next_ancestor, TreeNode):
-      self.ancestors.insert(0, next_ancestor)
-      next_ancestor = next_ancestor.ancestor
+    self.hierarchy = hierarchy
+    self.size = len(nodes)
+    self.score = 0
     self.matches = []
     self.confidence = 0
 
-  def size(self): return len(self.nodes)
-
-  def ancestor_mentions(self):
-    return sum(a.mentions for a in self.ancestors)
-
-  def total_mentions(self):
-    return sum(n.mentions for n in self.nodes) + self.ancestor_mentions()
-
-  def path(self):
-    ancestor_str = ' > '.join(a.geoname.name for a in self.ancestors)
-    cluster_str = ' + '.join(n.geoname.name for n in self.nodes)
-    return ancestor_str + ' > ' + cluster_str
+  def description(self):
+    path = ' > '.join(n.name for n in self.hierarchy)
+    name = ' + '.join(n.name for n in self.nodes)
+    return path + ' > ' + name
 
   def identifier(self):
     sorted_ids = sorted(str(n.geoname.id) for n in self.nodes)
     return '-'.join(sorted_ids)
 
+  def population(self):
+    return sum(n.geoname.population for n in self.nodes)
+
   def bounding_boxes(self, d=0.1):
     bounding_boxes = []
     for node in self.nodes:
-      g = node.geoname
-      bounding_box = [g.lat - d, g.lng - d, g.lat + d, g.lng + d]
-      bounding_boxes.append(bounding_box)
+      bounding_boxes.append(node.bounding_box(d))
     return bounding_boxes
-
-  def population(self):
-    return sum(n.geoname.population for n in self.nodes)
 
 
 class GeoNamesClient:
 
   api_url = 'http://api.geonames.org'
 
-  def generate_clusters(self, entity_names):
-    leafs = self.build_ancestor_tree(entity_names)
-    clusters = self.cluster_leafs(leafs)
-    return sorted(clusters, key=lambda c: c.total_mentions(), reverse=True)
+  def generate_clusters(self, entity_names, limit):
+    graph_nodes = self.create_nodes(entity_names)
+    clusters = self.find_clusters(graph_nodes)
+    return self.find_best_clusters(clusters, entity_names, limit)
 
-  def build_ancestor_tree(self, entity_names):
+  def create_nodes(self, entity_names):
     db = sqlite3.connect('data/geonames.db')
     cursor = db.cursor()
-    root = TreeRoot()
-    leafs = []
+    graph_nodes = []
 
     for name in entity_names:
-      cursor.execute('SELECT ids FROM geonames WHERE name = ?', (name, ))
-      row = cursor.fetchone()
-      if row == None:
-        continue
-      geoname_ids = row[0].split(',')
-      for geoname_id in geoname_ids:
-        hierarchy = self.get_hierarchy(geoname_id)
-
-        ancestor = root
-        for geoname in hierarchy[1:]:
-          if geoname.id in ancestor.children:
-            ancestor = ancestor.children[geoname.id]
-          else:
-            mentions = 0
-            if geoname.name in entity_names:
-              mentions = entity_names[geoname.name]
-            node = TreeNode(geoname, mentions)
-            node.ancestor = ancestor
-            ancestor.children[geoname.id] = node
-            ancestor = node
-
-        leafs.append(ancestor)
+      cursor.execute('SELECT * FROM geonames WHERE name = ?', (name, ))
+      for row in cursor.fetchall():
+        geoname = GeoName(row=row)
+        graph_nodes.append(GraphNode(geoname, name))
 
     db.close()
-    return leafs
+
+    return graph_nodes
+
+  def find_clusters(self, graph_nodes):
+    clusters = []
+    unbound = graph_nodes
+
+    while len(unbound) > 0:
+      seed = unbound.pop()
+      connected = {}
+      g1 = seed.geoname
+      for node in unbound:
+        g2 = node.geoname
+        if g1.cc != g2.cc or g1.adm1 != g2.adm1:
+            continue
+        bucket = [] if node.name not in connected else connected[node.name]
+        bucket.append(node)
+        connected[node.name] = bucket
+
+      cluster_nodes = [seed]
+      for nodes in connected.values():
+        smallest_node = min(nodes, key=lambda n: n.geoname.population)
+        for n in nodes: unbound.remove(n)
+        cluster_nodes.append(smallest_node)
+
+      biggest_node = max(cluster_nodes, key=lambda n: n.geoname.population)
+      hierarchy = self.get_hierarchy(biggest_node.geoname.id)
+
+      cluster = NodeCluster(cluster_nodes, hierarchy[1:-1])
+      clusters.append(cluster)
+
+    return clusters
+
+  def find_best_clusters(self, clusters, entity_names, limit):
+
+    for cluster in clusters:
+      score = sum(entity_names[n.name] for n in cluster.nodes)
+      for geoname in cluster.hierarchy:
+        if geoname.name in entity_names:
+          score += entity_names[geoname.name] * 2
+      cluster.score = score
+
+    sorted_clusters = sorted(clusters, key=lambda c: c.score, reverse=True)
+    num = min(limit, len(clusters))
+    return sorted_clusters[0:num]
 
   def get_hierarchy(self, id):
     url = f'{self.api_url}/hierarchyJSON?geonameId={id}&username=map2txt'
@@ -117,36 +138,7 @@ class GeoNamesClient:
     res.encoding = 'utf-8'
     json_dict = res.json()
     geonames_array = json_dict['geonames']
-    return list(map(lambda d: GeoName(d), geonames_array))
-
-  def cluster_leafs(self, leafs):
-    unclustered = leafs
-    clusters = []
-    while len(unclustered) > 0:
-      node = unclustered[0]
-      cluster_ancestor = node.ancestor
-      while not self.spans_cluster(cluster_ancestor):
-        cluster_ancestor = cluster_ancestor.ancestor
-      leafs = self.leafs_below(cluster_ancestor)
-      for leaf in leafs:
-        unclustered.remove(leaf)
-      cluster = NodeCluster(leafs, cluster_ancestor)
-      if cluster.population() > 100_000 or cluster.size() > 1 or cluster.ancestor_mentions() > 1:
-        clusters.append(cluster)
-
-    return clusters
-
-  def spans_cluster(self, node):
-    code = node.geoname.feature_code
-    if code.startswith('PCL'):
-      return True
-    return code == 'ADM1'
-
-  def leafs_below(self, node):
-    if len(node.children) == 0:
-      return [node]
-    child_nodes = node.children.values()
-    return sum((self.leafs_below(n) for n in child_nodes), [])
+    return list(map(lambda d: GeoName(json=d), geonames_array))
 
   def calculate_confidences(self, clusters):
 
@@ -154,9 +146,9 @@ class GeoNamesClient:
       return clusters
 
     for cluster in clusters:
-      if cluster.size() > 2:
+      if cluster.size > 2:
         cluster.confidence += 0.4
-      elif cluster.size() > 1:
+      elif cluster.size > 1:
         cluster.confidence += 0.2
       if len(cluster.matches) > 1:
         cluster.confidence += 0.3

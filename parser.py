@@ -6,7 +6,7 @@ import osm
 
 class Geoparser:
 
-  max_osm_queries_per_request = 3
+  max_clusters = 3
 
   def __init__(self):
     self.nlp = spacy.load("data/spacy-model")
@@ -19,18 +19,12 @@ class Geoparser:
     anchors = self.get_anchors(doc)
 
     entity_str = ', '.join(entity_names.keys())
-    logging.info('global level: %s', entity_str)
-    clusters = self.geonames.generate_clusters(entity_names)
-    osm_query_count = 0
+    logging.info('global entities: %s', entity_str)
+    clusters = self.geonames.generate_clusters(entity_names, self.max_clusters)
 
     for cluster in clusters:
-      if osm_query_count == self.max_osm_queries_per_request:
-        logging.info('aborted parsing after %s OSM queries', osm_query_count)
-        break
-
-      logging.info('local level: %s', cluster.path())
+      logging.info('selected cluster: %s', cluster.description())
       osm_client = osm.OverpassClient()
-      osm_query_count += 1
       osm_client.load_name_database(cluster)
       cluster.matches = osm_client.find_names(text, anchors)
 
@@ -43,7 +37,7 @@ class Geoparser:
   def get_entity_names(self, doc):
     entity_names = {}
     for ent in doc.ents:
-      if ent.label_ not in ['GPE', 'LOC', 'ORG', 'NORP'] or not ent.text[0].isupper():
+      if ent.label_ not in ['GPE', 'LOC', 'NORP'] or not ent.text[0].isupper():
         continue
       name = ent.text.replace('the ', '').replace('The ', '')
       count = 1 if name not in entity_names else entity_names[name] + 1
