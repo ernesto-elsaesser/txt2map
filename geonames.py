@@ -122,9 +122,10 @@ class GeoNamesClient:
   def find_best_clusters(self, clusters, entity_names, limit):
 
     for cluster in clusters:
-      score = sum(entity_names[n.name] for n in cluster.nodes)
+      cluster_names = [n.name for n in cluster.nodes]
+      score = sum(entity_names[name] for name in cluster_names)
       for geoname in cluster.hierarchy:
-        if geoname.name in entity_names:
+        if geoname.name in entity_names and geoname.name not in cluster_names:
           score += entity_names[geoname.name] * 2
       cluster.score = score
 
