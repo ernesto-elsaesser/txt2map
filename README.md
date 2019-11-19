@@ -15,9 +15,9 @@ The output is a list of geographical clusters, each with a list of OSM matches a
 
 The [Geoparser](parser.py) can be used directly from Python code, or via the included web server.
 
-The [Web Server](server.py) listens on port 80 for POST requests with text as body. The response is a JSON object. If the client sends an `Accept` header with MIME type `text/plain` the server will format the output as dense and human-readable plain text. The server further serves a simple web form on any GET request.
+The [Web Server](server.py) listens on port 80 for POST requests with text as body. The response is a JSON object. If the client sends an `Accept` header with MIME type `text/plain` the server will format the output as dense and human-readable plain text. For manual use the server also provides a simple HTML form (as response to GET requests on any path).
 
-The repository also provides a [Dockerfile](Dockerfile) which can be used to build a Docker container that runs the web server.
+The repository also contains a [Dockerfile](Dockerfile) which can be used to build a Docker container that runs the web server.
 
 ## Data
 
@@ -25,4 +25,4 @@ For step 2 a local database of city names is used. The database is derived from 
 
 In step 4 street-level data is loaded from [OSM](https://www.openstreetmap.org). Given a the list of bounding boxes of a cluster found in step 3, the data loader will load any element (nodes, ways and relations) within these bounding boxes that has a name tag, using a prepared [Overpass QL](https://wiki.openstreetmap.org/wiki/Overpass_API/Overpass_QL) template.
 
-Both GeoNames and OSM data is stored in local SQLite databases. If data for a cluster is available already, the OSM query -- which is the bottleneck of the parser -- can be skipped. The script [clear-cache.py](clear-cache.py) can be used to clear cached OSM responses.
+Both GeoNames and OSM data is stored in local SQLite databases. If data for a cluster is available already, the OSM query - which is the bottleneck of the parser - can be skipped. The script [clear-cache.py](clear-cache.py) can be used to clear cached OSM responses.
