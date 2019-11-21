@@ -2,10 +2,10 @@ import http.server
 import json
 import logging
 import parser
+import osm
 
 logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO, datefmt="%Y-%m-%d %H:%M:%S")
 parser = parser.Geoparser()
-osm_url = 'https://www.openstreetmap.org'
 
 class PostHandler(http.server.BaseHTTPRequestHandler):
 
@@ -59,7 +59,7 @@ class PostHandler(http.server.BaseHTTPRequestHandler):
   def osm_match_to_dict(self, match):
     return {'name': match.name,
             'positions': match.positions,
-            'osm_references': self.ref_urls(match)}
+            'osm_elements': self.osm_element_urls(match)}
 
   def results_to_text(self, clusters):
     text = ''
@@ -69,20 +69,13 @@ class PostHandler(http.server.BaseHTTPRequestHandler):
       for match in cluster.local_matches:
         count = len(match.positions)
         text += f'\t{match.name} ({count}x)\n'
-        for url in self.ref_urls(match):
+        for url in self.osm_element_urls(match):
           text += f'\t\t{url}\n'
       text += '\n'
     return text.encode('utf-8')
 
-  def ref_urls(self, match):
-    urls = []
-    for ref in match.refs[0]:
-      urls.append(f'{osm_url}/node/{ref}')
-    for ref in match.refs[1]:
-      urls.append(f'{osm_url}/way/{ref}')
-    for ref in match.refs[2]:
-      urls.append(f'{osm_url}/relation/{ref}')
-    return urls
+  def osm_element_urls(self, match):
+    return [e.url() for e in match.elements]
 
 
 server = http.server.HTTPServer(('', 80), PostHandler)

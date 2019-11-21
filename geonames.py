@@ -31,6 +31,9 @@ class GeoNameMatch:
     self.name = geoname.name
     self.positions = positions
 
+  def center(self):
+    return [self.geoname.lat, self.geoname.lng]
+
   def bounding_box(self, d):
     return [self.geoname.lat - d, self.geoname.lng - d, 
             self.geoname.lat + d, self.geoname.lng + d]
@@ -67,9 +70,7 @@ class MatchCluster:
     return bounding_boxes
 
 
-class GeoNamesClient:
-
-  api_url = 'http://api.geonames.org'
+class GeoNamesMatcher:
 
   def generate_clusters(self, entity_names, limit):
     matches = self.derive_matches(entity_names)
@@ -115,14 +116,15 @@ class GeoNamesClient:
       # add smallest match for each name to cluster
       cluster.matches.append(seed)
       for matches in peers.values():
-        smallest_match = min(matches, key=lambda n: n.geoname.population)
-        cluster.matches.append(smallest_match)
+        smallest = min(matches, key=lambda n: n.geoname.population)
+        cluster.matches.append(smallest)
         for m in matches:
           unbound.remove(m)
 
       # add the hierarchy above the largest clustered match
-      largest_match = max(cluster.matches, key=lambda n: n.geoname.population)
-      geoname_hierarchy = self.get_hierarchy(largest_match.geoname.id)[1:-1]
+      largest = max(cluster.matches, key=lambda n: n.geoname.population)
+      geoname_hierarchy = GeoNamesAPI.get_hierarchy(largest.geoname.id)[
+          1:-1]
       for geoname in geoname_hierarchy[1:-1]:  # skip Earth and match itself
         positions = []
         if geoname.name in entity_names:
@@ -149,17 +151,23 @@ class GeoNamesClient:
     num = min(limit, len(clusters))
     return sorted_clusters[0:num]
 
-  def get_hierarchy(self, id):
-    url = f'{self.api_url}/hierarchyJSON?geonameId={id}&username=map2txt'
-    res = requests.get(url=url)
-    res.encoding = 'utf-8'
-    json_dict = res.json()
+
+class GeoNamesAPI:
+
+  @staticmethod
+  def get_hierarchy(id):
+    json_dict = GeoNamesAPI.get_json('hierarchy', id)
     geonames_array = json_dict['geonames']
     return list(map(lambda d: GeoName(json=d), geonames_array))
 
-  def get_geoname(self, id):
-    url = f'{self.api_url}/getJSON?geonameId={id}&username=map2txt'
+  @staticmethod
+  def get_geoname(id):
+    json_dict = GeoNamesAPI.get_json('get', id)
+    return GeoName(json=json_dict)
+
+  @staticmethod
+  def get_json(endpoint, id):
+    url = f'http://api.geonames.org/{endpoint}JSON?geonameId={id}&username=map2txt'
     res = requests.get(url=url)
     res.encoding = 'utf-8'
-    json_dict = res.json()
-    return GeoName(json=json_dict)
+    return res.json()

@@ -10,7 +10,7 @@ class Geoparser:
 
   def __init__(self):
     self.nlp = spacy.load("data/spacy-model")
-    self.geonames = geonames.GeoNamesClient()
+    self.gn_matcher = geonames.GeoNamesMatcher()
 
   def parse(self, text):
 
@@ -20,15 +20,15 @@ class Geoparser:
 
     entity_str = ', '.join(entity_names.keys())
     logging.info('global entities: %s', entity_str)
-    clusters = self.geonames.generate_clusters(entity_names, self.max_clusters)
+    clusters = self.gn_matcher.generate_clusters(entity_names, self.max_clusters)
 
     for cluster in clusters:
       logging.info('selected cluster: %s', cluster.description())
-      osm_client = osm.OverpassClient()
-      osm_client.load_name_database(cluster)
-      cluster.local_matches = osm_client.find_names(text, anchors)
+      osm_matcher = osm.OSMMatcher()
+      osm_matcher.load_name_database(cluster)
+      cluster.local_matches = osm_matcher.find_names(text, anchors)
 
-      matches_str = ', '.join(m.name for m in cluster.matches)
+      matches_str = ', '.join(m.name for m in cluster.local_matches)
       logging.info('matches: %s', matches_str)
 
     logging.info('finished.')
