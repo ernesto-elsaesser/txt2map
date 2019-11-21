@@ -26,13 +26,13 @@ class Geoparser:
       logging.info('selected cluster: %s', cluster.description())
       osm_client = osm.OverpassClient()
       osm_client.load_name_database(cluster)
-      cluster.matches = osm_client.find_names(text, anchors)
+      cluster.local_matches = osm_client.find_names(text, anchors)
 
       matches_str = ', '.join(m.name for m in cluster.matches)
       logging.info('matches: %s', matches_str)
 
     logging.info('finished.')
-    return self.geonames.calculate_confidences(clusters)
+    return self.sort_by_confidence(clusters)
 
   def get_entity_names(self, doc):
     entity_names = {}
@@ -52,3 +52,32 @@ class Geoparser:
         anchors.append((token.idx, token.idx + len(token)))
     return anchors
 
+  def sort_by_confidence(self, clusters):
+
+    if len(clusters) == 0:
+      return clusters
+
+    if len(clusters) == 1:
+      clusters[0].confidence = 1.0
+      return clusters
+
+    biggest_cluster = max(clusters, key=lambda c: c.size())
+    biggest_cluster.confidence += 0.3
+
+    most_geonames_matches = max(clusters, key=lambda c: len(c.matches))
+    most_geonames_matches.confidence += 0.3
+
+    most_osm_matches = max(clusters, key=lambda c: len(c.local_matches))
+    if len(most_osm_matches.local_matches) > 0:
+      most_osm_matches.confidence += 0.3
+
+    biggest_population = max(clusters, key=lambda c: c.population())
+    biggest_population.confidence += 0.1
+
+    for cluster in clusters:
+      if cluster.size() > 1 and cluster is not biggest_cluster:
+        cluster.confidence += 0.2
+      if len(cluster.local_matches) > 1 and cluster is not most_osm_matches:
+        cluster.confidence += 0.2
+
+    return sorted(clusters, key=lambda c: c.confidence, reverse=True)

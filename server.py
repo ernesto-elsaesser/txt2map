@@ -43,31 +43,30 @@ class PostHandler(http.server.BaseHTTPRequestHandler):
     return json.dumps(cluster_json, indent=2).encode('utf-8')
 
   def cluster_to_dict(self, cluster):
-    geonames_array = [n.geoname.id for n in cluster.nodes]
-    mentions_dict = self.all_mentions_dict(cluster)
-    matches_dict = list(map(self.match_to_dict, cluster.matches))
-    return {'geonames': geonames_array,
-            'confidence': cluster.confidence, 
-            'mentions': mentions_dict,
-            'matches': matches_dict}
+    geoname_matches = list(map(self.geoname_match_to_dict, cluster.matches))
+    geoname_ancestors = list(map(self.geoname_match_to_dict, cluster.hierarchy))
+    osm_matches = list(map(self.osm_match_to_dict, cluster.local_matches))
+    return {'geoname_matches': geoname_matches,
+            'geoname_ancestors': geoname_ancestors,
+            'osm_matches': osm_matches,
+            'confidence': cluster.confidence}
 
-  def all_mentions_dict(self, cluster):
-    mentions_json = cluster.hierarchy_mentions
-    for node in cluster.nodes:
-      mentions_json[node.name] = node.mentions
-    return mentions_json
-
-  def match_to_dict(self, match):
+  def geoname_match_to_dict(self, match):
     return {'name': match.name,
             'positions': match.positions,
-            'osm_elements': self.ref_urls(match)}
+            'geoname_id': match.geoname.id}
+
+  def osm_match_to_dict(self, match):
+    return {'name': match.name,
+            'positions': match.positions,
+            'osm_references': self.ref_urls(match)}
 
   def results_to_text(self, clusters):
     text = ''
     for cluster in clusters:
       path = cluster.description()
       text += f'{path} (c={cluster.confidence:.2f}):\n'
-      for match in cluster.matches:
+      for match in cluster.local_matches:
         count = len(match.positions)
         text += f'\t{match.name} ({count}x)\n'
         for url in self.ref_urls(match):
