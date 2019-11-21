@@ -26,9 +26,10 @@ class GeoName:
 
 class GraphNode:
 
-  def __init__(self, geoname, name):
+  def __init__(self, geoname, name, mentions):
     self.geoname = geoname
     self.name = name
+    self.mentions = mentions
     self.links = []
 
   def bounding_box(self, d):
@@ -38,9 +39,10 @@ class GraphNode:
 
 class NodeCluster:
 
-  def __init__(self, nodes, hierarchy):
+  def __init__(self, nodes, hierarchy, hierarchy_mentions):
     self.nodes = nodes
     self.hierarchy = hierarchy
+    self.hierarchy_mentions = hierarchy_mentions
     self.size = len(nodes)
     self.score = 0
     self.matches = []
@@ -71,25 +73,25 @@ class GeoNamesClient:
 
   def generate_clusters(self, entity_names, limit):
     graph_nodes = self.create_nodes(entity_names)
-    clusters = self.find_clusters(graph_nodes)
-    return self.find_best_clusters(clusters, entity_names, limit)
+    clusters = self.find_clusters(graph_nodes, entity_names)
+    return self.select_best_clusters(clusters, limit)
 
   def create_nodes(self, entity_names):
     db = sqlite3.connect('data/geonames.db')
     cursor = db.cursor()
     graph_nodes = []
 
-    for name in entity_names:
+    for name, mentions in entity_names.items():
       cursor.execute('SELECT * FROM geonames WHERE name = ?', (name, ))
       for row in cursor.fetchall():
         geoname = GeoName(row=row)
-        graph_nodes.append(GraphNode(geoname, name))
+        graph_nodes.append(GraphNode(geoname, name, mentions))
 
     db.close()
 
     return graph_nodes
 
-  def find_clusters(self, graph_nodes):
+  def find_clusters(self, graph_nodes, entity_names):
     clusters = []
     unbound = graph_nodes
 
@@ -110,36 +112,32 @@ class GeoNamesClient:
         smallest_node = min(nodes, key=lambda n: n.geoname.population)
         for n in nodes: unbound.remove(n)
         cluster_nodes.append(smallest_node)
+      cluster_names = [n.name for n in cluster_nodes]
 
       biggest_node = max(cluster_nodes, key=lambda n: n.geoname.population)
-      hierarchy = self.get_hierarchy(biggest_node.geoname.id)
+      hierarchy = self.get_hierarchy(biggest_node.geoname.id)[1:-1] # trim Earth and node itself
 
-      cluster = NodeCluster(cluster_nodes, hierarchy[1:-1])
+      hierarchy_names = [g.name for g in hierarchy]
+      mentioned_names = [n for n in hierarchy_names if n in entity_names and n not in cluster_names]
+      hierarchy_mentions = {}
+      for name in set(mentioned_names):
+        hierarchy_mentions[name] += entity_names[name]
+
+      cluster = NodeCluster(cluster_nodes, hierarchy, hierarchy_mentions)
       clusters.append(cluster)
 
     return clusters
 
-  def find_best_clusters(self, clusters, entity_names, limit):
+  def select_best_clusters(self, clusters, limit):
 
     for cluster in clusters:
-      cluster_names = [n.name for n in cluster.nodes]
-      score = sum(entity_names[name] for name in cluster_names)
-      for geoname in cluster.hierarchy:
-        if geoname.name in entity_names and geoname.name not in cluster_names:
-          score += entity_names[geoname.name] * 2
+      score = sum(len(n.mentions) for n in cluster.nodes)
+      score += sum(len(ps) * 2 for ps in cluster.hierarchy_mentions.values())
       cluster.score = score
 
     sorted_clusters = sorted(clusters, key=lambda c: c.score, reverse=True)
     num = min(limit, len(clusters))
     return sorted_clusters[0:num]
-
-  def get_hierarchy(self, id):
-    url = f'{self.api_url}/hierarchyJSON?geonameId={id}&username=map2txt'
-    res = requests.get(url=url)
-    res.encoding = 'utf-8'
-    json_dict = res.json()
-    geonames_array = json_dict['geonames']
-    return list(map(lambda d: GeoName(json=d), geonames_array))
 
   def calculate_confidences(self, clusters):
 
@@ -162,3 +160,18 @@ class GeoNamesClient:
     biggest_population.confidence += 0.1
 
     return sorted(clusters, key=lambda c: c.confidence, reverse=True)
+
+  def get_hierarchy(self, id):
+    url = f'{self.api_url}/hierarchyJSON?geonameId={id}&username=map2txt'
+    res = requests.get(url=url)
+    res.encoding = 'utf-8'
+    json_dict = res.json()
+    geonames_array = json_dict['geonames']
+    return list(map(lambda d: GeoName(json=d), geonames_array))
+
+  def get_geoname(self, id):
+    url = f'{self.api_url}/getJSON?geonameId={id}&username=map2txt'
+    res = requests.get(url=url)
+    res.encoding = 'utf-8'
+    json_dict = res.json()
+    return GeoName(json=json_dict)

@@ -16,7 +16,7 @@ class PostHandler(http.server.BaseHTTPRequestHandler):
     self.send_response(200)
     self.send_header("Content-type", "text/html")
     self.end_headers()
-    with open('index.html', 'rb') as f:
+    with open('data/index.html', 'rb') as f:
       self.wfile.write(f.read())
     self.close_connection = True
 
@@ -43,10 +43,19 @@ class PostHandler(http.server.BaseHTTPRequestHandler):
     return json.dumps(cluster_json, indent=2).encode('utf-8')
 
   def cluster_to_dict(self, cluster):
-    matches_json = list(map(self.match_to_dict, cluster.matches))
-    return {'context': cluster.context_path(), 
+    geonames_array = [n.geoname.id for n in cluster.nodes]
+    mentions_dict = self.all_mentions_dict(cluster)
+    matches_dict = list(map(self.match_to_dict, cluster.matches))
+    return {'geonames': geonames_array,
             'confidence': cluster.confidence, 
-            'matches': matches_json}
+            'mentions': mentions_dict,
+            'matches': matches_dict}
+
+  def all_mentions_dict(self, cluster):
+    mentions_json = cluster.hierarchy_mentions
+    for node in cluster.nodes:
+      mentions_json[node.name] = node.mentions
+    return mentions_json
 
   def match_to_dict(self, match):
     return {'name': match.name,

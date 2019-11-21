@@ -40,8 +40,9 @@ class Geoparser:
       if ent.label_ not in ['GPE', 'LOC', 'NORP'] or not ent.text[0].isupper():
         continue
       name = ent.text.replace('the ', '').replace('The ', '')
-      count = 1 if name not in entity_names else entity_names[name] + 1
-      entity_names[name] = count
+      positions = [] if name not in entity_names else entity_names[name]
+      positions.append(ent.start_char)
+      entity_names[name] = positions
     return entity_names
 
   def get_anchors(self, doc):

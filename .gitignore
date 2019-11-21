@@ -1,4 +1,4 @@
 .DS_Store
 .vscode/
 __pycache__/
-data/osm_*
+data/osm_cache

@@ -98,10 +98,14 @@ class OverpassClient:
 
   def __init__(self):
     self.db = None
+    self.cache_path = 'data/osm_cache'
+
+    if not os.path.exists(self.cache_path):
+      os.mkdir(self.cache_path)
 
   def load_name_database(self, cluster):
     cluster_id = cluster.identifier()
-    db_path = f'data/osm_{cluster_id}.db'
+    db_path = f'{self.cache_path}/{cluster_id}.db'
     data_cached = os.path.exists(db_path)
     
     if data_cached:

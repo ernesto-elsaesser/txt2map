@@ -5,13 +5,18 @@
       .container { margin: 20px auto; text-align: center; }
       .textbox { width: 80%; height: 300px; margin: 0 auto 20px; }
       a { color: blue; font-weight: bold; cursor: pointer; }
+      label { margin: 0 20px 0 5px; }
     </style>
   </head>
   <body>
     <div class="container">
       <h1>Input</h1>
       <textarea class="textbox" id="input"></textarea><br/>
-      <a onclick="post()" id="button">PARSE</a>
+      <input type="radio" id="accept-text" name="accept" checked>
+      <label for="radio-text">Text output</label>
+      <input type="radio" name="accept">
+      <label for="radio-json">JSON output</label><br /><br />
+      <a onclick="post()" id="button">PARSE</a><br />
       <h1>Output</h1>
       <textarea class="textbox" id="output"></textarea>
       <p>Source: <a href="https://github.com/ernesto-elsaesser/txt2map">https://github.com/ernesto-elsaesser/txt2map</a></p>
@@ -19,6 +24,7 @@
 
     <script>
     var input = document.getElementById('input');
+    var accept = document.getElementById('accept-text');
     var button = document.getElementById('button');
     var output = document.getElementById('output');
 
@@ -28,8 +34,11 @@
 
       var params = {
         method: 'POST',
-        body: input.value,
-        headers: { 'Accept': 'text/plain' }
+        body: input.value
+      }
+
+      if (accept.checked) {
+        params.headers = { 'Accept': 'text/plain' }
       }
 
       toggle(true);
