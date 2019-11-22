@@ -69,8 +69,7 @@ class PostHandler(http.server.BaseHTTPRequestHandler):
   def results_to_text(self, clusters):
     text = ''
     for cluster in clusters:
-      path = cluster.description()
-      text += f'{path} (c={cluster.confidence:.2f}):\n'
+      text += f'{cluster} (c={cluster.confidence:.2f}):\n'
       for match in cluster.local_matches:
         count = len(match.positions)
         text += f'\t{match.name} ({count}x)\n'

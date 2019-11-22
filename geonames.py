@@ -28,6 +28,9 @@ class GeoName:
     # Earth, continents, countries:
     self.above_adm1 = c == 'CONT' or c.startswith('PCL') or self.id == 6295630
 
+  def __repr__(self):
+    return f'{self.name}, {self.cc} [{self.fcode}]'
+
 class GeoNameMatch:
 
   def __init__(self, geoname, positions):
@@ -42,6 +45,8 @@ class GeoNameMatch:
     return [self.geoname.lat - d, self.geoname.lng - d, 
             self.geoname.lat + d, self.geoname.lng + d]
 
+  def __repr__(self):
+    return self.geoname.__repr__()
 
 class MatchCluster:
 
@@ -49,21 +54,11 @@ class MatchCluster:
     self.cities = cities
     self.non_cities = [m for m in all_matches if m not in cities]
     self.all_matches = all_matches
-
     self.path = [g.name for g in hierarchy]
-
-    self.match_count = len(all_matches)
+    self.size = len(all_matches)
     self.city_count = len(cities)
-
-    p_score = sum(len(m.positions) for m in cities)
-    a_score = sum(len(m.positions) for m in self.non_cities)
-    self.score = p_score * (a_score + 1)  # 0 if no cities
-
     self.local_matches = []
     self.confidence = 0
-
-  def description(self):
-    return ' > '.join(self.path[1:]) # skip Earth
 
   def identifier(self):
     sorted_ids = sorted(str(m.geoname.id) for m in self.cities)
@@ -75,12 +70,15 @@ class MatchCluster:
   def bounding_boxes(self, d=0.1):
     return [m.bounding_box(d) for m in self.cities]
 
+  def __repr__(self):
+    return ' > '.join(self.path[1:]) # skip Earth
 
 class GeoNamesMatcher:
 
   def generate_clusters(self, entity_names):
     matches = self.get_matches(entity_names)
-    return self.find_clusters(matches)
+    clusters = self.find_clusters(matches)
+    return self.disambiguate(clusters)
 
   def get_matches(self, entity_names):
     db = sqlite3.connect('data/geonames.db')
@@ -104,27 +102,25 @@ class GeoNamesMatcher:
     top_level = {}
     for match in matches:
       if match.geoname.above_adm1:
-        top_level[match.name] = match
-    unlinked_top_levels = list(top_level.keys())
+        top_level[match.geoname.id] = match
+    unlinked_top_levels_ids = list(top_level.keys())
 
     clusters = []
-    linked_matches = set()
+    linked_ids = set()
 
     for match in candidates:
-      if match in linked_matches:
+      if match.geoname.id in linked_ids:
         continue
 
       # find all matches in the same ADM1 area
       related_matches = [match]
-      linked_matches.add(match)
+      linked_ids.add(match.geoname.id)
       g1 = match.geoname
-      for other_match in matches:
-        if other_match in linked_matches:
-          continue
+      for other_match in candidates:
         g2 = other_match.geoname
-        if g1.cc == g2.cc and g1.adm1 == g2.adm1:
+        if not g2.id in linked_ids and g1.cc == g2.cc and g1.adm1 == g2.adm1:
           related_matches.append(other_match)
-          linked_matches.add(other_match)
+          linked_ids.add(g2.id)
 
       cities = [m for m in related_matches if m.geoname.is_city]
 
@@ -135,20 +131,39 @@ class GeoNamesMatcher:
 
       hierarchy = GeoNamesAPI.get_hierarchy(anchor.geoname.id)
       for geoname in hierarchy:
-        if geoname.name in top_level:
-          related_matches.append(top_level[geoname.name])
-          unlinked_top_levels.remove(geoname.name)
+        if geoname.id in top_level:
+          related_matches.append(top_level[geoname.id])
+          if geoname.id in unlinked_top_levels_ids:
+            unlinked_top_levels_ids.remove(geoname.id)
 
       cluster = MatchCluster(cities, related_matches, hierarchy)
       clusters.append(cluster)
 
-    for name in unlinked_top_levels:
-      match = top_level[name]
-      hierarchy = GeoNamesAPI.get_hierarchy(match.geoname.id)
+    for geoname_id in unlinked_top_levels_ids:
+      match = top_level[geoname_id]
+      hierarchy = GeoNamesAPI.get_hierarchy(geoname_id)
       cluster = MatchCluster([], [match], hierarchy)
       clusters.append(cluster)
 
     return clusters
+
+  def disambiguate(self, clusters):
+    for cluster in clusters:
+      matched_names = set(m.name for m in cluster.all_matches)
+      cluster.score = len(matched_names)
+      if cluster.city_count > 0:
+        cluster.score *= 2
+    sorted_clusters = sorted(clusters, key=lambda c: c.score, reverse=True)
+
+    resolved_names = []
+    unique_clusters = []
+    for cluster in sorted_clusters:
+      checked_matches = [m for m in cluster.all_matches if not m.geoname.above_adm1]
+      conflicts = [m for m in checked_matches if m.name in resolved_names]
+      if len(conflicts) == 0:
+        resolved_names += [m.name for m in checked_matches]
+        unique_clusters.append(cluster)
+    return unique_clusters
 
 
 class GeoNamesAPI:

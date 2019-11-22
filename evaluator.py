@@ -1,5 +1,6 @@
 import os
 import datetime
+import logging
 from geopy.distance import distance
 import parser
 import geonames
@@ -10,15 +11,19 @@ class CorpusEvaluator:
   def __init__(self, dist_limit):
     self.parser = parser.Geoparser()
     self.dist_limit = dist_limit
+    self.base_dir = 'eval'
+    if not os.path.exists(self.base_dir):
+      os.mkdir(self.base_dir)
 
   def start_corpus(self, corpus_name):
-    output_dir = f'eval/{corpus_name}'
+    output_dir = f'{self.base_dir}/{corpus_name}'
     if not os.path.exists(output_dir):
       os.mkdir(output_dir)
     now = datetime.datetime.now()
     out_path = f'{output_dir}/results-{now.date()}.txt'
     self.out = open(out_path, mode='w', encoding='utf-8')
     header = f'Evaluation with the {corpus_name} corpus at {now.time()}:'
+    logging.info(header)
     self.out.write(header + '\n')
     self.doc_count = 0
     self.total_tests = 0
@@ -83,6 +88,7 @@ class CorpusEvaluator:
     self.tests_passed += passed
     self.doc_count += 1
     summary = f'Document {self.doc_id}: {passed}/{total} ({percentage:.1f}%)'
+    logging.info(summary)
     self.out.write(summary + '\n')
 
   def finish_corpus(self):
@@ -90,5 +96,6 @@ class CorpusEvaluator:
     passed = self.tests_passed
     percentage = 100.0 if total == 0 else passed/total
     footer = f'Overall ({self.doc_count} documents): {passed}/{total} ({percentage:.1f}%)'
+    logging.info(footer)
     self.out.write(footer)
     self.out.close()

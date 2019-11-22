@@ -54,7 +54,7 @@ for row in reader:
   adm1 = row[10]
   insert(name, id, lat, lng, fcode, cc, adm1, population)
   for alt_name in alt_names:
-    if alt_name in name:
+    if alt_name in name and alt_name != name:
       insert(alt_name, id, lat, lng, fcode, cc, adm1, population)
 
   count += 1

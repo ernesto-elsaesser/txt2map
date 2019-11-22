@@ -6,8 +6,6 @@ import osm
 
 class Geoparser:
 
-  local_cluster_limit = 3
-
   def __init__(self):
     self.nlp = spacy.load("data/spacy-model")
     self.gn_matcher = geonames.GeoNamesMatcher()
@@ -22,13 +20,10 @@ class Geoparser:
     logging.info('global entities: %s', entity_str)
     clusters = self.gn_matcher.generate_clusters(entity_names)
 
-    sorted_clusters = sorted(clusters, key=lambda c: c.score, reverse=True)
-    usable_clusters = [c for c in sorted_clusters if c.city_count > 0]
-    selected_clusters = usable_clusters[0:self.local_cluster_limit]
+    usable_clusters = [c for c in clusters if c.city_count > 0]
+    for cluster in usable_clusters:
 
-    for cluster in selected_clusters:
-
-      logging.info('selected cluster: %s', cluster.description())
+      logging.info('selected cluster: %s', cluster)
       osm_matcher = osm.OSMMatcher()
       osm_matcher.load_name_database(cluster)
       cluster.local_matches = osm_matcher.find_names(text, anchors)
@@ -68,7 +63,7 @@ class Geoparser:
       clusters[0].confidence = 1.0
       return clusters
 
-    most_gn_matches = max(clusters, key=lambda c: c.match_count)
+    most_gn_matches = max(clusters, key=lambda c: c.size)
     most_gn_matches.confidence += 0.4
 
     most_osm_matches = max(clusters, key=lambda c: len(c.local_matches))

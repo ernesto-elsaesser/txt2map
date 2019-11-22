@@ -16,9 +16,9 @@ evl = evaluator.CorpusEvaluator(1) # Accuracy@1km
 evl.start_corpus('GeoWebNews')
 
 count = 1
-limit = 3
+limit = 8
 
-for path in os.listdir(corpus_dir):
+for path in ['100.txt']: # os.listdir(corpus_dir):
   if not path.endswith('.txt'):
     continue
 
@@ -27,7 +27,6 @@ for path in os.listdir(corpus_dir):
 
   text_path = corpus_dir + path
   annotation_path = corpus_dir + path.replace('txt', 'ann')
-  logging.info('current document: %s', path)
 
   with open(text_path, encoding='utf-8') as f:
     text = f.read()
