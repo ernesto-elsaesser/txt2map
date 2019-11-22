@@ -30,13 +30,16 @@ cursor.execute('''CREATE TABLE geonames (
     population INT)''')
 cursor.execute('CREATE INDEX name_index ON geonames(name)')
 
+def insert(name, id, lat, lng, fcode, cc, adm1, population):
+  cursor.execute('INSERT INTO geonames VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                 (name, id, lat, lng, fcode, cc, adm1, population))
+
 reader = csv.reader(data_file, delimiter='\t')
-a_count = 0
-p_count = 0
+count = 0
 next_log = 500_000
 for row in reader:
   fclass = row[6]
-  if fclass != 'A' and fclass != 'P':
+  if fclass not in ['L', 'A', 'P']:
     continue
   population = int(row[14])
   if population < 10000:
@@ -49,20 +52,17 @@ for row in reader:
   fcode = row[7]
   cc = row[8]
   adm1 = row[10]
-  cursor.execute('INSERT INTO geonames VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-                 (name, id, lat, lng, fcode, cc, adm1, population))
+  insert(name, id, lat, lng, fcode, cc, adm1, population)
   for alt_name in alt_names:
     if alt_name in name:
-      cursor.execute('INSERT INTO geonames VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-                     (alt_name, id, lat, lng, fcode, cc, adm1, population))
+      insert(alt_name, id, lat, lng, fcode, cc, adm1, population)
 
-  if fclass == 'A':
-    a_count += 1
-  else:
-    p_count += 1
+  count += 1
   if reader.line_num > next_log:
     print('at row', next_log)
     next_log += 500_000
 
 db.commit()
-print('inserted', a_count, 'A-class and', p_count, 'P-class entries.')
+db.close()
+
+print('inserted', count, 'entries.')

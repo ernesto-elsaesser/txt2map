@@ -23,10 +23,10 @@ class GeoName:
       self.cc = '-' if 'countryCode' not in json else json['countryCode']
       self.adm1 = '-' if 'adminCode1' not in json else json['adminCode1']
 
-    self.is_adm = not self.fcode.startswith('PP')
-    self.is_adm1 = self.fcode.startswith('ADM1')
-    self.is_country = self.fcode.startswith('PCL')
-  
+    c = self.fcode
+    self.is_city = c.startswith('PP')
+    # Earth, continents, countries:
+    self.above_adm1 = c == 'CONT' or c.startswith('PCL') or self.id == 6295630
 
 class GeoNameMatch:
 
@@ -45,35 +45,35 @@ class GeoNameMatch:
 
 class MatchCluster:
 
-  def __init__(self, p_matches, a_matches, path_anchor):
-    self.p_matches = p_matches
-    self.a_matches = a_matches
+  def __init__(self, cities, all_matches, hierarchy):
+    self.cities = cities
+    self.non_cities = [m for m in all_matches if m not in cities]
+    self.all_matches = all_matches
 
-    hierarchy = GeoNamesAPI.get_hierarchy(path_anchor.geoname.id)
-    self.path = [g.name for g in hierarchy[1:]] # skip Earth
+    self.path = [g.name for g in hierarchy]
 
-    self.match_count = len(p_matches + a_matches)
-    self.size = len(p_matches)
+    self.match_count = len(all_matches)
+    self.city_count = len(cities)
 
-    p_score = sum(len(m.positions) for m in p_matches)
-    a_score = sum(len(m.positions) for m in a_matches)
-    self.score = p_score * (a_score + 1)  # as with no ps don't count
+    p_score = sum(len(m.positions) for m in cities)
+    a_score = sum(len(m.positions) for m in self.non_cities)
+    self.score = p_score * (a_score + 1)  # 0 if no cities
 
     self.local_matches = []
     self.confidence = 0
 
   def description(self):
-    return ' > '.join(self.path)
+    return ' > '.join(self.path[1:]) # skip Earth
 
   def identifier(self):
-    sorted_ids = sorted(str(m.geoname.id) for m in self.p_matches)
+    sorted_ids = sorted(str(m.geoname.id) for m in self.cities)
     return '-'.join(sorted_ids)
 
   def population(self):
-    return sum(m.geoname.population for m in self.p_matches)
+    return sum(m.geoname.population for m in self.cities)
 
   def bounding_boxes(self, d=0.1):
-    return [m.bounding_box(d) for m in self.p_matches]
+    return [m.bounding_box(d) for m in self.cities]
 
 
 class GeoNamesMatcher:
@@ -98,39 +98,54 @@ class GeoNamesMatcher:
     return matches
 
   def find_clusters(self, matches):
-    sorted_matches = sorted(matches, key=lambda m: m.geoname.population)
-    clusters = []
-    bound_matches = set()
-    covered_countries = set()
+    candidates = [m for m in matches if not m.geoname.above_adm1]
+    candidates = sorted(candidates, key=lambda m: m.geoname.population)
 
-    for match in sorted_matches:
-      if match in bound_matches or match in covered_countries:
+    top_level = {}
+    for match in matches:
+      if match.geoname.above_adm1:
+        top_level[match.name] = match
+    unlinked_top_levels = list(top_level.keys())
+
+    clusters = []
+    linked_matches = set()
+
+    for match in candidates:
+      if match in linked_matches:
         continue
 
       # find all matches in the same ADM1 area
       related_matches = [match]
+      linked_matches.add(match)
       g1 = match.geoname
       for other_match in matches:
-        if other_match is match:
+        if other_match in linked_matches:
           continue
         g2 = other_match.geoname
-        if g2.is_country:
-          if g1.cc == g2.cc:
-            related_matches.append(other_match)
-            covered_countries.add(other_match)
-        elif other_match not in bound_matches:
-          if g1.cc == g2.cc and g1.adm1 == g2.adm1:
-            related_matches.append(other_match)
-            bound_matches.add(other_match)
+        if g1.cc == g2.cc and g1.adm1 == g2.adm1:
+          related_matches.append(other_match)
+          linked_matches.add(other_match)
 
-      p_matches = [m for m in related_matches if not m.geoname.is_adm]
-      a_matches = [m for m in related_matches if m.geoname.is_adm]
+      cities = [m for m in related_matches if m.geoname.is_city]
 
-      if len(p_matches) > 0:
-        anchor = max(p_matches, key=lambda n: n.geoname.population)
+      if len(cities) > 0:
+        anchor = max(cities, key=lambda n: n.geoname.population)
       else:
-        anchor = min(a_matches, key=lambda n: n.geoname.population)
-      cluster = MatchCluster(p_matches, a_matches, anchor)
+        anchor = min(related_matches, key=lambda n: n.geoname.population)
+
+      hierarchy = GeoNamesAPI.get_hierarchy(anchor.geoname.id)
+      for geoname in hierarchy:
+        if geoname.name in top_level:
+          related_matches.append(top_level[geoname.name])
+          unlinked_top_levels.remove(geoname.name)
+
+      cluster = MatchCluster(cities, related_matches, hierarchy)
+      clusters.append(cluster)
+
+    for name in unlinked_top_levels:
+      match = top_level[name]
+      hierarchy = GeoNamesAPI.get_hierarchy(match.geoname.id)
+      cluster = MatchCluster([], [match], hierarchy)
       clusters.append(cluster)
 
     return clusters

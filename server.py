@@ -51,9 +51,8 @@ class PostHandler(http.server.BaseHTTPRequestHandler):
             'confidence': cluster.confidence}
 
   def grouped_geoname_matches(self, cluster):
-    all_matches = cluster.a_matches + cluster.p_matches
     matches_by_name = {}
-    for match in all_matches:
+    for match in cluster.all_matches:
       if match.name in matches_by_name:
         entry = matches_by_name[match.name]
       else:

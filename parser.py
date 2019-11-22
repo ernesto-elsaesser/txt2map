@@ -23,7 +23,7 @@ class Geoparser:
     clusters = self.gn_matcher.generate_clusters(entity_names)
 
     sorted_clusters = sorted(clusters, key=lambda c: c.score, reverse=True)
-    usable_clusters = [c for c in sorted_clusters if c.size > 0]
+    usable_clusters = [c for c in sorted_clusters if c.city_count > 0]
     selected_clusters = usable_clusters[0:self.local_cluster_limit]
 
     for cluster in selected_clusters:
@@ -79,7 +79,7 @@ class Geoparser:
     biggest_population.confidence += 0.1
 
     for cluster in clusters:
-      if cluster.size > 1:
+      if cluster.city_count > 1:
         cluster.confidence += 0.2
       if len(cluster.local_matches) > 1 and cluster is not most_osm_matches:
         cluster.confidence += 0.2

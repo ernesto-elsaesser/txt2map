@@ -34,7 +34,7 @@ class CorpusEvaluator:
 
     clusters = self.parser.parse(text)
     for cluster in clusters:
-      for match in cluster.matches:
+      for match in cluster.all_matches:
         for position in match.positions:
           self.gn_anns[position] = match.geoname.id
       for match in cluster.local_matches:

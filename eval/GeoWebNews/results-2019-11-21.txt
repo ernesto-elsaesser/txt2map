@@ -1,5 +1,0 @@
-Evaluation with the GeoWebNews corpus at 23:11:16.864643:
-Document 289.txt: 0/0 (100.0%)
-Document 262.txt: 0/0 (100.0%)
-Document 276.txt: 1/5 (0.2%)
-Overall (3 documents): 1/5 (0.2%)
