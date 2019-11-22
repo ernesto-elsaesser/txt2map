@@ -43,18 +43,24 @@ class PostHandler(http.server.BaseHTTPRequestHandler):
     return json.dumps(cluster_json, indent=2).encode('utf-8')
 
   def cluster_to_dict(self, cluster):
-    geoname_matches = list(map(self.geoname_match_to_dict, cluster.matches))
-    geoname_ancestors = list(map(self.geoname_match_to_dict, cluster.hierarchy))
+    geoname_matches = self.grouped_geoname_matches(cluster)
     osm_matches = list(map(self.osm_match_to_dict, cluster.local_matches))
     return {'geoname_matches': geoname_matches,
-            'geoname_ancestors': geoname_ancestors,
             'osm_matches': osm_matches,
+            'path': cluster.path,
             'confidence': cluster.confidence}
 
-  def geoname_match_to_dict(self, match):
-    return {'name': match.name,
-            'positions': match.positions,
-            'geoname_id': match.geoname.id}
+  def grouped_geoname_matches(self, cluster):
+    all_matches = cluster.a_matches + cluster.p_matches
+    matches_by_name = {}
+    for match in all_matches:
+      if match.name in matches_by_name:
+        entry = matches_by_name[match.name]
+      else:
+        entry = {'name': match.name, 'positions': match.positions, 'geoname_ids': []}
+      entry['geoname_ids'].append(match.geoname.id)
+      matches_by_name[match.name] = entry
+    return list(matches_by_name.values())
 
   def osm_match_to_dict(self, match):
     return {'name': match.name,

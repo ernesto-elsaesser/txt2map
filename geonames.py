@@ -5,24 +5,28 @@ class GeoName:
 
   def __init__(self, row=None, json=None):
     if row != None:
-      self.name=row[0]
-      self.id=row[1]
-      self.cc=row[2]
-      self.adm1=row[3]
-      self.fcl = 'P'
-      self.lat = row[4]
-      self.lng=row[5]
-      self.population=row[6]
+      self.name = row[0]
+      self.id = row[1]
+      self.lat = row[2]
+      self.lng = row[3]
+      self.fcode = row[4]
+      self.cc = row[5]
+      self.adm1 = row[6]
+      self.population = row[7]
     elif json != None:
       self.id = json['geonameId']
       self.name = json['name']
       self.population = json['population']
-      self.fcl = json['fcl']
+      self.fcode = json['fcode']
       self.lat = float(json['lat'])
       self.lng = float(json['lng'])
       self.cc = '-' if 'countryCode' not in json else json['countryCode']
       self.adm1 = '-' if 'adminCode1' not in json else json['adminCode1']
 
+    self.is_adm = not self.fcode.startswith('PP')
+    self.is_adm1 = self.fcode.startswith('ADM1')
+    self.is_country = self.fcode.startswith('PCL')
+  
 
 class GeoNameMatch:
 
@@ -41,43 +45,44 @@ class GeoNameMatch:
 
 class MatchCluster:
 
-  def __init__(self):
-    self.matches = []
-    self.hierarchy = []
-    self.score = 0
+  def __init__(self, p_matches, a_matches, path_anchor):
+    self.p_matches = p_matches
+    self.a_matches = a_matches
+
+    hierarchy = GeoNamesAPI.get_hierarchy(path_anchor.geoname.id)
+    self.path = [g.name for g in hierarchy[1:]] # skip Earth
+
+    self.match_count = len(p_matches + a_matches)
+    self.size = len(p_matches)
+
+    p_score = sum(len(m.positions) for m in p_matches)
+    a_score = sum(len(m.positions) for m in a_matches)
+    self.score = p_score * (a_score + 1)  # as with no ps don't count
+
     self.local_matches = []
     self.confidence = 0
 
-  def size(self):
-    return len(self.matches)
-
   def description(self):
-    path = ' > '.join(m.name for m in self.hierarchy)
-    name = ' + '.join(m.name for m in self.matches)
-    return path + ' > ' + name
+    return ' > '.join(self.path)
 
   def identifier(self):
-    sorted_ids = sorted(str(m.geoname.id) for m in self.matches)
+    sorted_ids = sorted(str(m.geoname.id) for m in self.p_matches)
     return '-'.join(sorted_ids)
 
   def population(self):
-    return sum(m.geoname.population for m in self.matches)
+    return sum(m.geoname.population for m in self.p_matches)
 
   def bounding_boxes(self, d=0.1):
-    bounding_boxes = []
-    for match in self.matches:
-      bounding_boxes.append(match.bounding_box(d))
-    return bounding_boxes
+    return [m.bounding_box(d) for m in self.p_matches]
 
 
 class GeoNamesMatcher:
 
-  def generate_clusters(self, entity_names, limit):
-    matches = self.derive_matches(entity_names)
-    clusters = self.find_clusters(matches, entity_names)
-    return self.select_best_clusters(clusters, limit)
+  def generate_clusters(self, entity_names):
+    matches = self.get_matches(entity_names)
+    return self.find_clusters(matches)
 
-  def derive_matches(self, entity_names):
+  def get_matches(self, entity_names):
     db = sqlite3.connect('data/geonames.db')
     cursor = db.cursor()
     matches = []
@@ -90,84 +95,80 @@ class GeoNamesMatcher:
         matches.append(match)
 
     db.close()
-
     return matches
 
-  def find_clusters(self, matches, entity_names):
+  def find_clusters(self, matches):
+    sorted_matches = sorted(matches, key=lambda m: m.geoname.population)
     clusters = []
-    unbound = matches
+    bound_matches = set()
+    covered_countries = set()
 
-    while len(unbound) > 0:
-      seed = unbound.pop()
+    for match in sorted_matches:
+      if match in bound_matches or match in covered_countries:
+        continue
 
-      # find all other matches in the same ADM1 area
-      peers = {}
-      g1 = seed.geoname
-      for other in unbound:
-        g2 = other.geoname
-        if g1.cc != g2.cc or g1.adm1 != g2.adm1:
-            continue
-        bucket = [] if other.name not in peers else peers[other.name]
-        bucket.append(other)
-        peers[other.name] = bucket
+      # find all matches in the same ADM1 area
+      related_matches = [match]
+      g1 = match.geoname
+      for other_match in matches:
+        if other_match is match:
+          continue
+        g2 = other_match.geoname
+        if g2.is_country:
+          if g1.cc == g2.cc:
+            related_matches.append(other_match)
+            covered_countries.add(other_match)
+        elif other_match not in bound_matches:
+          if g1.cc == g2.cc and g1.adm1 == g2.adm1:
+            related_matches.append(other_match)
+            bound_matches.add(other_match)
 
-      cluster = MatchCluster()
+      p_matches = [m for m in related_matches if not m.geoname.is_adm]
+      a_matches = [m for m in related_matches if m.geoname.is_adm]
 
-      # add smallest match for each name to cluster
-      cluster.matches.append(seed)
-      for matches in peers.values():
-        smallest = min(matches, key=lambda n: n.geoname.population)
-        cluster.matches.append(smallest)
-        for m in matches:
-          unbound.remove(m)
-
-      # add the hierarchy above the largest clustered match
-      largest = max(cluster.matches, key=lambda n: n.geoname.population)
-      geoname_hierarchy = GeoNamesAPI.get_hierarchy(largest.geoname.id)[
-          1:-1]
-      for geoname in geoname_hierarchy[1:-1]:  # skip Earth and match itself
-        positions = []
-        if geoname.name in entity_names:
-          positions = entity_names[geoname.name]
-        match = GeoNameMatch(geoname, positions)
-        cluster.hierarchy.append(match)
-
+      if len(p_matches) > 0:
+        anchor = max(p_matches, key=lambda n: n.geoname.population)
+      else:
+        anchor = min(a_matches, key=lambda n: n.geoname.population)
+      cluster = MatchCluster(p_matches, a_matches, anchor)
       clusters.append(cluster)
 
     return clusters
-
-  def select_best_clusters(self, clusters, limit):
-
-    for cluster in clusters:
-      cluster.score = sum(len(m.positions) for m in cluster.matches)
-      cluster_names = [m.name for m in cluster.matches]
-      previous_names = []
-      for match in cluster.hierarchy:
-        if match.name not in cluster_names and match.name not in previous_names:
-          cluster.score += 2 * len(match.positions)
-          previous_names.append(match.name)
-
-    sorted_clusters = sorted(clusters, key=lambda c: c.score, reverse=True)
-    num = min(limit, len(clusters))
-    return sorted_clusters[0:num]
 
 
 class GeoNamesAPI:
 
   @staticmethod
   def get_hierarchy(id):
-    json_dict = GeoNamesAPI.get_json('hierarchy', id)
-    geonames_array = json_dict['geonames']
-    return list(map(lambda d: GeoName(json=d), geonames_array))
+    params = {'geonameId': id}
+    json_dict = GeoNamesAPI.get_json('hierarchy', params)
+    geonames = []
+    if 'geonames' in json_dict:
+      json_array = json_dict['geonames']
+      geonames = list(map(lambda d: GeoName(json=d), json_array))
+    return geonames
 
   @staticmethod
   def get_geoname(id):
-    json_dict = GeoNamesAPI.get_json('get', id)
+    params = {'geonameId': id}
+    json_dict = GeoNamesAPI.get_json('get', params)
     return GeoName(json=json_dict)
 
   @staticmethod
-  def get_json(endpoint, id):
-    url = f'http://api.geonames.org/{endpoint}JSON?geonameId={id}&username=map2txt'
+  def get_children(id):
+    params = {'geonameId': id, 'maxRows': 250}
+    json_dict = GeoNamesAPI.get_json('children', params)
+    geonames = []
+    if 'geonames' in json_dict:
+      json_array = json_dict['geonames']
+      geonames = list(map(lambda d: GeoName(json=d), json_array))
+    return geonames
+
+  @staticmethod
+  def get_json(endpoint, params):
+    url = f'http://api.geonames.org/{endpoint}JSON?username=map2txt'
+    for key in params:
+      url += f'&{key}={params[key]}'
     res = requests.get(url=url)
     res.encoding = 'utf-8'
     return res.json()

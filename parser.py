@@ -6,7 +6,7 @@ import osm
 
 class Geoparser:
 
-  max_clusters = 3
+  local_cluster_limit = 3
 
   def __init__(self):
     self.nlp = spacy.load("data/spacy-model")
@@ -20,9 +20,14 @@ class Geoparser:
 
     entity_str = ', '.join(entity_names.keys())
     logging.info('global entities: %s', entity_str)
-    clusters = self.gn_matcher.generate_clusters(entity_names, self.max_clusters)
+    clusters = self.gn_matcher.generate_clusters(entity_names)
 
-    for cluster in clusters:
+    sorted_clusters = sorted(clusters, key=lambda c: c.score, reverse=True)
+    usable_clusters = [c for c in sorted_clusters if c.size > 0]
+    selected_clusters = usable_clusters[0:self.local_cluster_limit]
+
+    for cluster in selected_clusters:
+
       logging.info('selected cluster: %s', cluster.description())
       osm_matcher = osm.OSMMatcher()
       osm_matcher.load_name_database(cluster)
@@ -31,8 +36,10 @@ class Geoparser:
       matches_str = ', '.join(m.name for m in cluster.local_matches)
       logging.info('matches: %s', matches_str)
 
+    sorted_clusters = self.sort_based_on_confidence(clusters)
     logging.info('finished.')
-    return self.sort_by_confidence(clusters)
+    
+    return sorted_clusters
 
   def get_entity_names(self, doc):
     entity_names = {}
@@ -52,7 +59,7 @@ class Geoparser:
         anchors.append((token.idx, token.idx + len(token)))
     return anchors
 
-  def sort_by_confidence(self, clusters):
+  def sort_based_on_confidence(self, clusters):
 
     if len(clusters) == 0:
       return clusters
@@ -61,11 +68,8 @@ class Geoparser:
       clusters[0].confidence = 1.0
       return clusters
 
-    biggest_cluster = max(clusters, key=lambda c: c.size())
-    biggest_cluster.confidence += 0.3
-
-    most_geonames_matches = max(clusters, key=lambda c: len(c.matches))
-    most_geonames_matches.confidence += 0.3
+    most_gn_matches = max(clusters, key=lambda c: c.match_count)
+    most_gn_matches.confidence += 0.4
 
     most_osm_matches = max(clusters, key=lambda c: len(c.local_matches))
     if len(most_osm_matches.local_matches) > 0:
@@ -75,7 +79,7 @@ class Geoparser:
     biggest_population.confidence += 0.1
 
     for cluster in clusters:
-      if cluster.size() > 1 and cluster is not biggest_cluster:
+      if cluster.size > 1:
         cluster.confidence += 0.2
       if len(cluster.local_matches) > 1 and cluster is not most_osm_matches:
         cluster.confidence += 0.2
