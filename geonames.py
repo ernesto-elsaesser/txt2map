@@ -78,7 +78,7 @@ class GeoNamesMatcher:
   def generate_clusters(self, entity_names):
     matches = self.get_matches(entity_names)
     clusters = self.find_clusters(matches)
-    return self.disambiguate(clusters)
+    return self.disambiguate(clusters, entity_names)
 
   def get_matches(self, entity_names):
     db = sqlite3.connect('data/geonames.db')
@@ -147,23 +147,31 @@ class GeoNamesMatcher:
 
     return clusters
 
-  def disambiguate(self, clusters):
+  def disambiguate(self, clusters, entity_names):
+    cluster_options = {}
     for cluster in clusters:
-      matched_names = set(m.name for m in cluster.all_matches)
-      cluster.score = len(matched_names)
+      all_names = set(m.name for m in cluster.all_matches)
+      cluster.score = len(all_names)
       if cluster.city_count > 0:
         cluster.score *= 2
-    sorted_clusters = sorted(clusters, key=lambda c: c.score, reverse=True)
 
-    resolved_names = []
-    unique_clusters = []
-    for cluster in sorted_clusters:
-      checked_matches = [m for m in cluster.all_matches if not m.geoname.above_adm1]
-      conflicts = [m for m in checked_matches if m.name in resolved_names]
-      if len(conflicts) == 0:
-        resolved_names += [m.name for m in checked_matches]
-        unique_clusters.append(cluster)
-    return unique_clusters
+      for name in all_names:
+        if name in cluster_options:
+          cluster_options[name].append(cluster)
+        else:
+          cluster_options[name] = [cluster]
+
+    sorted_names = sorted(cluster_options.keys(), reverse=True,
+                          key=lambda n: len(entity_names[n]))
+    best_clusters = []
+    for name in sorted_names:
+      options = cluster_options[name]
+      best = max(options, key=lambda c: c.score)
+      best_options = [c for c in options if c.score == best.score]
+      selected = max(best_options, key=lambda c: c.population())
+      if selected not in best_clusters:
+        best_clusters.append(selected)
+    return best_clusters
 
 
 class GeoNamesAPI:

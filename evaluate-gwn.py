@@ -18,7 +18,7 @@ evl.start_corpus('GeoWebNews')
 count = 1
 limit = 8
 
-for path in ['100.txt']: # os.listdir(corpus_dir):
+for path in os.listdir(corpus_dir):
   if not path.endswith('.txt'):
     continue
 
