@@ -16,7 +16,7 @@ evl = evaluator.CorpusEvaluator(1) # Accuracy@1km
 evl.start_corpus('GeoWebNews')
 
 count = 1
-limit = 8
+limit = 4
 
 for path in os.listdir(corpus_dir):
   if not path.endswith('.txt'):

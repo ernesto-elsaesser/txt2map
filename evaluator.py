@@ -38,12 +38,13 @@ class CorpusEvaluator:
 
     clusters = self.parser.parse(text)
     for cluster in clusters:
-      for match in cluster.all_matches:
-        for position in match.positions:
+      for toponym in cluster.toponyms:
+        for position in toponym.positions:
+          geoname_id = toponym.selected.geoname.id
           if position in self.gn_anns:
-            self.gn_anns[position].append(match.geoname.id)
+            self.gn_anns[position].append(geoname_id)
           else:
-            self.gn_anns[position] = [match.geoname.id]
+            self.gn_anns[position] = [geoname_id]
       for match in cluster.local_matches:
         for position in match.positions:
           self.osm_anns[position] = match.elements

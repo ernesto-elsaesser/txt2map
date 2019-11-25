@@ -22,12 +22,17 @@ class GeoName:
   def __repr__(self):
     return f'{self.name}, {self.cc} [{self.fcode}]'
 
+  def bounding_box(self, d):
+    return [self.lat - d, self.lng - d,
+            self.lat + d, self.lng + d]
+
 class Toponym:
 
   def __init__(self, name, positions):
     self.name = name
     self.positions = positions
     self.candidates = []
+    self.selected = None
 
   def __repr__(self):
     return self.name
@@ -39,35 +44,33 @@ class GeoNameCandidate:
     self.hierarchy = hierarchy
     self.mentions = mentions
 
-  def center(self):
-    return [self.geoname.lat, self.geoname.lng]
-
-  def bounding_box(self, d):
-    return [self.geoname.lat - d, self.geoname.lng - d, 
-            self.geoname.lat + d, self.geoname.lng + d]
+  def population(self):
+    return self.geoname.population
 
   def __repr__(self):
     return self.geoname.__repr__()
 
-class GeoNamesCluster:
+class ToponymCluster:
 
-  def __init__(self, candidates, anchor):
-    self.candidates = candidates
-    self.path = [g.name for g in anchor.hierarchy]
-    self.size = len(candidates)
-    self.mentions = max(map(lambda c: c.mentions, candidates))
+  def __init__(self, toponyms, cities, anchor):
+    self.toponyms = toponyms
+    self.cities = cities
+    self.city_geonames = [t.selected.geoname for t in cities]
+    self.path = [g.name for g in anchor.selected.hierarchy]
+    self.size = len(toponyms)
+    self.mentions = max(map(lambda t: t.selected.mentions, toponyms))
     self.local_matches = []
     self.confidence = 0
 
   def identifier(self):
-    sorted_ids = sorted(str(m.geoname.id) for m in self.candidates)
+    sorted_ids = sorted(str(g.id) for g in self.city_geonames)
     return '-'.join(sorted_ids)
 
   def population(self):
-    return sum(m.geoname.population for m in self.candidates)
+    return sum(g.population for g in self.city_geonames)
 
   def bounding_boxes(self, d=0.1):
-    return [m.bounding_box(d) for m in self.candidates]
+    return [g.bounding_box(d) for g in self.city_geonames]
 
   def __repr__(self):
     return ' > '.join(self.path[1:]) # skip Earth
@@ -80,8 +83,9 @@ class GeoNamesMatcher:
 
   def generate_clusters(self, toponyms):
     self.get_candidates(toponyms)
-    selected_candidates = self.select_candidates(toponyms)
-    return self.cluster_candidates(selected_candidates)
+    self.select_candidates(toponyms)
+    resolved_toponyms = [t for t in toponyms if t.selected != None]
+    return self.cluster_toponyms(resolved_toponyms)
 
   def get_candidates(self, toponyms):
     for toponym in toponyms:
@@ -103,49 +107,47 @@ class GeoNamesMatcher:
     return len(mentions)
 
   def select_candidates(self, toponyms):
-    selected_candidates = []
     for toponym in toponyms:
       if len(toponym.candidates) == 0:
         continue
       max_m = max(toponym.candidates, key=lambda c: c.mentions)
       max_mentions = [c for c in toponym.candidates if c.mentions == max_m.mentions]
-      selected_candidates.append(max_mentions[0])
-    return selected_candidates
+      toponym.selected = max_mentions[0]
 
-  def cluster_candidates(self, candidates):
-    seeds = list(sorted(candidates, key=lambda m: m.geoname.population, reverse=True))
+  def cluster_toponyms(self, toponyms):
+    seeds = list(sorted(toponyms, key=lambda t: t.selected.population(), reverse=True))
 
     clusters = []
-    linked_ids = set()
+    bound_names = set()
 
     while len(seeds) > 0:
       seed = seeds.pop()
-      linked_ids.add(seed.geoname.id)
+      bound_names.add(seed.name)
 
       # find all matches in the same ADM1 area
       connected = [seed]
-      hierarchy_ids = [g.id for g in seed.hierarchy]
-      g1 = seed.geoname
-      for other_candidate in candidates:
-        g2 = other_candidate.geoname
-        if g2.id in linked_ids:
+      hierarchy_ids = [g.id for g in seed.selected.hierarchy]
+      g1 = seed.selected.geoname
+      for toponym in toponyms:
+        if toponym.name in bound_names:
           continue
+        g2 = toponym.selected.geoname
         if g1.cc == g2.cc and g1.adm1 == g2.adm1:
-          connected.append(other_candidate)
-          linked_ids.add(g2.id)
-          seeds.remove(other_candidate)
+          connected.append(toponym)
+          bound_names.add(g2.id)
+          seeds.remove(toponym)
         elif g2.id in hierarchy_ids:
-          connected.append(other_candidate)
-          seeds.remove(other_candidate)
+          connected.append(toponym)
+          seeds.remove(toponym)
 
-      cities = [c for c in connected if c.geoname.is_city]
+      cities = [t for t in connected if t.selected.geoname.is_city]
 
       if len(cities) > 0:
-        anchor = max(cities, key=lambda c: c.geoname.population)
+        anchor = max(cities, key=lambda c: c.selected.population())
       else:
-        anchor = min(connected, key=lambda c: c.geoname.population)
+        anchor = min(connected, key=lambda c: c.selected.population())
 
-      cluster = GeoNamesCluster(connected, anchor)
+      cluster = ToponymCluster(connected, cities, anchor)
       clusters.append(cluster)
 
     return sorted(clusters, key=lambda c: c.population(), reverse=True)
