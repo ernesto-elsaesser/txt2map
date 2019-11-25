@@ -7,7 +7,7 @@ import osm
 class Geoparser:
 
   def __init__(self):
-    self.nlp = spacy.load("data/spacy-model")
+    self.nlp = spacy.load('en_core_web_sm', disable=['parser'])
     self.gn_matcher = geonames.GeoNamesMatcher()
 
   def parse(self, text):

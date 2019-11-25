@@ -81,18 +81,17 @@ class GeoNamesMatcher:
     return self.disambiguate(clusters, entity_names)
 
   def get_matches(self, entity_names):
-    db = sqlite3.connect('data/geonames.db')
-    cursor = db.cursor()
     matches = []
-
     for name, positions in entity_names.items():
-      cursor.execute('SELECT * FROM geonames WHERE name = ?', (name, ))
-      for row in cursor.fetchall():
-        geoname = GeoName(row=row)
+      geonames = GeoNamesAPI.search(name)
+      relevant_geonames = [g for g in geonames if g.population > 10000]
+      if len(relevant_geonames) == 0:
+        relevant_geonames = geonames
+      for geoname in relevant_geonames:
+        if geoname.name != name:
+          continue
         match = GeoNameMatch(geoname, positions)
         matches.append(match)
-
-    db.close()
     return matches
 
   def find_clusters(self, matches):
@@ -176,9 +175,28 @@ class GeoNamesMatcher:
 
 class GeoNamesAPI:
 
+  search_codes = [
+      'CONT', 'RGN',   # continents
+      'PCL', 'PCLI', 'PCLD', 'PCLF',  # countries
+      'ADM2', 'ADM3', 'ADM4', 'ADM5', 'ADMD',  # admins
+      'PPL', 'PPLA', 'PPLA2', 'PPLA3', 'PPLA4', 'PPLC', 'PPLG'  # cities
+  ]
+
+  @staticmethod
+  def search(name):
+    params = [('name_equals', name), ('maxRows', 5)]
+    for code in GeoNamesAPI.search_codes:
+      params.append(('featureCode', code))
+    json_dict = GeoNamesAPI.get_json('search', params)
+    geonames = []
+    if 'geonames' in json_dict:
+      json_array = json_dict['geonames']
+      geonames = list(map(lambda d: GeoName(json=d), json_array))
+    return geonames
+
   @staticmethod
   def get_hierarchy(id):
-    params = {'geonameId': id}
+    params = [('geonameId', id)]
     json_dict = GeoNamesAPI.get_json('hierarchy', params)
     geonames = []
     if 'geonames' in json_dict:
@@ -188,25 +206,15 @@ class GeoNamesAPI:
 
   @staticmethod
   def get_geoname(id):
-    params = {'geonameId': id}
+    params = [('geonameId', id)]
     json_dict = GeoNamesAPI.get_json('get', params)
     return GeoName(json=json_dict)
 
   @staticmethod
-  def get_children(id):
-    params = {'geonameId': id, 'maxRows': 250}
-    json_dict = GeoNamesAPI.get_json('children', params)
-    geonames = []
-    if 'geonames' in json_dict:
-      json_array = json_dict['geonames']
-      geonames = list(map(lambda d: GeoName(json=d), json_array))
-    return geonames
-
-  @staticmethod
   def get_json(endpoint, params):
     url = f'http://api.geonames.org/{endpoint}JSON?username=map2txt'
-    for key in params:
-      url += f'&{key}={params[key]}'
+    for key, value in params:
+      url += f'&{key}={value}'
     res = requests.get(url=url)
     res.encoding = 'utf-8'
     return res.json()

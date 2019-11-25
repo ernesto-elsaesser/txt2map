@@ -57,7 +57,7 @@ class OSMDatabase:
     return self.cursor.fetchone()[0]
 
   def insert_element(self, name, element):
-    if name == '':
+    if len(name) < 2:
       return 0
     first = name[0]
     if not first.isupper() and not first.isdigit():
