@@ -11,12 +11,11 @@ class GeoName:
     self.fcode = json['fcode']
     self.lat = float(json['lat'])
     self.lng = float(json['lng'])
+    self.coordinate = (self.lat, self.lng)
     self.cc = '-' if 'countryCode' not in json else json['countryCode']
     self.adm1 = '-' if 'adminCode1' not in json else json['adminCode1']
 
     self.is_city = self.fcode.startswith('PP')
-    c = self.fclass
-    self.above_adm1 = c == 'L' or (c == 'A' and self.fcode.startswith('PCL'))
 
   def __repr__(self):
     return f'{self.name}, {self.cc} [{self.fcode}]'
@@ -76,9 +75,6 @@ class ToponymCluster:
 
 class GeoNamesMatcher:
 
-  def __init__(self):
-    self.mention_cache = {}
-
   def generate_clusters(self, toponyms):
     self.get_candidates(toponyms)
     self.select_candidates(toponyms)
@@ -107,11 +103,17 @@ class GeoNamesMatcher:
 
   def select_candidates(self, toponyms):
     for toponym in toponyms:
-      if len(toponym.candidates) == 0:
+      candidates = sorted(toponym.candidates, key=lambda c: c.population(), reverse=True)
+      if len(candidates) == 0:
         continue
-      max_m = max(toponym.candidates, key=lambda c: c.mentions)
-      max_mentions = [c for c in toponym.candidates if c.mentions == max_m.mentions]
-      toponym.selected = max_mentions[0]
+      best = candidates[0]
+      max_mentions = max(map(lambda c: c.mentions, candidates))
+      if best.geoname.is_city and best.mentions < max_mentions:
+        for c in candidates[1:]:
+          if c.mentions == max_mentions and c.geoname.is_city:
+            best = c
+            break
+      toponym.selected = best
 
   def cluster_toponyms(self, toponyms):
     seeds = list(sorted(toponyms, key=lambda t: t.selected.population(), reverse=True))
@@ -156,10 +158,8 @@ class GeoNamesMatcher:
 class GeoNamesAPI:
 
   @staticmethod
-  def search(name, classes=['L','A','P'], maxRows=10):
+  def search(name, maxRows=10):
     params = [('name_equals', name), ('maxRows', maxRows)]
-    for c in classes:
-      params.append(('featureClass', c))
     json_dict = GeoNamesAPI.get_json('search', params)
     geonames = []
     if 'geonames' in json_dict:

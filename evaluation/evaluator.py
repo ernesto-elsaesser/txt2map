@@ -9,6 +9,7 @@ class CorpusEvaluator:
   def __init__(self, dist_limit):
     self.parser = Geoparser()
     self.dist_limit = dist_limit
+    self.geoname_cache = {}
 
   def start_corpus(self, corpus_name):
     now = datetime.datetime.now()
@@ -32,51 +33,45 @@ class CorpusEvaluator:
     for cluster in clusters:
       for toponym in cluster.toponyms:
         for position in toponym.positions:
-          geoname_id = toponym.selected.geoname.id
-          if position in self.gn_anns:
-            self.gn_anns[position].append(geoname_id)
-          else:
-            self.gn_anns[position] = [geoname_id]
+          geoname = toponym.selected.geoname
+          self.gn_anns[position] = geoname.coordinate
+          self.geoname_cache[geoname.id] = geoname.coordinate
       for match in cluster.local_matches:
         for position in match.positions:
           self.osm_anns[position] = match.elements
 
-  def test_gold_geoname(self, position, name, geoname_id):
+  def geoname_to_coordinate(self, geoname_id):
+    if geoname_id in self.geoname_cache:
+      return self.geoname_cache[geoname_id]
+    geoname = GeoNamesAPI.get_geoname(geoname_id)
+    self.geoname_cache[geoname_id] = geoname.coordinate
+    return geoname.coordinate
+
+  def test_gold_coordinate(self, position, name, target_coord):
     self.doc_total_tests += 1
 
-    if position in self.gn_anns and geoname_id in self.gn_anns[position]:
-      self.doc_tests_passed += 1
-    else:
-      self.log_line(f'Missing geoname {name} ({geoname_id}) at {position}')
+    if position in self.gn_anns:
+      coords = [self.gn_anns[position]]
 
-  def test_gold_coordinate(self, position, name, lat, lng):
-    self.doc_total_tests += 1
-
-    if position in self.osm_anns:
+    elif position in self.osm_anns:
       osm_elements = self.osm_anns[position]
       csv_reader = OverpassAPI.load_all_coordinates(osm_elements)
-      coords = map(lambda r: (float(r[0]), float(r[1])), csv_reader)
+      coords = list(map(lambda r: (float(r[0]), float(r[1])), csv_reader))
       if len(coords) == 0:
         self.log_line(f'No coordinates from OSM elements for {name}: {osm_elements}')
         return
-
-    elif position in self.gn_anns:
-      geoname_ids = self.gn_anns[position]
-      coords = []
-      for geoname_id in geoname_ids:
-        geoname = GeoNamesAPI.get_geoname(geoname_id)
-        coords.append((geoname.lat, geoname.lng))
 
     else:
       self.log_line(f'Missing annotation for {name} at {position}')
       return
 
-    if self.coords_in_range(coords, lat, lng):
+    dist = self.coords_in_range(coords, target_coord)
+    if dist < self.dist_limit:
       self.doc_tests_passed += 1
     else:
-      self.log_line(f'Wrong coordinate for {name} at {position}')
+      self.log_line(f'Bad coordinate for {name} at {position} - {dist:.1f} km off')
 
-  def coords_in_range(self, coords, target_lat, target_lng):
+  def coords_in_range(self, coords, target_coord):
     lat_sum = lng_sum = 0.0
     count = 0
     for lat, lng in coords:
@@ -85,8 +80,8 @@ class CorpusEvaluator:
       count += 1
     avg_lat = lat_sum / count
     avg_lng = lng_sum / count
-    dist = distance((avg_lat, avg_lng), (target_lat, target_lng))
-    return dist.km < self.dist_limit
+    dist = distance((avg_lat, avg_lng), target_coord)
+    return dist.km
 
   def finish_document(self):
     prefix = f'Finished document'
