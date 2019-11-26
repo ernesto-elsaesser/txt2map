@@ -93,18 +93,21 @@ class GeoNamesMatcher:
       geonames = [g for g in geonames if g.name == toponym.name]
       for geoname in geonames:
         hierarchy = GeoNamesAPI.get_hierarchy(geoname.id)
-        mentions = 0
-        for ancestor in hierarchy:
-          mentions += self.count_mentions(ancestor.name)
+        hierarchy_names = set([g.name for g in hierarchy])
+        mentions = self.count_mentions(hierarchy_names)
         candidate = GeoNameCandidate(geoname, hierarchy, mentions)
         toponym.candidates.append(candidate)
 
-  def count_mentions(self, name):
-    if name in self.mention_cache:
-      return self.mention_cache[name]
-    mentions = re.findall(name, self.text, re.IGNORECASE)
-    self.mention_cache[name] = len(mentions)
-    return len(mentions)
+  def count_mentions(self, names):
+    mention_count = 0
+    for name in names:
+      if name in self.mention_cache:
+        count = self.mention_cache[name]
+      else:
+        count = len(re.findall(name, self.text, re.IGNORECASE))
+        self.mention_cache[name] = count
+      mention_count += count
+    return mention_count
 
   def select_candidates(self, toponyms):
     for toponym in toponyms:
@@ -132,9 +135,9 @@ class GeoNamesMatcher:
         if toponym.name in bound_names:
           continue
         g2 = toponym.selected.geoname
-        if g1.cc == g2.cc and g1.adm1 == g2.adm1:
+        if g1.cc == g2.cc != '-' and g1.adm1 == g2.adm1 != '-':
           connected.append(toponym)
-          bound_names.add(g2.id)
+          bound_names.add(toponym.name)
           seeds.remove(toponym)
         elif g2.id in hierarchy_ids:
           connected.append(toponym)
@@ -156,8 +159,10 @@ class GeoNamesMatcher:
 class GeoNamesAPI:
 
   @staticmethod
-  def search(name):
+  def search(name, classes=['L','A','P']):
     params = [('name_equals', name), ('maxRows', 3)]
+    for c in classes:
+      params.append(('featureClass', c))
     json_dict = GeoNamesAPI.get_json('search', params)
     geonames = []
     if 'geonames' in json_dict:

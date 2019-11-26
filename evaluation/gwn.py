@@ -36,30 +36,31 @@ class GeoWebNewsEvaluator:
     with open(annotation_path, encoding='utf-8') as f:
       reader = csv.reader(f, delimiter='\t')
 
-      pos_for_tag = {}
+      tag_data = {}
       for row in reader:
         tag_id = row[0]
         data = row[1].split(' ')
 
         if tag_id.startswith('T'):  # BRAT token
           annotation_type = data[0]
-          position = data[1]
           if annotation_type in self.used_annotation_types:
-            pos_for_tag[tag_id] = int(position)
+            position = int(data[1])
+            name = row[2]
+            tag_data[tag_id] = (position, name)
 
         elif tag_id.startswith('#'):  # BRAT annotator note
           tag_id = data[1]
-          if tag_id not in pos_for_tag:
+          if tag_id not in tag_data:
               continue
-          pos = pos_for_tag[tag_id]
+          (pos, name) = tag_data[tag_id]
           if ',' in row[2]:
             coords = row[2].split(',')
             lat = float(coords[0].strip())
             lng = float(coords[1].strip())
-            self.eval.test_gold_coordinate(pos, lat, lng)
+            self.eval.test_gold_coordinate(pos, name, lat, lng)
           else:
             geoname_id = int(row[2])
-            self.eval.test_gold_geoname(pos, geoname_id)
+            self.eval.test_gold_geoname(pos, name, geoname_id)
 
     self.eval.finish_document()
 

@@ -12,9 +12,11 @@ class OSMElement:
     self.reference = reference
     self.element_type = element_type
 
+  def __repr__(self):
+    return f'{self.element_type}/{self.reference}'
+
   def url(self):
-    key = f'{self.element_type}/{self.reference}'
-    return 'https://www.openstreetmap.org/' + key
+    return 'https://www.openstreetmap.org/' + str(self)
 
 class OSMMatch:
 

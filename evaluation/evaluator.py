@@ -12,7 +12,7 @@ class CorpusEvaluator:
 
   def start_corpus(self, corpus_name):
     now = datetime.datetime.now()
-    out_path = f'eval-{corpus_name}-{now.date()}.txt'
+    out_path = f'eval-{corpus_name}-{now}.txt'
     self.out = open(out_path, mode='w', encoding='utf-8')
     self.log_line(f'Starting corpus {corpus_name}')
     self.doc_count = 0
@@ -41,15 +41,15 @@ class CorpusEvaluator:
         for position in match.positions:
           self.osm_anns[position] = match.elements
 
-  def test_gold_geoname(self, position, geoname_id):
+  def test_gold_geoname(self, position, name, geoname_id):
     self.doc_total_tests += 1
 
     if position in self.gn_anns and geoname_id in self.gn_anns[position]:
       self.doc_tests_passed += 1
     else:
-      self.log_line(f'Missing geoname {geoname_id} at {position}')
+      self.log_line(f'Missing geoname {name} ({geoname_id}) at {position}')
 
-  def test_gold_coordinate(self, position, lat, lng):
+  def test_gold_coordinate(self, position, name, lat, lng):
     self.doc_total_tests += 1
 
     if position in self.osm_anns:
@@ -57,8 +57,7 @@ class CorpusEvaluator:
       csv_reader = OverpassAPI.load_all_coordinates(osm_elements)
       coords = map(lambda r: (float(r[0]), float(r[1])), csv_reader)
       if len(coords) == 0:
-        urls = ' , '.join(e.url() for e in osm_elements)
-        self.log_line(f'No coordinates for OSM elements {urls}')
+        self.log_line(f'No coordinates from OSM elements for {name}: {osm_elements}')
         return
 
     elif position in self.gn_anns:
@@ -69,13 +68,13 @@ class CorpusEvaluator:
         coords.append((geoname.lat, geoname.lng))
 
     else:
-      self.log_line(f'Missing annotation at {position}')
+      self.log_line(f'Missing annotation for {name} at {position}')
       return
 
     if self.coords_in_range(coords, lat, lng):
       self.doc_tests_passed += 1
     else:
-      self.log_line(f'Wrong coordinate at {position}')
+      self.log_line(f'Wrong coordinate for {name} at {position}')
 
   def coords_in_range(self, coords, target_lat, target_lng):
     lat_sum = lng_sum = 0.0
