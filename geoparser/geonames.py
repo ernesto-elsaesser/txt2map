@@ -1,6 +1,5 @@
 import requests
 import sqlite3
-import re
 
 class GeoName:
 
@@ -77,8 +76,7 @@ class ToponymCluster:
 
 class GeoNamesMatcher:
 
-  def __init__(self, text):
-    self.text = text
+  def __init__(self):
     self.mention_cache = {}
 
   def generate_clusters(self, toponyms):
@@ -88,26 +86,24 @@ class GeoNamesMatcher:
     return self.cluster_toponyms(resolved_toponyms)
 
   def get_candidates(self, toponyms):
+    toponym_names = [t.name for t in toponyms]
     for toponym in toponyms:
       geonames = GeoNamesAPI.search(toponym.name)
       geonames = [g for g in geonames if g.name == toponym.name]
       for geoname in geonames:
         hierarchy = GeoNamesAPI.get_hierarchy(geoname.id)
         hierarchy_names = set([g.name for g in hierarchy])
-        mentions = self.count_mentions(hierarchy_names)
+        mentions = self.count_mentions(hierarchy_names, toponym_names)
         candidate = GeoNameCandidate(geoname, hierarchy, mentions)
         toponym.candidates.append(candidate)
 
-  def count_mentions(self, names):
-    mention_count = 0
-    for name in names:
-      if name in self.mention_cache:
-        count = self.mention_cache[name]
-      else:
-        count = len(re.findall(name, self.text, re.IGNORECASE))
-        self.mention_cache[name] = count
-      mention_count += count
-    return mention_count
+  def count_mentions(self, hierarchy_names, toponym_names):
+    matched_names = set()
+    for h_name in hierarchy_names:
+      for t_name in toponym_names: 
+        if t_name in h_name or h_name in t_name:
+          matched_names.add(t_name)
+    return len(matched_names)
 
   def select_candidates(self, toponyms):
     for toponym in toponyms:
@@ -141,7 +137,8 @@ class GeoNamesMatcher:
           seeds.remove(toponym)
         elif g2.id in hierarchy_ids:
           connected.append(toponym)
-          seeds.remove(toponym)
+          if toponym in seeds:
+            seeds.remove(toponym)
 
       cities = [t for t in connected if t.selected.geoname.is_city]
 
@@ -153,14 +150,14 @@ class GeoNamesMatcher:
       cluster = ToponymCluster(connected, cities, anchor)
       clusters.append(cluster)
 
-    return sorted(clusters, key=lambda c: c.population(), reverse=True)
+    return sorted(clusters, key=lambda c: c.mentions, reverse=True)
 
 
 class GeoNamesAPI:
 
   @staticmethod
-  def search(name, classes=['L','A','P']):
-    params = [('name_equals', name), ('maxRows', 3)]
+  def search(name, classes=['L','A','P'], maxRows=10):
+    params = [('name_equals', name), ('maxRows', maxRows)]
     for c in classes:
       params.append(('featureClass', c))
     json_dict = GeoNamesAPI.get_json('search', params)

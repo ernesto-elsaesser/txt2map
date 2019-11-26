@@ -8,6 +8,7 @@ class Geoparser:
 
   def __init__(self):
     self.nlp = spacy.load('en_core_web_sm', disable=['parser'])
+    self.gn_matcher = GeoNamesMatcher()
 
   def parse(self, text):
 
@@ -17,8 +18,7 @@ class Geoparser:
 
     toponym_str = ', '.join(map(lambda t: t.name, toponyms))
     logging.info('global entities: %s', toponym_str)
-    gn_matcher = GeoNamesMatcher(text)
-    clusters = gn_matcher.generate_clusters(toponyms)
+    clusters = self.gn_matcher.generate_clusters(toponyms)
 
     for cluster in clusters:
 

@@ -12,7 +12,7 @@ class CorpusEvaluator:
 
   def start_corpus(self, corpus_name):
     now = datetime.datetime.now()
-    out_path = f'eval-{corpus_name}-{now}.txt'
+    out_path = f'eval-{corpus_name}-{now.date()}.txt'
     self.out = open(out_path, mode='w', encoding='utf-8')
     self.log_line(f'Starting corpus {corpus_name}')
     self.doc_count = 0
