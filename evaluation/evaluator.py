@@ -2,25 +2,17 @@ import os
 import datetime
 import logging
 from geopy.distance import distance
-import parser
-import geonames
-import osm
+from geoparser import Geoparser, GeoNamesAPI, OverpassAPI
 
 class CorpusEvaluator:
 
   def __init__(self, dist_limit):
-    self.parser = parser.Geoparser()
+    self.parser = Geoparser()
     self.dist_limit = dist_limit
-    self.base_dir = 'eval'
-    if not os.path.exists(self.base_dir):
-      os.mkdir(self.base_dir)
 
   def start_corpus(self, corpus_name):
-    output_dir = f'{self.base_dir}/{corpus_name}'
-    if not os.path.exists(output_dir):
-      os.mkdir(output_dir)
     now = datetime.datetime.now()
-    out_path = f'{output_dir}/results-{now.date()}.txt'
+    out_path = f'eval-{corpus_name}-{now.date()}.txt'
     self.out = open(out_path, mode='w', encoding='utf-8')
     self.log_line(f'Starting corpus {corpus_name}')
     self.doc_count = 0
@@ -62,7 +54,7 @@ class CorpusEvaluator:
 
     if position in self.osm_anns:
       osm_elements = self.osm_anns[position]
-      csv_reader = osm.OverpassAPI.load_all_coordinates(osm_elements)
+      csv_reader = OverpassAPI.load_all_coordinates(osm_elements)
       coords = map(lambda r: (float(r[0]), float(r[1])), csv_reader)
       if len(coords) == 0:
         urls = ' , '.join(e.url() for e in osm_elements)
@@ -73,7 +65,7 @@ class CorpusEvaluator:
       geoname_ids = self.gn_anns[position]
       coords = []
       for geoname_id in geoname_ids:
-        geoname = geonames.GeoNamesAPI.get_geoname(geoname_id)
+        geoname = GeoNamesAPI.get_geoname(geoname_id)
         coords.append((geoname.lat, geoname.lng))
 
     else:

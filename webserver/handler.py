@@ -1,13 +1,8 @@
 import http.server
 import json
-import logging
-import parser
-import osm
+import os
 
-logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO, datefmt="%Y-%m-%d %H:%M:%S")
-parser = parser.Geoparser()
-
-class PostHandler(http.server.BaseHTTPRequestHandler):
+class RequestHandler(http.server.BaseHTTPRequestHandler):
 
   def log_message(self, format, *args):
     pass # disable default logging
@@ -16,7 +11,8 @@ class PostHandler(http.server.BaseHTTPRequestHandler):
     self.send_response(200)
     self.send_header("Content-type", "text/html")
     self.end_headers()
-    with open('data/index.html', 'rb') as f:
+    dirname = os.path.dirname(__file__)
+    with open(dirname + '/index.html', 'rb') as f:
       self.wfile.write(f.read())
     self.close_connection = True
 
@@ -24,7 +20,7 @@ class PostHandler(http.server.BaseHTTPRequestHandler):
     content_length = int(self.headers['Content-Length'])
     req_data = self.rfile.read(content_length)
     req_text = req_data.decode('utf-8')
-    results = parser.parse(req_text)
+    results = self.server.parser.parse(req_text)
 
     accept = self.headers['Accept']
     if 'text/plain' in accept:
@@ -74,14 +70,3 @@ class PostHandler(http.server.BaseHTTPRequestHandler):
 
   def osm_element_urls(self, match):
     return [e.url() for e in match.elements]
-
-
-server = http.server.HTTPServer(('', 80), PostHandler)
-logging.info('map2txt server running on port 80')
-try:
-  server.serve_forever()
-except KeyboardInterrupt:
-  pass
-server.server_close()
-
-

@@ -110,7 +110,7 @@ class OSMMatcher:
 
   def __init__(self):
     self.db = None
-    self.cache_path = 'data/osm_cache'
+    self.cache_path = 'osmcache'
 
     if not os.path.exists(self.cache_path):
       os.mkdir(self.cache_path)

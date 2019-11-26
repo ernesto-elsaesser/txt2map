@@ -1,7 +1,7 @@
 import logging
 import spacy
-import geonames
-import osm
+from .geonames import GeoNamesMatcher, Toponym
+from .osm import OSMMatcher
 
 
 class Geoparser:
@@ -17,13 +17,13 @@ class Geoparser:
 
     toponym_str = ', '.join(map(lambda t: t.name, toponyms))
     logging.info('global entities: %s', toponym_str)
-    gn_matcher = geonames.GeoNamesMatcher(text)
+    gn_matcher = GeoNamesMatcher(text)
     clusters = gn_matcher.generate_clusters(toponyms)
 
     for cluster in clusters:
 
       logging.info('selected cluster: %s', cluster)
-      osm_matcher = osm.OSMMatcher()
+      osm_matcher = OSMMatcher()
       osm_matcher.load_name_database(cluster)
       cluster.local_matches = osm_matcher.find_names(text, anchors)
 
@@ -42,7 +42,7 @@ class Geoparser:
         continue
       name = ent.text.replace('the ', '').replace('The ', '')
       if name not in toponyms:
-        toponyms[name] = geonames.Toponym(name, [ent.start_char])
+        toponyms[name] = Toponym(name, [ent.start_char])
       else:
         toponyms[name].positions.append(ent.start_char)
     return toponyms.values()
