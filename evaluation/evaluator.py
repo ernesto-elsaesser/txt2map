@@ -1,14 +1,16 @@
 import os
 import datetime
 import logging
-from geopy.distance import distance
+import geojson
+import geojson_utils
+from osm2geojson import json2geojson
 from geoparser import Geoparser, GeoNamesAPI, OverpassAPI
 
 class CorpusEvaluator:
 
-  def __init__(self, dist_limit):
+  def __init__(self, dist_limit_km):
     self.parser = Geoparser()
-    self.dist_limit = dist_limit
+    self.dist_limit = dist_limit_km * 1000
     self.geoname_cache = {}
 
   def start_corpus(self, corpus_name):
@@ -34,54 +36,71 @@ class CorpusEvaluator:
       for toponym in cluster.toponyms:
         for position in toponym.positions:
           geoname = toponym.selected.geoname
-          self.gn_anns[position] = geoname.coordinate
-          self.geoname_cache[geoname.id] = geoname.coordinate
+          self.gn_anns[position] = geoname
+          self.geoname_cache[geoname.id] = geoname
       for match in cluster.local_matches:
         for position in match.positions:
           self.osm_anns[position] = match.elements
 
-  def geoname_to_coordinate(self, geoname_id):
+  def geoname_to_coordinates(self, geoname_id):
     if geoname_id in self.geoname_cache:
-      return self.geoname_cache[geoname_id]
-    geoname = GeoNamesAPI.get_geoname(geoname_id)
-    self.geoname_cache[geoname_id] = geoname.coordinate
-    return geoname.coordinate
+      geoname = self.geoname_cache[geoname_id]
+    else:
+      geoname = GeoNamesAPI.get_geoname(geoname_id)
+      self.geoname_cache[geoname_id] = geoname
+    return (geoname.lat, geoname.lng)
 
-  def test_gold_coordinate(self, position, name, target_coord):
+  def test_gold_coordinates(self, position, name, target_lat, target_lng):
     self.doc_total_tests += 1
+    target_point = self.make_point(target_lat, target_lng)
 
     if position in self.gn_anns:
-      coords = [self.gn_anns[position]]
+      geoname = self.gn_anns[position]
+      shape = GeoNamesAPI.get_shape(geoname.id)
+      if shape == None:
+        shape = self.make_point(geoname.lat, geoname.lng)
+      passed = self.test_shape(target_point, shape)
 
     elif position in self.osm_anns:
       osm_elements = self.osm_anns[position]
-      csv_reader = OverpassAPI.load_all_coordinates(osm_elements)
-      coords = list(map(lambda r: (float(r[0]), float(r[1])), csv_reader))
-      if len(coords) == 0:
-        self.log_line(f'No coordinates from OSM elements for {name}: {osm_elements}')
-        return
+      json_response = OverpassAPI.load_geometries(osm_elements)
+      feature_collection = json2geojson(json_response)
+      passed = self.test_features(target_point, feature_collection)
 
     else:
       self.log_line(f'Missing annotation for {name} at {position}')
       return
 
-    dist = self.coords_in_range(coords, target_coord)
-    if dist < self.dist_limit:
+    if passed:
       self.doc_tests_passed += 1
     else:
-      self.log_line(f'Bad coordinate for {name} at {position} - {dist:.1f} km off')
+      self.log_line(f'Bad coordinate for {name} at {position}')
 
-  def coords_in_range(self, coords, target_coord):
-    lat_sum = lng_sum = 0.0
-    count = 0
-    for lat, lng in coords:
-      lat_sum += lat
-      lng_sum += lng
-      count += 1
-    avg_lat = lat_sum / count
-    avg_lng = lng_sum / count
-    dist = distance((avg_lat, avg_lng), target_coord)
-    return dist.km
+  def test_features(self, target_point, feature_collection):
+    for feature in feature_collection['features']:
+      shape = feature['geometry']
+      if self.test_shape(target_point, shape):
+        return True
+    return False
+
+  def test_shape(self, target_point, shape):
+    t = shape['type']
+    if t == 'Point':
+      distance = geojson_utils.point_distance(target_point, shape)
+      return distance < self.dist_limit
+    elif t == 'Polygon':
+      return geojson_utils.point_in_polygon(target_point, shape)
+    elif t == 'MultiPolygon':
+      return geojson_utils.point_in_multipolygon(target_point, shape)
+    else:
+      self.log_line(f'Unexpected shape type: {t}')
+      return False
+
+  def make_point(self, lat, lng):
+    return geojson.geometry.Point(coordinates=[float(lng), float(lat)])
+
+  def make_linestring(self, coords):
+    return geojson.geometry.LineString(coordinates=coords)
 
   def finish_document(self):
     prefix = f'Finished document'

@@ -52,18 +52,17 @@ class GeoWebNewsEvaluator:
           tag_id = data[1]
           if tag_id not in tag_data:
               continue
-            
+
           (pos, name) = tag_data[tag_id]
           if ',' in row[2]:
             coords = row[2].split(',')
             lat = float(coords[0].strip())
             lng = float(coords[1].strip())
-            coord = (lat, lng)
           else:
             geoname_id = int(row[2])
-            coord = self.eval.geoname_to_coordinate(geoname_id)
+            (lat, lng) = self.eval.geoname_to_coordinates(geoname_id)
 
-          self.eval.test_gold_coordinate(pos, name, coord)
+          self.eval.test_gold_coordinates(pos, name, lat, lng)
 
     self.eval.finish_document()
 

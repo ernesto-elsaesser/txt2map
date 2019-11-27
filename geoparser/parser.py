@@ -38,7 +38,7 @@ class Geoparser:
   def get_toponyms(self, doc):
     toponyms = {}
     for ent in doc.ents:
-      if ent.label_ not in ['GPE', 'LOC', 'NORP'] or not ent.text[0].isupper():
+      if ent.label_ not in ['GPE', 'LOC'] or not ent.text[0].isupper():
         continue
       name = ent.text.replace('the ', '').replace('The ', '')
       if name not in toponyms:
