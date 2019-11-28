@@ -1,14 +1,15 @@
 import logging
 from .gwn import GeoWebNewsEvaluator
-from .samples import SampleEvaluator
+from .tests import TestEvaluator
 
 logging.basicConfig(format='%(asctime)s %(message)s', 
                     level=logging.INFO, 
                     datefmt="%H:%M:%S")
 
-evaluator = SampleEvaluator()  # GeoWebNewsEvaluator()
-evaluator.start()
-evaluator.test_osm_point()
+TestEvaluator().test_all()
+
+#evaluator = GeoWebNewsEvaluator()
+#evaluator.start()
 #evaluator.test('100')
 #evaluator.test_all(6)
-evaluator.finish()
+#evaluator.finish()

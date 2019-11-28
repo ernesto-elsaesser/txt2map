@@ -1,7 +1,10 @@
 import logging
+import os
 import spacy
-from .geonames import GeoNamesMatcher, Toponym
-from .osm import OSMMatcher
+from .model import Toponym
+from .loader import DataLoader
+from .resolver import ToponymResolver
+from .matcher import OSMNameMatcher
 
 
 class Geoparser:
@@ -9,7 +12,7 @@ class Geoparser:
   def __init__(self, max_global_toponyms=12):
     self.max_toponyms = max_global_toponyms
     self.nlp = spacy.load('en_core_web_sm', disable=['parser'])
-    self.gn_matcher = GeoNamesMatcher()
+    self.loader = DataLoader()
 
   def parse(self, text):
 
@@ -19,14 +22,17 @@ class Geoparser:
 
     toponym_str = ', '.join(map(lambda t: t.name, toponyms))
     logging.info('global entities: %s', toponym_str)
-    clusters = self.gn_matcher.generate_clusters(toponyms)
+
+    self.loader.load_geoname_candidates(toponyms)
+    ToponymResolver.resolve(toponyms)
+    clusters = ToponymResolver.cluster(toponyms)
 
     for cluster in clusters:
 
       logging.info('selected cluster: %s', cluster)
-      osm_matcher = OSMMatcher()
-      osm_matcher.load_name_database(cluster)
-      cluster.local_matches = osm_matcher.find_names(text, anchors)
+
+      osm_db = self.loader.load_osm_database(cluster)
+      cluster.local_matches = OSMNameMatcher.find_names(text, anchors, osm_db)
 
       matches_str = ', '.join(m.name for m in cluster.local_matches)
       logging.info('matches: %s', matches_str)
@@ -66,8 +72,8 @@ class Geoparser:
       clusters[0].confidence = 1.0
       return clusters
 
-    most_gn_matches = max(clusters, key=lambda c: c.mentions)
-    most_gn_matches.confidence += 0.4
+    most_gns_matches = max(clusters, key=lambda c: c.mentions)
+    most_gns_matches.confidence += 0.4
 
     most_osm_matches = max(clusters, key=lambda c: len(c.local_matches))
     if len(most_osm_matches.local_matches) > 0:

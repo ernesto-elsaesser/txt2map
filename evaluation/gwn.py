@@ -2,6 +2,7 @@ import os
 import logging
 import csv
 import json
+import datetime
 from .evaluator import CorpusEvaluator
 
 class GeoWebNewsEvaluator:
@@ -9,21 +10,26 @@ class GeoWebNewsEvaluator:
   used_annotation_types = ['Literal']
 
   def __init__(self):
-    self.eval = CorpusEvaluator(1)
     dirname = os.path.dirname(__file__)
     self.corpus_dir = dirname + '/corpora/GeoWebNews/'
+    self.eval = CorpusEvaluator(1)
+    self.eval.start_corpus('GWN')
 
-  def start(self):
-    self.eval.start_corpus('GeoWebNews')
-
-  def test_all(self, max_documents=None):
+  def test_all(self, max_documents=None, report_file=None):
     count = 1
     for path in os.listdir(self.corpus_dir):
       if max_documents != None and count > max_documents:
-        return
+        break
       if path.endswith('.txt'):
         self.test(path.replace('.txt', ''))
         count += 1
+
+    report = self.eval.evaluation_report()
+    logging.info('\n' + report)
+
+    if report_file != None:
+      with open(report_file, mode='w', encoding='utf-8') as f:
+        f.write(report)
 
   def test(self, doc_id):
     text_path = self.corpus_dir + doc_id + '.txt'
@@ -62,9 +68,7 @@ class GeoWebNewsEvaluator:
             geoname_id = int(row[2])
             (lat, lng) = self.eval.geoname_to_coordinates(geoname_id)
 
-          self.eval.test_gold_coordinates(pos, name, lat, lng)
+          self.eval.verify_annotation(pos, name, lat, lng)
 
-    self.eval.finish_document()
-
-  def finish(self):
-    self.eval.finish_corpus()
+    summary = self.eval.document_summary()
+    logging.info(summary)
