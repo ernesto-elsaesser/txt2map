@@ -32,8 +32,8 @@ class ToponymResolver:
   def cluster(toponyms):
     logging.info('clustering toponyms ...')
 
-    seeds = [t for t in toponyms if t.selected != None]
-    seeds = list(sorted(seeds, key=lambda t: t.selected.population(), reverse=True))
+    resolved = [t for t in toponyms if t.selected != None]
+    seeds = list(sorted(resolved, key=lambda t: t.selected.population(), reverse=True))
 
     clusters = []
     bound_names = set()
@@ -46,7 +46,7 @@ class ToponymResolver:
       connected = [seed]
       hierarchy_ids = [g.id for g in seed.selected.hierarchy]
       g1 = seed.selected.geoname
-      for toponym in toponyms:
+      for toponym in resolved:
         if toponym.name in bound_names:
           continue
         g2 = toponym.selected.geoname
