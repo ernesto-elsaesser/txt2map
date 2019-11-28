@@ -24,7 +24,7 @@ class CorpusEvaluator:
     self.results[corpus] = {}
 
   def start_document(self, document, text):
-    logging.info('--- %s.%s ---', self.corpus, document)
+    logging.info('--- %s / %s ---', self.corpus, document)
     self.document = document
     geonames = {}
     osm_elements = {}
@@ -90,7 +90,7 @@ class CorpusEvaluator:
         problem = 'Wrong coordinate' if present else 'Missing annotation'
         log += f'- {problem} for {name} at {pos}\n'
     corpus_summary = self.corpus_summary(corpus=c)
-    log += '\nOverall: ' + corpus_summary
+    log += 'Overall: ' + corpus_summary
 
     return log
 

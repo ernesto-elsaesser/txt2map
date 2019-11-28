@@ -6,7 +6,8 @@ logging.basicConfig(format='%(asctime)s %(message)s',
                     level=logging.INFO, 
                     datefmt="%H:%M:%S")
 
-TestEvaluator().test_all()
+evaluator = TestEvaluator()
+evaluator.test_all()
 
 #evaluator = GeoWebNewsEvaluator()
 #evaluator.start()

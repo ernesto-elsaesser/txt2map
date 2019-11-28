@@ -28,6 +28,7 @@ class Geoparser:
     clusters = ToponymResolver.cluster(toponyms)
 
     for cluster in clusters:
+      if len(cluster.cities) == 0: continue
 
       logging.info('selected cluster: %s', cluster)
 

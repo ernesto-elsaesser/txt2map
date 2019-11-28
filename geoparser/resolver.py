@@ -13,17 +13,17 @@ class ToponymResolver:
       if len(candidates) == 0:
         continue
       best = candidates[0]
-      city_candidates = [c for c in candidates if c.geoname.is_city]
       max_mentions = max(map(lambda c: c.mentions, candidates))
+      if best.mentions < max_mentions:
+        for c in candidates:
+          if c.mentions == max_mentions:
+            best = c
+            break
       if not best.geoname.is_city:
+        city_candidates = [c for c in candidates if c.geoname.is_city]
         for c in city_candidates:
           hierarchy_ids = [g.id for g in c.hierarchy]
           if best.geoname.id in hierarchy_ids:
-            best = c
-            break
-      elif best.mentions < max_mentions:
-        for c in city_candidates:
-          if c.mentions == max_mentions:
             best = c
             break
       toponym.selected = best
