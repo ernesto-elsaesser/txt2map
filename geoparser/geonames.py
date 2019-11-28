@@ -1,4 +1,5 @@
 import os
+import logging
 import requests
 import sqlite3
 import json
@@ -57,6 +58,7 @@ class ToponymCluster:
   def __init__(self, toponyms, cities, anchor):
     self.toponyms = toponyms
     self.cities = cities
+    self.anchor = anchor
     self.city_geonames = [t.selected.geoname for t in cities]
     self.path = [g.name for g in anchor.selected.hierarchy]
     self.size = len(toponyms)
@@ -75,12 +77,17 @@ class ToponymCluster:
     return [g.bounding_box(d) for g in self.city_geonames]
 
   def __repr__(self):
-    return ' > '.join(self.path[1:]) # skip Earth
+    path_str = ' > '.join(self.path[1:-1]) # skip Earth
+    sorted_geonames = sorted(self.city_geonames, key=lambda g: g.population, reverse=True)
+    cities_str = ' + '.join(g.name for g in sorted_geonames)
+    return path_str + ' > ' + cities_str
 
 class GeoNamesMatcher:
 
   def generate_clusters(self, toponyms):
+    logging.info('requesting data from GeoNames ...')
     self.get_candidates(toponyms)
+    logging.info('disambiguating results ...')
     self.select_candidates(toponyms)
     resolved_toponyms = [t for t in toponyms if t.selected != None]
     return self.cluster_toponyms(resolved_toponyms)

@@ -6,7 +6,8 @@ from .osm import OSMMatcher
 
 class Geoparser:
 
-  def __init__(self):
+  def __init__(self, max_global_toponyms=12):
+    self.max_toponyms = max_global_toponyms
     self.nlp = spacy.load('en_core_web_sm', disable=['parser'])
     self.gn_matcher = GeoNamesMatcher()
 
@@ -38,6 +39,8 @@ class Geoparser:
   def get_toponyms(self, doc):
     toponyms = {}
     for ent in doc.ents:
+      if len(toponyms) == self.max_toponyms:
+        break
       if ent.label_ not in ['GPE', 'LOC'] or not ent.text[0].isupper():
         continue
       name = ent.text.replace('the ', '').replace('The ', '')

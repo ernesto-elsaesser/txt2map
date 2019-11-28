@@ -47,12 +47,9 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             'confidence': cluster.confidence}
 
   def toponym_to_dict(self, toponym):
-    json_dict = {'name': toponym.name,
+    return {'name': toponym.name,
             'positions': toponym.positions,
             'geoname_id': toponym.selected.geoname.id}
-    if toponym.selected.shape != None:
-      json_dict['shape'] = toponym.selected.shape
-    return json_dict
 
   def osm_match_to_dict(self, match):
     return {'name': match.name,
