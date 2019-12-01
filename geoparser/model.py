@@ -44,10 +44,10 @@ class Toponym:
 class GeoNameCandidate:
 
   # geoname: GeoName
-  # hierarchy: [GeoName]
+  # hierarchy: [(int, str)]
   # mentions: int
-  def __init__(self, hierarchy, mentions):
-    self.geoname = hierarchy[-1]
+  def __init__(self, geoname, hierarchy, mentions):
+    self.geoname = geoname
     self.hierarchy = hierarchy
     self.mentions = mentions
 
@@ -68,7 +68,6 @@ class ToponymCluster:
     self.cities = cities
     self.anchor = anchor
     self.city_geonames = [t.selected.geoname for t in cities]
-    self.path = [g.name for g in anchor.selected.hierarchy]
     self.size = len(toponyms)
     self.mentions = max(map(lambda t: t.selected.mentions, toponyms))
     self.local_matches = []
@@ -84,11 +83,62 @@ class ToponymCluster:
     return [g.bounding_box(d) for g in self.city_geonames]
 
   def __repr__(self):
-    path_str = ' > '.join(self.path[1:-1])  # skip Earth
+    path = self.anchor.selected.hierarchy[:-1]
+    path_str = ' > '.join(name for _, name in path)
     sorted_geonames = sorted(
         self.city_geonames, key=lambda g: g.population, reverse=True)
     cities_str = ' + '.join(g.name for g in sorted_geonames)
     return path_str + ' > ' + cities_str
+
+
+class HierarchyDatabase:
+
+  def __init__(self, sqlite_db):
+    self.db = sqlite_db
+    self.cursor = sqlite_db.cursor()
+
+  def __del__(self):
+    self.db.close()
+
+  def commit_changes(self):
+    self.db.commit()
+
+  def create_tables(self):
+    self.cursor.execute('CREATE TABLE ancestors (geoname_id INT UNIQUE, ancestor_ids TEXT)')
+    self.cursor.execute('CREATE TABLE names (geoname_id INT UNIQUE, name TEXT)')
+
+  def get_hierarchy(self, geoname_id):
+    self.cursor.execute('SELECT ancestor_ids FROM ancestors WHERE geoname_id = ?',
+                        (geoname_id, ))
+    row = self.cursor.fetchone()
+    if row == None:
+      return None
+    ancestor_ids = map(int, row[0].split(','))
+    hierarchy = []
+    for id in ancestor_ids:
+      name = self.get_name(id)
+      hierarchy.append((id, name))
+    return hierarchy
+
+  def store_hierarchy(self, hierarchy):
+    geoname_id = hierarchy[-1][0]
+    ancestor_ids = ','.join(str(id) for id, _ in hierarchy)
+    self.cursor.execute('INSERT INTO ancestors VALUES (?, ?)',
+                        (geoname_id, ancestor_ids))
+    for id, name in hierarchy:
+      self.store_name(id, name)
+
+  def get_name(self, geoname_id):
+    self.cursor.execute('SELECT name FROM names WHERE geoname_id = ?',
+                        (geoname_id, ))
+    return self.cursor.fetchone()[0]
+
+  def store_name(self, geoname_id, name):
+    try:
+        self.cursor.execute('INSERT INTO names VALUES (?, ?)',
+                            (geoname_id, name))
+    except sqlite3.Error:
+      pass
 
 
 class OSMElement:
@@ -141,7 +191,6 @@ class OSMDatabase:
     self.cursor.execute(
         'CREATE TABLE osm (ref BIGINT NOT NULL, names_rowid INTEGER NOT NULL, type_code TINYINT NOT NULL)')
     self.cursor.execute('CREATE INDEX osm_index ON osm(names_rowid)')
-    self.commit_changes()
 
   def insert_element(self, name, element):
     if len(name) < 2:

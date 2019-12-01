@@ -4,7 +4,7 @@ import sqlite3
 import json
 from geojson.geometry import Point
 from osm2geojson import json2geojson
-from .model import GeoName, GeoNameCandidate, OSMElement, OSMDatabase
+from .model import GeoName, GeoNameCandidate, HierarchyDatabase, OSMElement, OSMDatabase
 from .geonames import GeoNamesAPI
 from .overpass import OverpassAPI
 
@@ -14,45 +14,43 @@ class DataLoader:
     self.cache_dir = cache_dir
     if not os.path.exists(self.cache_dir):
       os.mkdir(self.cache_dir)
+    self.hierarchy_db_path = cache_dir + '/hierarchies.db'
+    if not os.path.exists(self.hierarchy_db_path):
+      self.create_hierarchy_db()
 
-  def load_geoname_hierarchy(self, geoname_id):
-    file_path = f'{self.cache_dir}/{geoname_id}.json'
-    is_cached = os.path.exists(file_path)
+  def create_hierarchy_db(self):
+    db = sqlite3.connect(self.hierarchy_db_path)
+    hierarchy_db = HierarchyDatabase(db)
+    hierarchy_db.create_tables()
+    hierarchy_db.commit_changes()
 
-    if is_cached:
-      with open(file_path, 'r', encoding='utf-8') as f:
-        json_str = f.read()
-      json_array = json.loads(json_str)
-    else:
-      json_data = GeoNamesAPI.get_hierarchy(geoname_id)
-      json_array = json_data['geonames']
-      json_str = json.dumps(json_array)
-      with open(file_path, 'w', encoding='utf-8') as f:
-        f.write(json_str)
-
-    return list(map(lambda d: GeoName(data=d), json_array))
+  def get_hierarchy(self, geoname_id):
+    db = sqlite3.connect(self.hierarchy_db_path)
+    hierarchy_db = HierarchyDatabase(db)
+    hierarchy = hierarchy_db.get_hierarchy(geoname_id)
+    if hierarchy == None:
+      geonames = GeoNamesAPI.get_hierarchy(geoname_id)[1:] # skip Earth
+      hierarchy = [(g.id, g.name) for g in geonames]
+      hierarchy_db.store_hierarchy(hierarchy)
+      hierarchy_db.commit_changes()
+    return hierarchy
 
   def load_geoname_candidates(self, toponyms):
     logging.info('loading GeoNames data ...')
     toponym_names = [t.name for t in toponyms]
     for toponym in toponyms:
-      json_data = GeoNamesAPI.search(toponym.name)
-      if not 'geonames' in json_data:
-        continue
-      json_array = json_data['geonames']
-      geonames = list(map(lambda d: GeoName(data=d), json_array))
+      geonames = GeoNamesAPI.search(toponym.name)
       for geoname in geonames:
-        hierarchy = self.load_geoname_hierarchy(geoname.id)
-        hierarchy_names = set([g.name for g in hierarchy])
+        hierarchy = self.get_hierarchy(geoname.id)
         if not geoname.name in toponym.name:
-          hierarchy_names.add(toponym.name)
-        mentions = self.count_candidate_mentions(hierarchy_names, toponym_names)
-        candidate = GeoNameCandidate(hierarchy, mentions)
+          hierarchy[-1] = (geoname.id, toponym.name)
+        mentions = self.count_candidate_mentions(hierarchy, toponym_names)
+        candidate = GeoNameCandidate(geoname, hierarchy, mentions)
         toponym.candidates.append(candidate)
 
-  def count_candidate_mentions(self, hierarchy_names, toponym_names):
+  def count_candidate_mentions(self, hierarchy, toponym_names):
     matched_names = set()
-    for h_name in hierarchy_names:
+    for _, h_name in hierarchy:
       for t_name in toponym_names:
         if t_name in h_name or h_name in t_name:
           matched_names.add(t_name)

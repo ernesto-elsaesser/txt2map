@@ -2,7 +2,7 @@ import os
 import logging
 from geojson.geometry import Point
 import geojson_utils
-from geoparser import Geoparser, DataLoader
+from geoparser import Geoparser, DataLoader, GeoNamesAPI
 
 class Result:
 
@@ -17,6 +17,7 @@ class CorpusEvaluator:
     self.dist_limit = dist_limit_km * 1000
     self.parser = Geoparser()
     self.loader = DataLoader()
+    self.known_geonames = {}
     self.results = {}
 
   def start_corpus(self, corpus):
@@ -35,6 +36,7 @@ class CorpusEvaluator:
         for position in toponym.positions:
           geoname = toponym.selected.geoname
           geonames[position] = geoname
+          self.known_geonames[geoname.id] = geoname
       for match in cluster.local_matches:
         for position in match.positions:
           osm_elements[position] = match.elements
@@ -42,7 +44,11 @@ class CorpusEvaluator:
     self.results[self.corpus][document] = Result(geonames, osm_elements)
 
   def geoname_to_coordinates(self, geoname_id):
-    geoname = self.loader.load_geoname_hierarchy(geoname_id)[-1]
+    if geoname_id in self.known_geonames:
+      geoname = self.known_geonames[geoname_id]
+    else:
+      geoname = GeoNamesAPI.get_geoname(geoname_id)
+      self.known_geonames[geoname.id] = geoname
     return (geoname.lat, geoname.lng)
 
   def verify_annotation(self, position, name, lat, lng):

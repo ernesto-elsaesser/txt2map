@@ -22,7 +22,7 @@ class ToponymResolver:
       if not best.geoname.is_city:
         city_candidates = [c for c in candidates if c.geoname.is_city]
         for c in city_candidates:
-          hierarchy_ids = [g.id for g in c.hierarchy]
+          hierarchy_ids = [id for id, _ in c.hierarchy]
           if best.geoname.id in hierarchy_ids:
             best = c
             break
@@ -44,7 +44,7 @@ class ToponymResolver:
 
       # find all matches in the same ADM1 area
       connected = [seed]
-      hierarchy_ids = [g.id for g in seed.selected.hierarchy]
+      hierarchy_ids = [id for id, _ in seed.selected.hierarchy]
       g1 = seed.selected.geoname
       for toponym in resolved:
         if toponym.name in bound_names:
