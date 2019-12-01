@@ -12,7 +12,7 @@ class TestEvaluator:
     self.test_global_onto_distance()
     self.test_local_point()
     self.test_local_polygon()
-    report = self.eval.evaluation_report()
+    report = self.eval.corpus_report()
     print(report)
 
   def test_global_default_sense(self):

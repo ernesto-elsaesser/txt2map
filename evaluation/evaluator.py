@@ -83,22 +83,27 @@ class CorpusEvaluator:
     all_annotations = sum([r.annotations for r in results.values()], [])
     return self.summary(all_annotations)
 
-  def evaluation_report(self, corpus=None):
+  def document_report(self, corpus=None, document=None):
+    c = corpus or self.corpus
+    d = document or self.document
+    result = self.results[c][d]
+    summary = self.document_summary(corpus=c, document=d)
+    report = f'{d}: {summary}\n'
+    for pos, name, present, correct in result.annotations:
+      if correct: continue
+      problem = 'Wrong coordinate' if present else 'Missing annotation'
+      report += f'- {problem} for {name} at {pos}\n'
+    return report
+
+  def corpus_report(self, corpus=None):
     c = corpus or self.corpus
     results = self.results[c]
-
-    log = ''
-    for document, result in results.items():
-      summary = self.document_summary(corpus=c, document=document)
-      log += f'{document}: {summary}\n'
-      for pos, name, present, correct in result.annotations:
-        if correct: continue
-        problem = 'Wrong coordinate' if present else 'Missing annotation'
-        log += f'- {problem} for {name} at {pos}\n'
+    report = ''
+    for d in results:
+      report += self.document_report(corpus=c, document=d)
     corpus_summary = self.corpus_summary(corpus=c)
-    log += 'Overall: ' + corpus_summary
-
-    return log
+    report += 'Overall: ' + corpus_summary
+    return report
 
   # --- PRIVATE ---
 

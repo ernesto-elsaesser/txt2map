@@ -83,12 +83,14 @@ class ToponymCluster:
     return [g.bounding_box(d) for g in self.city_geonames]
 
   def __repr__(self):
-    path = self.anchor.selected.hierarchy[:-1]
-    path_str = ' > '.join(name for _, name in path)
-    sorted_geonames = sorted(
+    hierarchy_names = [name for _, name in self.anchor.selected.hierarchy]
+    cities = sorted(
         self.city_geonames, key=lambda g: g.population, reverse=True)
-    cities_str = ' + '.join(g.name for g in sorted_geonames)
-    return path_str + ' > ' + cities_str
+    path = ' > '.join(hierarchy_names)
+    for geoname in cities:
+      if geoname.name != hierarchy_names[-1]:
+        path += ' + ' + geoname.name
+    return path
 
 
 class HierarchyDatabase:
@@ -170,6 +172,9 @@ class OSMMatch:
     self.name = name
     self.positions = positions
     self.elements = elements
+
+  def __repr__(self):
+    return self.name
 
 
 class OSMDatabase:

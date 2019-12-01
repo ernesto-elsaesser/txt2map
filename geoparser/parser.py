@@ -9,8 +9,7 @@ from .matcher import OSMNameMatcher
 
 class Geoparser:
 
-  def __init__(self, max_global_toponyms=12):
-    self.max_toponyms = max_global_toponyms
+  def __init__(self):
     self.nlp = spacy.load('en_core_web_sm', disable=['parser'])
     self.loader = DataLoader()
 
@@ -46,15 +45,17 @@ class Geoparser:
   def get_toponyms(self, doc):
     toponyms = {}
     for ent in doc.ents:
-      if len(toponyms) == self.max_toponyms:
-        break
-      if ent.label_ not in ['GPE', 'LOC'] or not ent.text[0].isupper():
+      if ent.label_ not in ['GPE', 'LOC']:
         continue
-      name = ent.text.replace('the ', '').replace('The ', '')
+      name = ent.text
+      pos = ent.start_char
+      if name.startswith('the ') or name.startswith('The '):
+        name = name[4:]
+        pos += 4
       if name not in toponyms:
-        toponyms[name] = Toponym(name, [ent.start_char])
+        toponyms[name] = Toponym(name, [pos])
       else:
-        toponyms[name].positions.append(ent.start_char)
+        toponyms[name].positions.append(pos)
     return toponyms.values()
 
   def get_anchors(self, doc):

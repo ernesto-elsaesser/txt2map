@@ -13,7 +13,7 @@ class ToponymResolver:
       if len(candidates) == 0:
         continue
       best = candidates[0]
-      max_mentions = max(map(lambda c: c.mentions, candidates))
+      max_mentions = max(c.mentions for c in candidates)
       if best.mentions < max_mentions:
         for c in candidates:
           if c.mentions == max_mentions:
