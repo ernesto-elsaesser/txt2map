@@ -12,7 +12,7 @@ class GeoWebNewsEvaluator:
   def __init__(self):
     dirname = os.path.dirname(__file__)
     self.corpus_dir = dirname + '/corpora/GeoWebNews/'
-    self.eval = CorpusEvaluator(1)
+    self.eval = CorpusEvaluator(161)
     self.eval.start_corpus('GWN')
 
   def test_all(self, max_documents=None, report_file=None):

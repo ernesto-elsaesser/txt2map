@@ -14,9 +14,10 @@ class ToponymResolver:
         continue
       best = candidates[0]
       max_mentions = max(c.mentions for c in candidates)
-      if best.mentions < max_mentions:
+      if best.mentions == 0 and max_mentions > 0:
+        best_depth = len(best.hierarchy)
         for c in candidates:
-          if c.mentions == max_mentions:
+          if c.mentions == max_mentions and len(c.hierarchy) < best_depth + 3:
             best = c
             break
       if not best.geoname.is_city:

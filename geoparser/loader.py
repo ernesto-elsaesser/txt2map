@@ -42,17 +42,17 @@ class DataLoader:
       geonames = GeoNamesAPI.search(toponym.name)
       for geoname in geonames:
         hierarchy = self.get_hierarchy(geoname.id)
-        if not geoname.name in toponym.name:
-          hierarchy[-1] = (geoname.id, toponym.name)
-        mentions = self.count_candidate_mentions(hierarchy, toponym_names)
+        ancestor_names = set(name for _, name in hierarchy)
+        ancestor_names = filter(lambda n: toponym.name not in n, ancestor_names)
+        mentions = self.count_candidate_mentions(ancestor_names, toponym_names)
         candidate = GeoNameCandidate(geoname, hierarchy, mentions)
         toponym.candidates.append(candidate)
 
-  def count_candidate_mentions(self, hierarchy, toponym_names):
+  def count_candidate_mentions(self, ancestor_names, toponym_names):
     matched_names = set()
-    for _, h_name in hierarchy:
+    for a_name in ancestor_names:
       for t_name in toponym_names:
-        if t_name in h_name or h_name in t_name:
+        if t_name in a_name or a_name in t_name:
           matched_names.add(t_name)
     return len(matched_names)
 
