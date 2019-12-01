@@ -13,13 +13,17 @@ class ToponymResolver:
       if len(candidates) == 0:
         continue
       best = candidates[0]
+
+      # if best is a below country level and has no ontological evidence while
+      # another candidates have, choose the next biggest candidate with max. evidence
+      best_depth = len(best.hierarchy)
       max_mentions = max(c.mentions for c in candidates)
-      if best.mentions == 0 and max_mentions > 0:
-        best_depth = len(best.hierarchy)
-        for c in candidates:
-          if c.mentions == max_mentions and len(c.hierarchy) < best_depth + 3:
-            best = c
-            break
+      if best.mentions == 0 and max_mentions > 0 and best_depth > 2:
+        top_mentions = [c for c in candidates if c.mentions == max_mentions]
+        best = top_mentions[0]
+
+      # if best is no city and among the candidates is a city of which best is an ancestor,
+      # prefer the city candidate (as OSM data is only requested for cities)
       if not best.geoname.is_city:
         city_candidates = [c for c in candidates if c.geoname.is_city]
         for c in city_candidates:
@@ -27,6 +31,7 @@ class ToponymResolver:
           if best.geoname.id in hierarchy_ids:
             best = c
             break
+          
       toponym.selected = best
 
   @staticmethod
