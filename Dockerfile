@@ -1,4 +1,5 @@
 FROM python:3.8-slim
+RUN apt-get update && apt-get install -y libgeos-dev
 RUN pip install requests spacy geojson_utils osm2geojson
 WORKDIR /map2txt
 ADD ./geoparser /map2txt/geoparser
