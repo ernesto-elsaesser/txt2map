@@ -3,6 +3,6 @@ RUN pip install requests spacy geojson_utils
 WORKDIR /map2txt
 ADD ./geoparser /map2txt/geoparser
 ADD ./webserver /map2txt/webserver
-RUN ["python", "-m", "spacy", "download", "en_core_web_sm"]
+RUN ["python", "-m", "spacy", "download", "en_core_web_md"]
 EXPOSE 80
 ENTRYPOINT ["python", "-m", "webserver"]
