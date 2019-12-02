@@ -1,8 +1,6 @@
 import os
 import logging
-from geojson.geometry import Point
-import geojson_utils
-from geoparser import Geoparser, DataLoader, GeoNamesAPI
+from geoparser import Geoparser, DataLoader, GeoNamesAPI, GeoUtil
 
 class Result:
 
@@ -13,8 +11,8 @@ class Result:
 
 class CorpusEvaluator:
 
-  def __init__(self, dist_limit_km):
-    self.dist_limit = dist_limit_km * 1000
+  def __init__(self, accuracy_km):
+    self.dist_limit = accuracy_km
     self.parser = Geoparser()
     self.loader = DataLoader()
     self.known_geonames = {}
@@ -34,7 +32,7 @@ class CorpusEvaluator:
     for cluster in clusters:
       for toponym in cluster.toponyms:
         for position in toponym.positions:
-          geoname = toponym.selected.geoname
+          geoname = toponym.geoname
           geonames[position] = geoname
           self.known_geonames[geoname.id] = geoname
       for match in cluster.local_matches:
@@ -60,8 +58,8 @@ class CorpusEvaluator:
     if position in result.geonames:
       present = True
       geoname = result.geonames[position]
-      shape = self.loader.get_geoname_shape(geoname)
-      correct = self.test_shape(lat, lng, shape)
+      geometry = self.loader.get_geoname_geometry(geoname)
+      correct = self.test_geometry(lat, lng, geometry)
     elif position in result.osm_elements:
       present = True
       osm_elements = result.osm_elements[position]
@@ -109,24 +107,13 @@ class CorpusEvaluator:
 
   def test_features(self, lat, lng, feature_collection):
     for feature in feature_collection['features']:
-      shape = feature['geometry']
-      if self.test_shape(lat, lng, shape):
+      geometry = feature['geometry']
+      if self.test_geometry(lat, lng, geometry):
         return True
     return False
 
-  def test_shape(self, lat, lng, shape):
-    t = shape['type']
-    target = Point(coordinates=[lng, lat])
-    if t == 'Point':
-      distance = geojson_utils.point_distance(target, shape)
-      return distance < self.dist_limit
-    elif t == 'Polygon':
-      return geojson_utils.point_in_polygon(target, shape)
-    elif t == 'MultiPolygon':
-      return geojson_utils.point_in_multipolygon(target, shape)
-    else:
-      logging.warning(f'Unexpected shape type: {t}')
-      return False
+  def test_geometry(self, lat, lng, geometry):
+    return GeoUtil.geometry_within_radius(lat, lng, geometry, self.dist_limit)
 
   def summary(self, annotations):
     total = len(annotations)
@@ -136,4 +123,4 @@ class CorpusEvaluator:
     correct = [a for a in annotations if a[3]]
     rel_present = int((len(present)/total) * 100)
     rel_correct = int((len(correct)/total) * 100)
-    return f'{total} annotations, {rel_present}% recgonized, {rel_correct}% resolved'
+    return f'{total} annotations, {rel_present}% recognized, {rel_correct}% resolved'

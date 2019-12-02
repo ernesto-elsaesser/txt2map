@@ -9,9 +9,11 @@ from .matcher import OSMNameMatcher
 
 class Geoparser:
 
-  def __init__(self):
+  def __init__(self, local_search_distance_km=15):
     self.nlp = spacy.load('en_core_web_sm', disable=['parser'])
     self.loader = DataLoader()
+    self.resolver = ToponymResolver(self.loader)
+    self.local_dist = local_search_distance_km
 
   def parse(self, text):
 
@@ -22,16 +24,15 @@ class Geoparser:
     toponym_str = ', '.join(map(lambda t: t.name, toponyms))
     logging.info('global entities: %s', toponym_str)
 
-    self.loader.load_geoname_candidates(toponyms)
-    ToponymResolver.resolve(toponyms)
-    clusters = ToponymResolver.cluster(toponyms)
+    resolved = self.resolver.resolve(toponyms)
+    clusters = self.resolver.cluster(resolved)
 
     for cluster in clusters:
       if len(cluster.cities) == 0: continue
 
       logging.info('selected cluster: %s', cluster)
 
-      osm_db = self.loader.load_osm_database(cluster)
+      osm_db = self.loader.load_osm_database(cluster, self.local_dist)
       cluster.local_matches = OSMNameMatcher.find_names(text, anchors, osm_db)
 
       matches_str = ', '.join(m.name for m in cluster.local_matches)
@@ -74,7 +75,7 @@ class Geoparser:
       clusters[0].confidence = 1.0
       return clusters
 
-    most_gns_matches = max(clusters, key=lambda c: c.mentions)
+    most_gns_matches = max(clusters, key=lambda c: c.mentions())
     most_gns_matches.confidence += 0.4
 
     most_osm_matches = max(clusters, key=lambda c: len(c.local_matches))

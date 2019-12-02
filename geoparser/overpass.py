@@ -5,11 +5,14 @@ import io
 class OverpassAPI:
 
   @staticmethod
-  def load_names_in_bounding_boxes(bounding_boxes):
+  def load_names_in_bounding_boxes(bounding_boxes, excluded_keys=['shop', 'power', 'office', 'cuisine']):
     query = '[out:csv(::id, ::type, "name", "name:en", "alt_name", "short_name"; false)]; ('
+    exclusions =  ''.join('[!"' + e + '"]' for e in excluded_keys)
     for bounding_box in bounding_boxes:
       bbox = ','.join(map(str, bounding_box))
-      query += f'node["name"][!"shop"]({bbox}); way["name"]({bbox}); rel["name"]({bbox}); '
+      query += f'node["name"]{exclusions}({bbox}); '
+      query += f'way["name"]{exclusions}({bbox}); '
+      query += f'rel["name"]{exclusions}({bbox}); '
     query += '); out qt;'
     response = OverpassAPI.post_query(query)
     csv_input = io.StringIO(response.text, newline=None) # universal newlines mode

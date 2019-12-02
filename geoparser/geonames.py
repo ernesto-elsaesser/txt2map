@@ -6,8 +6,8 @@ from .model import GeoName
 class GeoNamesAPI:
 
   @staticmethod
-  def search(name, maxRows=5):
-    params = [('name_equals', name), ('maxRows', maxRows)]
+  def search(name):
+    params = [('name_equals', name)]
     json_data = GeoNamesAPI.get_json('search', params)
     if not 'geonames' in json_data:
       return []

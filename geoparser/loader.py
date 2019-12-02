@@ -2,9 +2,9 @@ import os
 import logging
 import sqlite3
 import json
-from geojson.geometry import Point
 from osm2geojson import json2geojson
-from .model import GeoName, GeoNameCandidate, HierarchyDatabase, OSMElement, OSMDatabase
+from .model import HierarchyDatabase, OSMElement, OSMDatabase
+from .geo import GeoUtil
 from .geonames import GeoNamesAPI
 from .overpass import OverpassAPI
 
@@ -35,28 +35,7 @@ class DataLoader:
       hierarchy_db.commit_changes()
     return hierarchy
 
-  def load_geoname_candidates(self, toponyms):
-    logging.info('loading GeoNames data ...')
-    toponym_names = [t.name for t in toponyms]
-    for toponym in toponyms:
-      geonames = GeoNamesAPI.search(toponym.name)
-      for geoname in geonames:
-        hierarchy = self.get_hierarchy(geoname.id)
-        ancestor_names = set(name for _, name in hierarchy)
-        ancestor_names = filter(lambda n: toponym.name not in n, ancestor_names)
-        mentions = self.count_candidate_mentions(ancestor_names, toponym_names)
-        candidate = GeoNameCandidate(geoname, hierarchy, mentions)
-        toponym.candidates.append(candidate)
-
-  def count_candidate_mentions(self, ancestor_names, toponym_names):
-    matched_names = set()
-    for a_name in ancestor_names:
-      for t_name in toponym_names:
-        if t_name in a_name or a_name in t_name:
-          matched_names.add(t_name)
-    return len(matched_names)
-
-  def get_geoname_shape(self, geoname):
+  def get_geoname_geometry(self, geoname):
     dirname = os.path.dirname(__file__)
     db = sqlite3.connect(dirname + '/shapes.db')
     cursor = db.cursor()
@@ -64,20 +43,21 @@ class DataLoader:
     row = cursor.fetchone()
     db.close()
     if row == None:
-      return Point(coordinates=[geoname.lng, geoname.lat])
+      return GeoUtil.make_point(geoname.lat, geoname.lng)
     return json.loads(row[0])
 
-  def load_osm_database(self, cluster):
+  def load_osm_database(self, cluster, search_dist):
     logging.info('loading OSM data ...')
     sorted_ids = sorted(str(id) for id in cluster.city_ids())
     cluster_id = '-'.join(sorted_ids)
-    file_path = f'{self.cache_dir}/osm-{cluster_id}.db'
+    file_path = f'{self.cache_dir}/{cluster_id}-{search_dist}km.db'
     is_cached = os.path.exists(file_path)
     db = sqlite3.connect(file_path)
     osm_db = OSMDatabase(db)
 
     if not is_cached:
-      boxes = cluster.bounding_boxes()
+      def bbox(g): return GeoUtil.bounding_box(g.lat, g.lng, search_dist)
+      boxes = [bbox(g) for g in cluster.city_geonames]
       csv_reader = OverpassAPI.load_names_in_bounding_boxes(boxes)
       name_count = self.store_osm_data(osm_db, csv_reader, 1, [2, 3, 4, 5])
       logging.info('created database with %d unique names.', name_count)

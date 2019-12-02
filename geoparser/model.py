@@ -8,7 +8,7 @@ class GeoName:
     self.name = data['name']
     self.population = data['population']
     self.fclass = data['fcl']
-    self.fcode = data['fcode']
+    self.fcode = '-' if 'fcode' not in data else data['fcode']
     self.lat = float(data['lat'])
     self.lng = float(data['lng'])
     self.cc = '-' if 'countryCode' not in data else data['countryCode']
@@ -19,13 +19,6 @@ class GeoName:
   def __repr__(self):
     return f'{self.name}, {self.cc} [{self.fcode}]'
 
-  def geojson_coordinates(self):
-    return [self.lng, self.lat]
-
-  def bounding_box(self, d):
-    return [self.lat - d, self.lng - d,
-            self.lat + d, self.lng + d]
-
 
 class Toponym:
 
@@ -34,42 +27,39 @@ class Toponym:
   def __init__(self, name, positions):
     self.name = name
     self.positions = positions
-    self.candidates = []
-    self.selected = None
 
   def __repr__(self):
     return self.name
 
 
-class GeoNameCandidate:
+class ResolvedToponym:
 
+  # toponym: Toponym
   # geoname: GeoName
   # hierarchy: [(int, str)]
-  # mentions: int
-  def __init__(self, geoname, hierarchy, mentions):
+  # mentioned_ancestors: [str]
+  def __init__(self, toponym, geoname, hierarchy, mentioned_ancestors):
+    self.name = toponym.name
+    self.positions = toponym.positions
     self.geoname = geoname
     self.hierarchy = hierarchy
-    self.mentions = mentions
-
-  def population(self):
-    return self.geoname.population
+    self.mentioned_ancestors = mentioned_ancestors
 
   def __repr__(self):
-    return self.geoname.__repr__()
+    return ' > '.join(n for _, n in self.hierarchy)
 
 
 class ToponymCluster:
 
-  # toponyms: [Toponym]
-  # cities: [Toponym]
-  # anchor: Toponym
+  # toponyms: [ResolvedToponym]
+  # cities: [ResolvedToponym]
+  # anchor: ResolvedToponym
   def __init__(self, toponyms, cities, anchor):
     self.toponyms = toponyms
     self.cities = cities
     self.anchor = anchor
-    self.city_geonames = [t.selected.geoname for t in cities]
+    self.city_geonames = [t.geoname for t in cities]
     self.size = len(toponyms)
-    self.mentions = max(map(lambda t: t.selected.mentions, toponyms))
     self.local_matches = []
     self.confidence = 0
 
@@ -77,13 +67,13 @@ class ToponymCluster:
     return [g.id for g in self.city_geonames]
 
   def population(self):
-    return sum(g.population for g in self.city_geonames)
+    return self.anchor.geoname.population
 
-  def bounding_boxes(self, d=0.1):
-    return [g.bounding_box(d) for g in self.city_geonames]
+  def mentions(self):
+    return sum(len(t.positions) for t in self.toponyms)
 
   def __repr__(self):
-    hierarchy_names = [name for _, name in self.anchor.selected.hierarchy]
+    hierarchy_names = [name for _, name in self.anchor.hierarchy]
     cities = sorted(
         self.city_geonames, key=lambda g: g.population, reverse=True)
     path = ' > '.join(hierarchy_names)
