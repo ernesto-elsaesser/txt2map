@@ -12,8 +12,8 @@ class OSMNameMatcher:
       (re.compile('Parkway'), 'Pkwy'),
       (re.compile('Lane'), 'Ln'),
       (re.compile('Road'), 'Rd'),
+      (re.compile('Drive'), 'Dr'),
       (re.compile('Square'), 'Sq'),
-      (re.compile('Mount'), 'Mt'),
       (re.compile('North'), 'N'),
       (re.compile('East'), 'E'),
       (re.compile('South'), 'S'),
@@ -21,7 +21,8 @@ class OSMNameMatcher:
       (re.compile('Northeast'), 'NE'),
       (re.compile('Southeast'), 'SE'),
       (re.compile('Southwest'), 'SW'),
-      (re.compile('Northwest'), 'NW')
+      (re.compile('Northwest'), 'NW'),
+      (re.compile('Mount'), 'Mt.')
   ]
 
   @staticmethod
@@ -57,7 +58,7 @@ class OSMNameMatcher:
         text_pos += 1
 
       if longest_match != None:
-        prev_match_end = text_pos
+        prev_match_end = text_pos - 1
         if longest_match not in names:
           names[longest_match] = []
         names[longest_match].append(start)
