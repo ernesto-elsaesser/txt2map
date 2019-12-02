@@ -70,12 +70,12 @@ class CorpusEvaluator:
 
     if position in result.geonames:
       geoname = result.geonames[position]
-      geometry = self.get_geoname_geometry(geoname)
+      geometry = self._get_geoname_geometry(geoname)
       ann.distance = GeoUtil.distance_beyond_tolerance(
           lat, lng, geometry, self.dist_limit)
     elif position in result.osm_elements:
       osm_elements = result.osm_elements[position]
-      feature_collection = self.get_osm_element_geometries(osm_elements)
+      feature_collection = self._get_osm_element_geometries(osm_elements)
       ann.distance = GeoUtil.min_distance_beyond_tolerance(
           lat, lng, feature_collection, self.dist_limit)
     else:
@@ -90,13 +90,13 @@ class CorpusEvaluator:
     c = corpus or self.corpus
     d = document or self.document
     result = self.results[c][d]
-    return self.summary(result.annotations)
+    return self._summary(result.annotations)
 
   def corpus_summary(self, corpus=None):
     c = corpus or self.corpus
     results = self.results[c]
     all_annotations = sum([r.annotations for r in results.values()], [])
-    return self.summary(all_annotations)
+    return self._summary(all_annotations)
 
   def document_report(self, corpus=None, document=None):
     c = corpus or self.corpus
@@ -122,9 +122,7 @@ class CorpusEvaluator:
     report += 'Overall: ' + corpus_summary
     return report
 
-  # --- PRIVATE ---
-
-  def get_geoname_geometry(self, geoname):
+  def _get_geoname_geometry(self, geoname):
     dirname = os.path.dirname(__file__)
     db = sqlite3.connect(dirname + '/shapes.db')
     cursor = db.cursor()
@@ -136,11 +134,11 @@ class CorpusEvaluator:
       return GeoUtil.make_point(geoname.lat, geoname.lng)
     return json.loads(row[0])
 
-  def get_osm_element_geometries(self, osm_elements):
+  def _get_osm_element_geometries(self, osm_elements):
     json_response = OverpassAPI.load_geometries(osm_elements)
     return json2geojson(json_response)
 
-  def summary(self, annotations):
+  def _summary(self, annotations):
     total = len(annotations)
     if total == 0:
       return 'no annotations'
