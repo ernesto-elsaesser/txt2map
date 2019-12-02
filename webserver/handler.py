@@ -43,13 +43,13 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
     osm_matches = list(map(self.osm_match_to_dict, cluster.local_matches))
     return {'geoname_matches': geoname_matches,
             'osm_matches': osm_matches,
-            'path': cluster.path,
+            'path': cluster.path(),
             'confidence': cluster.confidence}
 
   def toponym_to_dict(self, toponym):
     return {'name': toponym.name,
             'positions': toponym.positions,
-            'geoname_id': toponym.selected.geoname.id}
+            'geoname_id': toponym.geoname.id}
 
   def osm_match_to_dict(self, match):
     return {'name': match.name,

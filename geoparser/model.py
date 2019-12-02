@@ -72,13 +72,16 @@ class ToponymCluster:
   def mentions(self):
     return sum(len(t.positions) for t in self.toponyms)
 
+  def path(self):
+    return [name for _, name in self.anchor.hierarchy]
+
   def __repr__(self):
-    hierarchy_names = [name for _, name in self.anchor.hierarchy]
+    path = self.path()
     cities = sorted(
         self.city_geonames, key=lambda g: g.population, reverse=True)
-    path = ' > '.join(hierarchy_names)
+    path = ' > '.join(path)
     for geoname in cities:
-      if geoname.name != hierarchy_names[-1]:
+      if geoname.name != path[-1]:
         path += ' + ' + geoname.name
     return path
 
