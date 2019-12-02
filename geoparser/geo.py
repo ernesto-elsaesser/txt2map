@@ -18,17 +18,51 @@ class GeoUtil:
     return [s,w,n,e]
 
   @staticmethod
-  def geometry_within_radius(lat, lng, geometry, radius):
+  def min_distance_beyond_tolerance(lat, lng, feature_collection, tolerance_km):
+    min_dist = float('inf')
+    for feature in feature_collection['features']:
+      geometry = feature['geometry']
+      dist = GeoUtil.distance_beyond_tolerance(lat, lng, geometry, tolerance_km)
+      if dist == 0:
+        return 0
+      elif dist < min_dist:
+        min_dist = dist
+    return min_dist
+
+  @staticmethod
+  def distance_beyond_tolerance(lat, lng, geometry, tolerance_km):
     target = GeoUtil.make_point(lat, lng)
     t = geometry['type']
-    if t in ['Point', 'LineString']:
-      return geojson_utils.geometry_within_radius(geometry, target, radius * 1000)
+    if t == 'Point':
+      point_coords = [geometry['coordinates']]
+    elif t == 'LineString':
+      point_coords = geometry['coordinates']
     elif t == 'Polygon':
-      return geojson_utils.point_in_polygon(target, geometry)
+      inside = geojson_utils.point_in_polygon(target, geometry)
+      if inside: return 0
+      centroid = geojson_utils.centroid(geometry)
+      point_coords = [centroid['coordinates']]
     elif t == 'MultiPolygon':
-      return geojson_utils.point_in_multipolygon(target, geometry)
+      inside = geojson_utils.point_in_multipolygon(target, geometry)
+      if inside: return 0
+      point_coords = []
+      polygon = {}
+      for coords in geometry['coordinates']:
+        polygon['coordinates'] = coords
+        centroid = geojson_utils.centroid(polygon)
+        point_coords.append(centroid['coordinates'])
     else:
       print(f'Unsupported geometry type: {t}')
-      return False
+      point_coords = []
 
-
+    point = {}
+    min_dist = float('inf')
+    limit = tolerance_km * 1000 
+    for coordinates in point_coords:
+      point['coordinates'] = coordinates
+      dist = geojson_utils.point_distance(point, target)
+      if dist < limit:
+        return 0
+      elif dist < min_dist:
+        min_dist = dist
+    return (min_dist / 1000) - tolerance_km

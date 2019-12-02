@@ -4,8 +4,9 @@ from .model import Toponym
 
 class ToponymRecognizer:
 
-  def __init__(self):
-    self.nlp = spacy.load('en_core_web_md', disable=['parser'])
+  def __init__(self, small_model=False):
+    model = 'en_core_web_sm' if small_model else 'en_core_web_md'
+    self.nlp = spacy.load(model, disable=['parser'])
 
   def parse(self, text):
     doc = self.nlp(text)

@@ -8,8 +8,8 @@ from .matcher import OSMNameMatcher
 
 class Geoparser:
 
-  def __init__(self, local_search_distance_km=15):
-    self.recognizer = ToponymRecognizer()
+  def __init__(self, local_search_distance_km=15, small_nlp_model=False):
+    self.recognizer = ToponymRecognizer(small_nlp_model)
     self.loader = DataLoader()
     self.resolver = ToponymResolver(self.loader)
     self.local_dist = local_search_distance_km

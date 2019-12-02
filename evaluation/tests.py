@@ -4,7 +4,7 @@ from .evaluator import CorpusEvaluator
 class TestEvaluator:
 
   def __init__(self):
-    self.eval = CorpusEvaluator(1)
+    self.eval = CorpusEvaluator(1, True)
     self.eval.start_corpus('Tests')
 
   def test_all(self):
