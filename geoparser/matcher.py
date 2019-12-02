@@ -13,6 +13,7 @@ class OSMNameMatcher:
       (re.compile('Lane'), 'Ln'),
       (re.compile('Road'), 'Rd'),
       (re.compile('Square'), 'Sq'),
+      (re.compile('Mount'), 'Mt'),
       (re.compile('North'), 'N'),
       (re.compile('East'), 'E'),
       (re.compile('South'), 'S'),
