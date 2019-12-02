@@ -2,7 +2,6 @@ import os
 import logging
 import sqlite3
 import json
-from osm2geojson import json2geojson
 from .model import HierarchyDatabase, OSMElement, OSMDatabase
 from .geo import GeoUtil
 from .geonames import GeoNamesAPI
@@ -34,17 +33,6 @@ class DataLoader:
       hierarchy_db.store_hierarchy(hierarchy)
       hierarchy_db.commit_changes()
     return hierarchy
-
-  def get_geoname_geometry(self, geoname):
-    dirname = os.path.dirname(__file__)
-    db = sqlite3.connect(dirname + '/shapes.db')
-    cursor = db.cursor()
-    cursor.execute('SELECT geojson FROM shapes WHERE geoname_id = ?', (geoname.id, ))
-    row = cursor.fetchone()
-    db.close()
-    if row == None:
-      return GeoUtil.make_point(geoname.lat, geoname.lng)
-    return json.loads(row[0])
 
   def load_osm_database(self, cluster, search_dist):
     logging.info('loading OSM data ...')
@@ -79,7 +67,3 @@ class DataLoader:
     
     osm_db.commit_changes()
     return name_count
-
-  def load_osm_geometries(self, osm_elements):
-    json_response = OverpassAPI.load_geometries(osm_elements)
-    return json2geojson(json_response)

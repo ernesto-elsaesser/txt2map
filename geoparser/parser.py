@@ -1,27 +1,24 @@
 import logging
 import os
-import spacy
-from .model import Toponym
-from .loader import DataLoader
+from .recognizer import ToponymRecognizer
 from .resolver import ToponymResolver
+from .loader import DataLoader
 from .matcher import OSMNameMatcher
 
 
 class Geoparser:
 
   def __init__(self, local_search_distance_km=15):
-    self.nlp = spacy.load('en_core_web_sm', disable=['parser'])
+    self.recognizer = ToponymRecognizer()
     self.loader = DataLoader()
     self.resolver = ToponymResolver(self.loader)
     self.local_dist = local_search_distance_km
 
   def parse(self, text):
 
-    doc = self.nlp(text)
-    toponyms = self.get_toponyms(doc)
-    anchors = self.get_anchors(doc)
+    (toponyms, anchors) = self.recognizer.parse(text)
 
-    toponym_str = ', '.join(map(lambda t: t.name, toponyms))
+    toponym_str = ', '.join(t.name for t in toponyms)
     logging.info('global entities: %s', toponym_str)
 
     resolved = self.resolver.resolve(toponyms)
@@ -38,42 +35,19 @@ class Geoparser:
       matches_str = ', '.join(m.name for m in cluster.local_matches)
       logging.info('matches: %s', matches_str)
 
-    sorted_clusters = self.sort_based_on_confidence(clusters)
+    self.assign_confidences(clusters)
     logging.info('finished.')
-    
-    return sorted_clusters
 
-  def get_toponyms(self, doc):
-    toponyms = {}
-    for ent in doc.ents:
-      if ent.label_ not in ['GPE', 'LOC']:
-        continue
-      name = ent.text
-      pos = ent.start_char
-      if name.startswith('the ') or name.startswith('The '):
-        name = name[4:]
-        pos += 4
-      if name not in toponyms:
-        toponyms[name] = Toponym(name, [pos])
-      else:
-        toponyms[name].positions.append(pos)
-    return toponyms.values()
+    return sorted(clusters, key=lambda c: c.confidence, reverse=True)
 
-  def get_anchors(self, doc):
-    anchors = []
-    for token in doc:
-      if token.pos_ == 'PROPN' and token.text[0].isupper():
-        anchors.append((token.idx, token.idx + len(token)))
-    return anchors
-
-  def sort_based_on_confidence(self, clusters):
+  def assign_confidences(self, clusters):
 
     if len(clusters) == 0:
-      return clusters
+      return
 
     if len(clusters) == 1:
       clusters[0].confidence = 1.0
-      return clusters
+      return
 
     most_gns_matches = max(clusters, key=lambda c: c.mentions())
     most_gns_matches.confidence += 0.4
@@ -90,5 +64,3 @@ class Geoparser:
         cluster.confidence += 0.2
       if len(cluster.local_matches) > 1 and cluster is not most_osm_matches:
         cluster.confidence += 0.2
-
-    return sorted(clusters, key=lambda c: c.confidence, reverse=True)

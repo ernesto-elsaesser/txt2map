@@ -1,4 +1,4 @@
-from .model import GeoName, Toponym, ResolvedToponym, ToponymCluster, OSMElement, OSMMatch, OSMDatabase
+from .model import GeoName, Toponym, ResolvedToponym, ToponymCluster, OSMElement, OSMMatch
 from .geonames import GeoNamesAPI
 from .overpass import OverpassAPI
 from .geo import GeoUtil

@@ -1,6 +1,9 @@
 import os
 import logging
-from geoparser import Geoparser, DataLoader, GeoNamesAPI, GeoUtil
+import json
+import sqlite3
+from osm2geojson import json2geojson
+from geoparser import Geoparser, DataLoader, GeoNamesAPI, OverpassAPI, GeoUtil
 
 class Result:
 
@@ -9,12 +12,12 @@ class Result:
     self.osm_elements = osm_elements
     self.annotations = []
 
+
 class CorpusEvaluator:
 
   def __init__(self, accuracy_km):
     self.dist_limit = accuracy_km
     self.parser = Geoparser()
-    self.loader = DataLoader()
     self.known_geonames = {}
     self.results = {}
 
@@ -58,12 +61,12 @@ class CorpusEvaluator:
     if position in result.geonames:
       present = True
       geoname = result.geonames[position]
-      geometry = self.loader.get_geoname_geometry(geoname)
+      geometry = self.get_geoname_geometry(geoname)
       correct = self.test_geometry(lat, lng, geometry)
     elif position in result.osm_elements:
       present = True
       osm_elements = result.osm_elements[position]
-      feature_collection = self.loader.load_osm_geometries(osm_elements)
+      feature_collection = self.get_osm_element_geometries(osm_elements)
       correct = self.test_features(lat, lng, feature_collection)
 
     annotation = (position, name, present, correct)
@@ -104,6 +107,22 @@ class CorpusEvaluator:
     return report
 
   # --- PRIVATE ---
+
+  def get_geoname_geometry(self, geoname):
+    dirname = os.path.dirname(__file__)
+    db = sqlite3.connect(dirname + '/shapes.db')
+    cursor = db.cursor()
+    cursor.execute(
+        'SELECT geojson FROM shapes WHERE geoname_id = ?', (geoname.id, ))
+    row = cursor.fetchone()
+    db.close()
+    if row == None:
+      return GeoUtil.make_point(geoname.lat, geoname.lng)
+    return json.loads(row[0])
+
+  def get_osm_element_geometries(self, osm_elements):
+    json_response = OverpassAPI.load_geometries(osm_elements)
+    return json2geojson(json_response)
 
   def test_features(self, lat, lng, feature_collection):
     for feature in feature_collection['features']:
