@@ -79,11 +79,11 @@ class ToponymCluster:
     path = self.path()
     cities = sorted(
         self.city_geonames, key=lambda g: g.population, reverse=True)
-    path = ' > '.join(path)
+    repr_str = ' > '.join(path)
     for geoname in cities:
       if geoname.name != path[-1]:
-        path += ' + ' + geoname.name
-    return path
+        repr_str += ' + ' + geoname.name
+    return repr_str
 
 
 class HierarchyDatabase:

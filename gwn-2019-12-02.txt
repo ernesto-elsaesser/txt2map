@@ -1,0 +1,36 @@
+289: no annotations
+262: no annotations
+276: 5 annotations, 100% recognized, 100% resolved
+29: 1 annotations, 100% recognized, 100% resolved
+100: 3 annotations, 100% recognized, 33% resolved
+- Wrong coordinate for Parkland at 1114
+- Wrong coordinate for San Marcos at 1842
+128: 17 annotations, 100% recognized, 94% resolved
+- Wrong coordinate for Washington at 277
+302: 4 annotations, 75% recognized, 50% resolved
+- Missing annotation for New Bilibid Prison at 1382
+- Wrong coordinate for SM Mall of Asia at 655
+101: 5 annotations, 100% recognized, 0% resolved
+- Wrong coordinate for Africa at 538
+- Wrong coordinate for Africa at 1814
+- Wrong coordinate for Africa at 3633
+- Wrong coordinate for Africa at 4411
+- Wrong coordinate for Africa at 4742
+14: 5 annotations, 100% recognized, 100% resolved
+28: 8 annotations, 87% recognized, 75% resolved
+- Wrong coordinate for Uruguay at 830
+- Missing annotation for The Colony Theatre at 926
+277: 6 annotations, 100% recognized, 100% resolved
+263: 4 annotations, 100% recognized, 100% resolved
+288: no annotations
+275: 3 annotations, 100% recognized, 33% resolved
+- Wrong coordinate for California at 1779
+- Wrong coordinate for Mexico at 1171
+261: 1 annotations, 100% recognized, 100% resolved
+249: 3 annotations, 100% recognized, 100% resolved
+103: no annotations
+301: no annotations
+314: 8 annotations, 100% recognized, 87% resolved
+- Wrong coordinate for USA at 2413
+300: no annotations
+Overall: 73 annotations, 97% recognized, 79% resolved
