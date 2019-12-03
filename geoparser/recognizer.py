@@ -21,6 +21,8 @@ class ToponymRecognizer:
         continue
       name = ent.text
       pos = ent.start_char
+      if name.endswith('\'s'):
+        name = name[:-2]
       if name.startswith('the ') or name.startswith('The '):
         name = name[4:]
         pos += 4

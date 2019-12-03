@@ -74,6 +74,7 @@ class CorpusEvaluator:
           lat, lng, feature_collection, self.dist_limit)
     else:
       ann.present = False
+      ann.correct = False
 
     if ann.distance > 0:
       ann.correct = False

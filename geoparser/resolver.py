@@ -23,26 +23,24 @@ class ToponymResolver:
 
   def _choose_heuristically(self, toponym, geonames, recognized_names):
     geonames = sorted(geonames, key=lambda c: c.population, reverse=True)
-    best = self._make_resolution(toponym, geonames[0], recognized_names)
-
-    # always use default sense for continents and countries
-    depth = len(best.hierarchy)
-    if depth < 2:
-      return best
+    default = self._make_resolution(toponym, geonames[0], recognized_names)
+    def_depth = len(default.hierarchy)
+    chosen = default
 
     # if these is no ontological evidence for the default sense while there is
     # for another candidate, choose the next biggest candidate with max. evidence
-    best_evidence = len(best.mentioned_ancestors)
-    if best_evidence == 0:
+    max_evidence = len(default.mentioned_ancestors)
+    if max_evidence == 0:
       for geoname in geonames[1:10]:
         res = self._make_resolution(toponym, geoname, recognized_names)
+        depth = len(res.hierarchy)
         evidence = len(res.mentioned_ancestors)
-        if evidence > best_evidence:
-          best = res
-          best_evidence = evidence
+        if depth < def_depth + 2 and evidence > max_evidence:
+          chosen = res
+          max_evidence = evidence
 
-    if best.geoname.is_city:
-      return best
+    if chosen.geoname.is_city:
+      return chosen
 
     # if best is no city and among the candidates is a similarly named city
     # of which best is an ancestor, prefer the city candidate 
@@ -50,11 +48,12 @@ class ToponymResolver:
     cities = [g for g in geonames if g.is_city and g.name in toponym.name]
     for geoname in cities[:10]:
       res = self._make_resolution(toponym, geoname, recognized_names)
+      depth = len(res.hierarchy)
       hierarchy_ids = [g.id for g in res.hierarchy]
-      if best.geoname.id in hierarchy_ids:
+      if def_depth < depth < def_depth + 3 and chosen.geoname.id in hierarchy_ids:
         return res
     
-    return best
+    return chosen
 
   def _make_resolution(self, toponym, geoname, recognized_names):
     hierarchy = self.gns_cache.get_hierarchy(geoname.id)
