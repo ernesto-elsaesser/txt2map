@@ -29,8 +29,8 @@ class GeoName:
       self.adm1 = row[7]
 
   def __repr__(self):
-    prefix = '*' if self.is_city else ''
-    return f'{prefix}{self.name}, {self.cc}-{self.adm1}'
+    suffix = '*' if self.is_city else ''
+    return f'{self.name}{suffix}, {self.cc}-{self.adm1}'
 
 
 class Toponym:
@@ -50,13 +50,14 @@ class ResolvedToponym:
   # toponym: Toponym
   # geoname: GeoName
   # hierarchy: [GeoName]
-  # mentioned_ancestors: [str]
-  def __init__(self, toponym, geoname, hierarchy, mentioned_ancestors):
+  # evidence: [Toponym]
+  def __init__(self, toponym, geoname, hierarchy, evidence):
     self.name = toponym.name
     self.positions = toponym.positions
     self.geoname = geoname
     self.hierarchy = hierarchy
-    self.mentioned_ancestors = mentioned_ancestors
+    self.depth = len(hierarchy)
+    self.evidence = evidence
 
   def __repr__(self):
     return ' > '.join(g.name for g in self.hierarchy)
