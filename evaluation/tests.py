@@ -12,6 +12,7 @@ class TestEvaluator:
   def test_all(self):
     self.test_global_default_sense()
     self.test_global_onto_distance()
+    self.test_global_onto_distance_hard()
     self.test_global_top_defaults()
     self.test_local_node()
     self.test_local_way()
@@ -28,6 +29,13 @@ class TestEvaluator:
     text = 'I love Paris in Lamar County, Texas.'
     self.eval.start_document('Global - Ontological Distance', text)
     self.eval.verify_annotation(7, 'Paris', 33.66094, -95.55551)
+
+  def test_global_onto_distance_hard(self):
+    text = 'The University in San Marcos in California is one of many in America.'
+    self.eval.start_document('Global - Ontological Distance Hard', text)
+    self.eval.verify_annotation(18, 'San Marcos', 33.14337, -117.16614)
+    self.eval.verify_annotation(32, 'California', 37.25022, -119.75126)
+    self.eval.verify_annotation(61, 'America', 39.76, -98.5)
 
   def test_global_top_defaults(self):
     text = '''France is in Europe and California in the United States. 

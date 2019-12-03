@@ -1,6 +1,5 @@
 import os
 import logging
-import math
 from .model import ResolvedToponym, ToponymCluster
 from .geonames import GeoNamesCache
 
@@ -28,13 +27,12 @@ class ToponymResolver:
 
     # if these is no ontological evidence for the default sense while there is
     # for another candidate, choose the next biggest candidate with max. evidence
-    if chosen.evidence == 0:
-      ev_lim = 2 / chosen.depth
-      for geoname in geonames[1:10]:
-        res = self._make_resolution(toponym, geoname, toponyms)
-        if res.evidence > ev_lim:
-          chosen = res
-          ev_lim = res.evidence
+    ev_lim = chosen.evidence + (2 / chosen.depth)
+    for geoname in geonames[1:10]:
+      res = self._make_resolution(toponym, geoname, toponyms)
+      if res.evidence > ev_lim:
+        chosen = res
+        ev_lim = res.evidence
 
     if chosen.geoname.is_city:
       return chosen
@@ -54,20 +52,27 @@ class ToponymResolver:
     return chosen
 
   def _make_resolution(self, toponym, geoname, toponyms):
+    hierarchy = self.gns_cache.get_hierarchy(geoname.id)
+    hierarchy_names = set(g.name for g in hierarchy)
+    redundant_names = set()
+    for name in hierarchy_names:
+      for other_name in hierarchy_names:
+        if name != other_name and name in other_name:
+          redundant_names.add(other_name)
+    unique_names = hierarchy_names.difference(redundant_names)
     min_pos = min(toponym.positions)
     max_pos = min(toponym.positions)
-    hierarchy = self.gns_cache.get_hierarchy(geoname.id)
     evidence = 0
-    for g in hierarchy:
-      if g.name in toponym.name or toponym.name in g.name:
-        continue
+    counted_pos = []
+    for name in unique_names:
       for other in toponyms:
-        if other.name in g.name or g.name in other.name:
+        if other.name in name or name in other.name:
           for p in other.positions:
+            if p in counted_pos: continue
             if p < min_pos: d = min_pos - p
             elif p > max_pos: d = p - max_pos
             else: d = 0
-            evidence += 1 / ((math.e ** (0.1 * d - 4)) + 1)
+            evidence += 1 - (min(d, 900) / 1000)
     return ResolvedToponym(toponym, geoname, hierarchy, evidence)
 
   def cluster(self, resolved_toponyms):

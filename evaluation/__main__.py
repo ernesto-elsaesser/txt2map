@@ -11,4 +11,4 @@ evaluator.test_all()
 
 #evaluator = GeoWebNewsEvaluator(False)
 #evaluator.test_all(20, 'eval-gwn.txt')
-#evaluator.test('275')
+#evaluator.test('100')
