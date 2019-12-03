@@ -11,50 +11,60 @@ class ToponymResolver:
   def resolve(self, toponyms):
     logging.info('resolving toponyms ...')
 
-    toponym_names = [t.name for t in toponyms]
+    recognized_names = [t.name for t in toponyms]
     resolved_toponyms = []
-    for t in toponyms:
-      geonames = self.gns_cache.search(t.name)
+    for toponym in toponyms:
+      geonames = self.gns_cache.search(toponym.name)
       if len(geonames) == 0: continue
-      geonames = sorted(geonames, key=lambda c: c.population, reverse=True)
-      best = self.resolve_toponym(t, geonames[0], toponym_names)
-
-      # if best is a below country level and has no ontological evidence while
-      # another candidates have, choose the next biggest candidate with max. evidence
-      depth = len(best.hierarchy)
-      best_evidence = len(best.mentioned_ancestors)
-      if depth > 2 and best_evidence == 0:
-        for geoname in geonames[1:10]:
-          res = self.resolve_toponym(t, geoname, toponym_names)
-          evidence = len(res.mentioned_ancestors)
-          if evidence > best_evidence:
-            best = res
-            best_evidence = evidence
-
-      # if best is no city and among the candidates is a city of which best is an ancestor,
-      # prefer the city candidate (as OSM data is only requested for cities)
-      if not best.geoname.is_city:
-        cities = [g for g in geonames if g.is_city]
-        for geoname in cities[:10]:
-          res = self.resolve_toponym(t, geoname, toponym_names)
-          hierarchy_ids = [g.id for g in res.hierarchy]
-          if best.geoname.id in hierarchy_ids:
-            best = res
-            break
-
-      resolved_toponyms.append(best)
+      resolution = self._choose_heuristically(toponym, geonames, recognized_names)
+      resolved_toponyms.append(resolution)
     
     return resolved_toponyms
 
-  def resolve_toponym(self, toponym, geoname, toponym_names):
+  def _choose_heuristically(self, toponym, geonames, recognized_names):
+    geonames = sorted(geonames, key=lambda c: c.population, reverse=True)
+    best = self._make_resolution(toponym, geonames[0], recognized_names)
+
+    # always use default sense for continents and countries
+    depth = len(best.hierarchy)
+    if depth < 2:
+      return best
+
+    # if these is no ontological evidence for the default sense while there is
+    # for another candidate, choose the next biggest candidate with max. evidence
+    best_evidence = len(best.mentioned_ancestors)
+    if best_evidence == 0:
+      for geoname in geonames[1:10]:
+        res = self._make_resolution(toponym, geoname, recognized_names)
+        evidence = len(res.mentioned_ancestors)
+        if evidence > best_evidence:
+          best = res
+          best_evidence = evidence
+
+    if best.geoname.is_city:
+      return best
+
+    # if best is no city and among the candidates is a similarly named city
+    # of which best is an ancestor, prefer the city candidate 
+    # (as OSM data is only requested for cities)
+    cities = [g for g in geonames if g.is_city and g.name in toponym.name]
+    for geoname in cities[:10]:
+      res = self._make_resolution(toponym, geoname, recognized_names)
+      hierarchy_ids = [g.id for g in res.hierarchy]
+      if best.geoname.id in hierarchy_ids:
+        return res
+    
+    return best
+
+  def _make_resolution(self, toponym, geoname, recognized_names):
     hierarchy = self.gns_cache.get_hierarchy(geoname.id)
     mentioned_ancestors = set()
     for g in hierarchy:
       if g.name in toponym.name or toponym.name in g.name:
         continue
-      for ancestor_name in toponym_names:
-        if ancestor_name in g.name or g.name in ancestor_name:
-          mentioned_ancestors.add(ancestor_name)
+      for r_name in recognized_names:
+        if r_name in g.name or g.name in r_name:
+          mentioned_ancestors.add(r_name)
     return ResolvedToponym(toponym, geoname, hierarchy, mentioned_ancestors)
 
   def cluster(self, resolved_toponyms):

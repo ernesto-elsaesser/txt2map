@@ -3,6 +3,7 @@ import logging
 import csv
 import json
 import datetime
+from geoparser import Geoparser
 from .evaluator import CorpusEvaluator
 
 class GeoWebNewsEvaluator:
@@ -13,7 +14,9 @@ class GeoWebNewsEvaluator:
     self.verify_street_level = verify_street_level
     dirname = os.path.dirname(__file__)
     self.corpus_dir = dirname + '/corpora/GeoWebNews/'
-    self.eval = CorpusEvaluator(161, False)
+    search_dist = 15 if verify_street_level else 0
+    parser = Geoparser(small_nlp_model=True, local_search_dist_km=search_dist)
+    self.eval = CorpusEvaluator(parser, 161)
     self.eval.start_corpus('GWN')
 
   def test_all(self, max_documents=None, report_file=None):

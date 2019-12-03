@@ -9,16 +9,16 @@ from .matcher import OSMNameMatcher
 
 class Geoparser:
 
-  def __init__(self, local_search_distance_km=15, small_nlp_model=False, cache_dir='cache'):
+  def __init__(self, small_nlp_model=False, local_search_dist_km=15, cache_dir='cache'):
     if not os.path.exists(cache_dir):
       os.mkdir(cache_dir)
     self.recognizer = ToponymRecognizer(small_nlp_model)
     self.resolver = ToponymResolver(cache_dir)
-    self.osm_loader = OSMLoader(cache_dir)
-    self.local_dist = local_search_distance_km
+    self.search_local = local_search_dist_km > 0
+    if self.search_local:
+      self.osm_loader = OSMLoader(cache_dir, local_search_dist_km)
 
   def parse(self, text):
-
     (toponyms, anchors) = self.recognizer.parse(text)
 
     toponym_str = ', '.join(t.name for t in toponyms)
@@ -27,16 +27,16 @@ class Geoparser:
     resolved = self.resolver.resolve(toponyms)
     clusters = self.resolver.cluster(resolved)
 
-    for cluster in clusters:
-      if len(cluster.cities) == 0: continue
+    if self.search_local:
+      city_clusters = [c for c in clusters if len(c.cities) > 0]
+      for cluster in city_clusters:
+        logging.info('selected cluster: %s', cluster)
 
-      logging.info('selected cluster: %s', cluster)
+        osm_db = self.osm_loader.load_database(cluster)
+        cluster.local_matches = OSMNameMatcher.find_names(text, anchors, osm_db)
 
-      osm_db = self.osm_loader.load_osm_database(cluster, self.local_dist)
-      cluster.local_matches = OSMNameMatcher.find_names(text, anchors, osm_db)
-
-      matches_str = ', '.join(m.name for m in cluster.local_matches)
-      logging.info('matches: %s', matches_str)
+        matches_str = ', '.join(m.name for m in cluster.local_matches)
+        logging.info('matches: %s', matches_str)
 
     self.assign_confidences(clusters)
     logging.info('finished.')

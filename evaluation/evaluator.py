@@ -26,10 +26,10 @@ class Result:
 
 class CorpusEvaluator:
 
-  def __init__(self, accuracy_km, small_nlp_model):
+  def __init__(self, geoparser, accuracy_km):
     self.dist_limit = accuracy_km
-    self.parser = Geoparser(small_nlp_model=small_nlp_model)
-    self.gns_cache = self.parser.resolver.gns_cache
+    self.parser = geoparser
+    self.gns_cache = geoparser.resolver.gns_cache
     self.results = {}
 
   def start_corpus(self, corpus):
@@ -101,9 +101,9 @@ class CorpusEvaluator:
     for a in result.annotations:
       if a.correct: continue
       if a.present:
-        report += f'- Coordinate off by {a.distance:.1f} for {a.name} at {a.pos}\n'
+        report += f'- Coordinate off by {a.distance:.1f} for {a.name} at {a.position}\n'
       else:
-        report += f'- Missing annotation for {a.name} at {a.pos}\n'
+        report += f'- Missing annotation for {a.name} at {a.position}\n'
     return report
 
   def corpus_report(self, corpus=None):

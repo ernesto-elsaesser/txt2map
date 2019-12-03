@@ -1,10 +1,12 @@
+from geoparser import Geoparser
 from .evaluator import CorpusEvaluator
 
 
 class TestEvaluator:
 
   def __init__(self):
-    self.eval = CorpusEvaluator(1, True)
+    parser = Geoparser(small_nlp_model=True)
+    self.eval = CorpusEvaluator(parser, 1)
     self.eval.start_corpus('Tests')
 
   def test_all(self):
@@ -28,12 +30,13 @@ class TestEvaluator:
     self.eval.verify_annotation(7, 'Paris', 33.66094, -95.55551)
 
   def test_global_top_defaults(self):
-    text = 'France is in Europe and California in the United States.'
+    text = 'France is in Europe and California in the United States. Africa is a continent.'
     self.eval.start_document('Global - Fixed Top-Level Senses', text)
     self.eval.verify_annotation(0, 'France', 46, 2)
     self.eval.verify_annotation(13, 'Europe', 48.69096, 9.14062)
     self.eval.verify_annotation(24, 'California', 37.25022, -119.75126)
     self.eval.verify_annotation(42, 'United States', 39.76, -98.5)
+    self.eval.verify_annotation(57, 'Africa', 7.1881, 21.09375)
 
   def test_local_node(self):
     text = 'We met at Checkpoint Charlie in Berlin.'

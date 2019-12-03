@@ -155,6 +155,8 @@ class GeoNamesDatabase:
     self.db.commit()
 
   def _resolve_ids(self, id_str):
+    if id_str == '':
+      return []
     return [self.get_geoname(int(s)) for s in id_str.split(',')]
 
   def get_geoname(self, geoname_id):
