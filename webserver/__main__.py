@@ -8,6 +8,7 @@ logging.basicConfig(format='%(asctime)s %(message)s',
                     level=logging.INFO, 
                     datefmt="%Y-%m-%d %H:%M:%S")
 
+logging.info('Loading geoparser ...')
 app = Flask(__name__)
 app.config['JSONIFY_PRETTYPRINT_REGULAR'] = True
 
@@ -31,5 +32,6 @@ def parse_text():
   else:
     out_json = formatter.results_to_json(results)
     return jsonify(out_json)
+
 
 app.run(host='0.0.0.0', port=80)

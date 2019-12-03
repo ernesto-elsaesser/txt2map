@@ -1,13 +1,12 @@
 import os
 import logging
 from .model import ResolvedToponym, ToponymCluster
-from .geonames import GeoNamesAPI
-from .loader import DataLoader
+from .geonames import GeoNamesCache
 
 class ToponymResolver:
 
-  def __init__(self, loader):
-    self.loader = loader
+  def __init__(self, cache_dir):
+    self.gns_cache = GeoNamesCache(cache_dir)
 
   def resolve(self, toponyms):
     logging.info('resolving toponyms ...')
@@ -15,7 +14,7 @@ class ToponymResolver:
     toponym_names = [t.name for t in toponyms]
     resolved_toponyms = []
     for t in toponyms:
-      geonames = GeoNamesAPI.search(t.name)
+      geonames = self.gns_cache.search(t.name)
       if len(geonames) == 0: continue
       geonames = sorted(geonames, key=lambda c: c.population, reverse=True)
       best = self.resolve_toponym(t, geonames[0], toponym_names)
@@ -38,7 +37,7 @@ class ToponymResolver:
         cities = [g for g in geonames if g.is_city]
         for geoname in cities[:10]:
           res = self.resolve_toponym(t, geoname, toponym_names)
-          hierarchy_ids = [id for id, _ in res.hierarchy]
+          hierarchy_ids = [g.id for g in res.hierarchy]
           if best.geoname.id in hierarchy_ids:
             best = res
             break
@@ -48,13 +47,13 @@ class ToponymResolver:
     return resolved_toponyms
 
   def resolve_toponym(self, toponym, geoname, toponym_names):
-    hierarchy = self.loader.get_hierarchy(geoname.id)
+    hierarchy = self.gns_cache.get_hierarchy(geoname.id)
     mentioned_ancestors = set()
-    for _, name in hierarchy:
-      if name in toponym.name or toponym.name in name:
+    for g in hierarchy:
+      if g.name in toponym.name or toponym.name in g.name:
         continue
       for ancestor_name in toponym_names:
-        if ancestor_name in name or name in ancestor_name:
+        if ancestor_name in g.name or g.name in ancestor_name:
           mentioned_ancestors.add(ancestor_name)
     return ResolvedToponym(toponym, geoname, hierarchy, mentioned_ancestors)
 
@@ -73,7 +72,7 @@ class ToponymResolver:
 
       # find all matches in the same ADM1 area
       connected = [seed]
-      hierarchy_ids = [id for id, _ in seed.hierarchy]
+      hierarchy_ids = [g.id for g in seed.hierarchy]
       g1 = seed.geoname
       for toponym in resolved_toponyms:
         if toponym.name in bound_names:

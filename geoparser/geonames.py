@@ -1,7 +1,45 @@
 import os
 import requests
 import json
-from .model import GeoName
+import sqlite3
+from .model import GeoName, GeoNamesDatabase
+
+
+class GeoNamesCache:
+
+  def __init__(self, cache_dir='cache'):
+    self.db_path = cache_dir + '/geonames.db'
+    if not os.path.exists(self.db_path):
+      self.get_db().create_tables()
+
+  def get_db(self):
+    db = sqlite3.connect(self.db_path)
+    return GeoNamesDatabase(db)
+
+  def get(self, geoname_id):
+    db = self.get_db()
+    geoname = db.get_geoname(geoname_id)
+    if geoname == None:
+      geoname = GeoNamesAPI.get_geoname(geoname_id)
+      db.store_geoname(geoname)
+    return geoname
+
+  def search(self, name):
+    db = self.get_db()
+    results = db.get_search(name)
+    if results == None:
+      results = GeoNamesAPI.search(name)
+      db.store_search(name, results)
+    return results
+
+  def get_hierarchy(self, geoname_id):
+    db = self.get_db()
+    hierarchy = db.get_hierarchy(geoname_id)
+    if hierarchy == None:
+      hierarchy = GeoNamesAPI.get_hierarchy(geoname_id)[1:] # skip Earth
+      db.store_hierarchy(hierarchy)
+    return hierarchy
+
 
 class GeoNamesAPI:
 

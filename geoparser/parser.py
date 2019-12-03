@@ -2,16 +2,19 @@ import logging
 import os
 from .recognizer import ToponymRecognizer
 from .resolver import ToponymResolver
-from .loader import DataLoader
+from .geonames import GeoNamesCache
+from .osm import OSMLoader
 from .matcher import OSMNameMatcher
 
 
 class Geoparser:
 
-  def __init__(self, local_search_distance_km=15, small_nlp_model=False):
+  def __init__(self, local_search_distance_km=15, small_nlp_model=False, cache_dir='cache'):
+    if not os.path.exists(cache_dir):
+      os.mkdir(cache_dir)
     self.recognizer = ToponymRecognizer(small_nlp_model)
-    self.loader = DataLoader()
-    self.resolver = ToponymResolver(self.loader)
+    self.resolver = ToponymResolver(cache_dir)
+    self.osm_loader = OSMLoader(cache_dir)
     self.local_dist = local_search_distance_km
 
   def parse(self, text):
@@ -29,7 +32,7 @@ class Geoparser:
 
       logging.info('selected cluster: %s', cluster)
 
-      osm_db = self.loader.load_osm_database(cluster, self.local_dist)
+      osm_db = self.osm_loader.load_osm_database(cluster, self.local_dist)
       cluster.local_matches = OSMNameMatcher.find_names(text, anchors, osm_db)
 
       matches_str = ', '.join(m.name for m in cluster.local_matches)

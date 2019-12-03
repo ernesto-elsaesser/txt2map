@@ -9,7 +9,8 @@ class GeoWebNewsEvaluator:
 
   used_annotation_types = ['Literal']
 
-  def __init__(self):
+  def __init__(self, verify_street_level):
+    self.verify_street_level = verify_street_level
     dirname = os.path.dirname(__file__)
     self.corpus_dir = dirname + '/corpora/GeoWebNews/'
     self.eval = CorpusEvaluator(161, False)
@@ -61,6 +62,8 @@ class GeoWebNewsEvaluator:
 
           (pos, name) = tag_data[tag_id]
           if ',' in row[2]:
+            if not self.verify_street_level:
+              continue
             coords = row[2].split(',')
             lat = float(coords[0].strip())
             lng = float(coords[1].strip())

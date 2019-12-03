@@ -3,7 +3,7 @@ import logging
 import json
 import sqlite3
 from osm2geojson import json2geojson
-from geoparser import Geoparser, DataLoader, GeoNamesAPI, OverpassAPI, GeoUtil
+from geoparser import Geoparser, GeoNamesCache, OverpassAPI, GeoUtil
 
 
 class Annotation:
@@ -29,7 +29,7 @@ class CorpusEvaluator:
   def __init__(self, accuracy_km, small_nlp_model):
     self.dist_limit = accuracy_km
     self.parser = Geoparser(small_nlp_model=small_nlp_model)
-    self.known_geonames = {}
+    self.gns_cache = self.parser.resolver.gns_cache
     self.results = {}
 
   def start_corpus(self, corpus):
@@ -46,9 +46,7 @@ class CorpusEvaluator:
     for cluster in clusters:
       for toponym in cluster.toponyms:
         for position in toponym.positions:
-          geoname = toponym.geoname
-          geonames[position] = geoname
-          self.known_geonames[geoname.id] = geoname
+          geonames[position] = toponym.geoname
       for match in cluster.local_matches:
         for position in match.positions:
           osm_elements[position] = match.elements
@@ -56,11 +54,7 @@ class CorpusEvaluator:
     self.results[self.corpus][document] = Result(geonames, osm_elements)
 
   def geoname_to_coordinates(self, geoname_id):
-    if geoname_id in self.known_geonames:
-      geoname = self.known_geonames[geoname_id]
-    else:
-      geoname = GeoNamesAPI.get_geoname(geoname_id)
-      self.known_geonames[geoname.id] = geoname
+    geoname = self.gns_cache.get(geoname_id)
     return (geoname.lat, geoname.lng)
 
   def verify_annotation(self, position, name, lat, lng):

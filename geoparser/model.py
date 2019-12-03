@@ -2,22 +2,35 @@ import sqlite3
 
 class GeoName:
 
-  # data: JSON dictionary
-  def __init__(self, data):
-    self.id = data['geonameId']
-    self.name = data['name']
-    self.population = data['population']
-    self.fclass = data['fcl']
-    self.fcode = '-' if 'fcode' not in data else data['fcode']
-    self.lat = float(data['lat'])
-    self.lng = float(data['lng'])
-    self.cc = '-' if 'countryCode' not in data else data['countryCode']
-    self.adm1 = '-' if 'adminCode1' not in data else data['adminCode1']
-
-    self.is_city = self.fcode.startswith('PP')
+  # data: dict
+  # row: tupel
+  def __init__(self, data=None, row=None):
+    if data != None:
+      self.id = data['geonameId']
+      self.name = data['name']
+      self.population = data['population']
+      self.lat = float(data['lat'])
+      self.lng = float(data['lng'])
+      self.cc = '-' if 'countryCode' not in data else data['countryCode']
+      self.adm1 = '-' if 'adminCode1' not in data else data['adminCode1']
+      if 'fcode' in data:
+        self.is_city = data['fcode'].startswith('PP')
+      else:
+        self.is_city = False
+      #self.fclass = data['fcl']
+    else:
+      self.id = row[0]
+      self.name = row[1]
+      self.population = row[2]
+      self.is_city = row[3]
+      self.lat = row[4]
+      self.lng = row[5]
+      self.cc = row[6]
+      self.adm1 = row[7]
 
   def __repr__(self):
-    return f'{self.name}, {self.cc} [{self.fcode}]'
+    prefix = '*' if self.is_city else ''
+    return f'{prefix}{self.name}, {self.cc}-{self.adm1}'
 
 
 class Toponym:
@@ -36,7 +49,7 @@ class ResolvedToponym:
 
   # toponym: Toponym
   # geoname: GeoName
-  # hierarchy: [(int, str)]
+  # hierarchy: [GeoName]
   # mentioned_ancestors: [str]
   def __init__(self, toponym, geoname, hierarchy, mentioned_ancestors):
     self.name = toponym.name
@@ -46,7 +59,7 @@ class ResolvedToponym:
     self.mentioned_ancestors = mentioned_ancestors
 
   def __repr__(self):
-    return ' > '.join(n for _, n in self.hierarchy)
+    return ' > '.join(g.name for g in self.hierarchy)
 
 
 class ToponymCluster:
@@ -73,7 +86,7 @@ class ToponymCluster:
     return sum(len(t.positions) for t in self.toponyms)
 
   def path(self):
-    return [name for _, name in self.anchor.hierarchy]
+    return [g.name for g in self.anchor.hierarchy]
 
   def __repr__(self):
     path = self.path()
@@ -86,7 +99,7 @@ class ToponymCluster:
     return repr_str
 
 
-class HierarchyDatabase:
+class GeoNamesDatabase:
 
   def __init__(self, sqlite_db):
     self.db = sqlite_db
@@ -95,43 +108,68 @@ class HierarchyDatabase:
   def __del__(self):
     self.db.close()
 
-  def commit_changes(self):
+  def create_tables(self):
+    self.cursor.execute(
+        '''CREATE TABLE geonames (
+          geoname_id INT UNIQUE, 
+          name TEXT,
+          population INT,
+          is_city BOOLEAN,
+          lat REAL,
+          lng REAL,
+          cc CHAR(2),
+          adm1 TEXT)''')
+    self.cursor.execute(
+        'CREATE TABLE hierarchy (geoname_id INT UNIQUE, ancestor_ids TEXT)')
+    self.cursor.execute(
+        'CREATE TABLE search (name UNIQUE, result_ids TEXT)')
     self.db.commit()
 
-  def create_tables(self):
-    self.cursor.execute('CREATE TABLE ancestors (geoname_id INT UNIQUE, ancestor_ids TEXT)')
-    self.cursor.execute('CREATE TABLE names (geoname_id INT UNIQUE, name TEXT)')
+  def get_search(self, name):
+    self.cursor.execute('SELECT result_ids FROM search WHERE name = ?',
+                        (name, ))
+    row = self.cursor.fetchone()
+    return None if row == None else self._resolve_ids(row[0])
+
+  def store_search(self, name, geonames):
+    result_ids = ','.join(str(g.id) for g in geonames)
+    self.cursor.execute('INSERT INTO search VALUES (?, ?)',
+                        (name, result_ids))
+    for geoname in geonames:
+      self.store_geoname(geoname)
+    self.db.commit()
 
   def get_hierarchy(self, geoname_id):
-    self.cursor.execute('SELECT ancestor_ids FROM ancestors WHERE geoname_id = ?',
+    self.cursor.execute('SELECT ancestor_ids FROM hierarchy WHERE geoname_id = ?',
                         (geoname_id, ))
     row = self.cursor.fetchone()
-    if row == None:
-      return None
-    ancestor_ids = map(int, row[0].split(','))
-    hierarchy = []
-    for id in ancestor_ids:
-      name = self.get_name(id)
-      hierarchy.append((id, name))
-    return hierarchy
+    return None if row == None else self._resolve_ids(row[0])
 
-  def store_hierarchy(self, hierarchy):
-    geoname_id = hierarchy[-1][0]
-    ancestor_ids = ','.join(str(id) for id, _ in hierarchy)
-    self.cursor.execute('INSERT INTO ancestors VALUES (?, ?)',
+  def store_hierarchy(self, geonames):
+    geoname_id = geonames[-1].id
+    ancestor_ids = ','.join(str(g.id) for g in geonames)
+    self.cursor.execute('INSERT INTO hierarchy VALUES (?, ?)',
                         (geoname_id, ancestor_ids))
-    for id, name in hierarchy:
-      self.store_name(id, name)
+    for geoname in geonames:
+      self.store_geoname(geoname)
+    self.db.commit()
 
-  def get_name(self, geoname_id):
-    self.cursor.execute('SELECT name FROM names WHERE geoname_id = ?',
+  def _resolve_ids(self, id_str):
+    return [self.get_geoname(int(s)) for s in id_str.split(',')]
+
+  def get_geoname(self, geoname_id):
+    self.cursor.execute('SELECT * FROM geonames WHERE geoname_id = ?',
                         (geoname_id, ))
-    return self.cursor.fetchone()[0]
+    row = self.cursor.fetchone()
+    return None if row == None else GeoName(row=row)
 
-  def store_name(self, geoname_id, name):
+  def store_geoname(self, geoname):
+    g = geoname
     try:
-        self.cursor.execute('INSERT INTO names VALUES (?, ?)',
-                            (geoname_id, name))
+      self.cursor.execute('INSERT INTO geonames VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                          (g.id, g.name, g.population, g.is_city, 
+                          g.lat, g.lng, g.cc, g.adm1))
+      self.db.commit()
     except sqlite3.Error:
       pass
 

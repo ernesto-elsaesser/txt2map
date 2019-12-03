@@ -1,6 +1,5 @@
 from .model import GeoName, Toponym, ResolvedToponym, ToponymCluster, OSMElement, OSMMatch
-from .geonames import GeoNamesAPI
-from .overpass import OverpassAPI
+from .geonames import GeoNamesCache, GeoNamesAPI
+from .osm import OSMLoader, OverpassAPI
 from .geo import GeoUtil
-from .loader import DataLoader
 from .parser import Geoparser
