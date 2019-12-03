@@ -21,9 +21,6 @@ class Geoparser:
   def parse(self, text):
     (toponyms, anchors) = self.recognizer.parse(text)
 
-    toponym_str = ', '.join(t.name for t in toponyms)
-    logging.info('global entities: %s', toponym_str)
-
     resolved = self.resolver.resolve(toponyms)
     clusters = self.resolver.cluster(resolved)
 

@@ -1,5 +1,4 @@
 import spacy
-from .model import Toponym
 
 
 class ToponymRecognizer:
@@ -26,11 +25,8 @@ class ToponymRecognizer:
       if name.startswith('the ') or name.startswith('The '):
         name = name[4:]
         pos += 4
-      if name not in toponyms:
-        toponyms[name] = Toponym(name, [pos])
-      else:
-        toponyms[name].positions.append(pos)
-    return toponyms.values()
+      toponyms[pos] = name
+    return toponyms
 
   def get_anchors(self, doc):
     anchors = []

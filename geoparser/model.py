@@ -27,37 +27,25 @@ class GeoName:
       self.lng = row[5]
       self.cc = row[6]
       self.adm1 = row[7]
+  
+  def region(self):
+    return f'{self.cc}-{self.adm1}'
 
   def __repr__(self):
     suffix = '*' if self.is_city else ''
-    return f'{self.name}{suffix}, {self.cc}-{self.adm1}'
-
-
-class Toponym:
-
-  # name: [GeoNameCandidate]
-  # positions: [int]
-  def __init__(self, name, positions):
-    self.name = name
-    self.positions = positions
-
-  def __repr__(self):
-    return self.name
+    return f'{self.name}{suffix} ({self.region()})'
 
 
 class ResolvedToponym:
 
-  # toponym: Toponym
-  # geoname: GeoName
+  # name: str
+  # positions: [int]
   # hierarchy: [GeoName]
-  # support: [(str, int)]
-  def __init__(self, toponym, geoname, hierarchy, support):
-    self.name = toponym.name
-    self.positions = toponym.positions
-    self.geoname = geoname
+  def __init__(self, name, positions, hierarchy):
+    self.name = name
+    self.positions = positions
+    self.geoname = hierarchy[-1]
     self.hierarchy = hierarchy
-    self.depth = len(hierarchy)
-    self.support = support
 
   def __repr__(self):
     return ' > '.join(g.name for g in self.hierarchy)
