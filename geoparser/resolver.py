@@ -15,40 +15,58 @@ class ToponymResolver:
     logging.info('global entities: %s', toponym_str)
     logging.info('resolving ...')
 
-    search_results_for_name = {}
+    search_results = {}
     selected = {}
     for name in all_names:
       geonames = self.gns_cache.search(name)
-      search_results_for_name[name] = geonames
+      search_results[name] = geonames
       if len(geonames) > 0:
         selected[name] = max(geonames, key=lambda g: g.population)
 
-    sorted_positions = list(sorted(toponyms.keys()))
+    changed = True
+    rounds = 0
+    while changed and rounds < 5:
+      rounds += 1
+      (selected, changed) = self._select_with_context(selected, toponyms, search_results)
+    
     resolved_toponyms = []
-    for name in selected:
+    for name, geoname in selected.items():
       positions = [p for p, n in toponyms.items() if n == name]
-      first = min(positions)
+      hierarchy = self.gns_cache.get_hierarchy(geoname.id)
+      resolved = ResolvedToponym(name, positions, hierarchy)
+      resolved_toponyms.append(resolved)
+
+    return resolved_toponyms
+
+  def _select_with_context(self, selected, toponyms, search_results_for_name):
+    sorted_positions = list(sorted(toponyms.keys()))
+    selected_with_context = {}
+    changed = False
+    for name in selected:
+      first = min(p for p, n in toponyms.items() if n == name)
       context = []
       for pos in sorted_positions:
         context_name = toponyms[pos]
         if context_name != name and context_name in selected:
           context.append(selected[context_name])
-        if pos > first: break # include one behind first
+        if pos > first:
+          break  # include one behind first
       search_results = search_results_for_name[name]
-      hierarchy = self._perform_heuristics(name, search_results, context)
-      resolved = ResolvedToponym(name, positions, hierarchy)
-      resolved_toponyms.append(resolved)
-    
-    return resolved_toponyms
+      geoname = self._chose_heuristically(name, search_results, context)
+      if geoname.id != selected[name].id:
+        changed = True
+      selected_with_context[name] = geoname
 
-  def _perform_heuristics(self, name, search_results, context):
+    return (selected_with_context, changed)
+
+  def _chose_heuristically(self, name, search_results, context):
 
     sorted_results = sorted(search_results, key=lambda c: c.population, reverse=True)
     options = sorted_results[:7] + search_results[:3]
     
     chosen_hierarchy = None
     chosen_geoname = None
-    highscore = -1
+    highscore = -10
     for geoname in options:
       hierarchy = self.gns_cache.get_hierarchy(geoname.id)
       score = self._score(geoname, hierarchy, context)
@@ -58,7 +76,7 @@ class ToponymResolver:
         highscore = score
 
     if chosen_geoname.is_city:
-      return chosen_hierarchy
+      return chosen_geoname
 
     # if best is no city and among the candidates is a similarly named city
     # of which best is an ancestor, prefer the city candidate 
@@ -71,17 +89,17 @@ class ToponymResolver:
       depth = len(hierarchy)
       hierarchy_ids = [g.id for g in hierarchy]
       if min_depth < depth < max_depth and chosen_geoname.id in hierarchy_ids:
-        chosen_hierarchy = hierarchy
+        chosen_geoname = geoname
         break
     
-    return chosen_hierarchy
+    return chosen_geoname
 
   def _score(self, geoname, hierarchy, context):
     score = 0
     pop = geoname.population
-    if pop > 100000:
-      log_pop = int(math.log10(pop))
-      score += log_pop - 4.0
+    if pop == 0: pop = 1
+    log_pop = int(math.log10(pop))
+    score += (log_pop - 3)
 
     prev_ids = set(g.id for g in context[:-3])
     close_ids = set(g.id for g in context[-3:])
