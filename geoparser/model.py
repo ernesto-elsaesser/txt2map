@@ -50,14 +50,14 @@ class ResolvedToponym:
   # toponym: Toponym
   # geoname: GeoName
   # hierarchy: [GeoName]
-  # evidence: [Toponym]
-  def __init__(self, toponym, geoname, hierarchy, evidence):
+  # support: [(str, int)]
+  def __init__(self, toponym, geoname, hierarchy, support):
     self.name = toponym.name
     self.positions = toponym.positions
     self.geoname = geoname
     self.hierarchy = hierarchy
     self.depth = len(hierarchy)
-    self.evidence = evidence
+    self.support = support
 
   def __repr__(self):
     return ' > '.join(g.name for g in self.hierarchy)

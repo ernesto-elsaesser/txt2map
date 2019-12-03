@@ -1,5 +1,6 @@
 import os
 import logging
+import math
 from .model import ResolvedToponym, ToponymCluster
 from .geonames import GeoNamesCache
 
@@ -21,18 +22,17 @@ class ToponymResolver:
     return resolved_toponyms
 
   def _choose_heuristically(self, toponym, geonames, toponyms):
-    geonames = sorted(geonames, key=lambda c: c.population, reverse=True)
-    default = self._make_resolution(toponym, geonames[0], toponyms)
-    chosen = default
+    sorted_by_size = sorted(geonames, key=lambda c: c.population, reverse=True)
 
-    # if these is no ontological evidence for the default sense while there is
-    # for another candidate, choose the next biggest candidate with max. evidence
-    ev_lim = chosen.evidence + (2 / chosen.depth)
-    for geoname in geonames[1:10]:
+    options = geonames[:3] + sorted_by_size[:7]
+    chosen = self._make_resolution(toponym, geonames[0], toponyms)
+    best = self._score(chosen)
+    for geoname in options:
       res = self._make_resolution(toponym, geoname, toponyms)
-      if res.evidence > ev_lim:
+      score = self._score(res)
+      if score > best:
         chosen = res
-        ev_lim = res.evidence
+        best = score
 
     if chosen.geoname.is_city:
       return chosen
@@ -40,9 +40,9 @@ class ToponymResolver:
     # if best is no city and among the candidates is a similarly named city
     # of which best is an ancestor, prefer the city candidate 
     # (as OSM data is only requested for cities)
-    cities = [g for g in geonames if g.is_city and g.name in toponym.name]
-    min_depth = default.depth
-    max_depth = default.depth + 3
+    cities = [g for g in sorted_by_size if g.is_city and g.name in toponym.name]
+    min_depth = chosen.depth
+    max_depth = chosen.depth + 3
     for geoname in cities[:10]:
       res = self._make_resolution(toponym, geoname, toponyms)
       hierarchy_ids = [g.id for g in res.hierarchy]
@@ -50,6 +50,18 @@ class ToponymResolver:
         return res
     
     return chosen
+
+  def _score(self, resolution):
+    score = 0
+    p = resolution.geoname.population
+    if p > 0:
+      score += max(0, math.log10(p) - 5)
+    for _, d in resolution.support:
+      if 0 <= d < 50: # between or shortly after
+        score += 1
+      elif d < 0: # before
+        score += 1 - (max(-d, 900) / 1000)
+    return score
 
   def _make_resolution(self, toponym, geoname, toponyms):
     hierarchy = self.gns_cache.get_hierarchy(geoname.id)
@@ -62,18 +74,19 @@ class ToponymResolver:
     unique_names = hierarchy_names.difference(redundant_names)
     min_pos = min(toponym.positions)
     max_pos = min(toponym.positions)
-    evidence = 0
+    support = []
     counted_pos = []
     for name in unique_names:
       for other in toponyms:
         if other.name in name or name in other.name:
           for p in other.positions:
             if p in counted_pos: continue
-            if p < min_pos: d = min_pos - p
+            if p < min_pos: d = p - min_pos
             elif p > max_pos: d = p - max_pos
             else: d = 0
-            evidence += 1 - (min(d, 900) / 1000)
-    return ResolvedToponym(toponym, geoname, hierarchy, evidence)
+            support.append((other.name, d))
+
+    return ResolvedToponym(toponym, geoname, hierarchy, support)
 
   def cluster(self, resolved_toponyms):
     logging.info('clustering toponyms ...')
