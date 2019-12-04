@@ -6,9 +6,9 @@ logging.basicConfig(format='%(asctime)s %(message)s',
                     level=logging.INFO, 
                     datefmt="%H:%M:%S")
 
-evaluator = TestEvaluator()
-evaluator.test_all()
+#evaluator = TestEvaluator()
+#evaluator.test_all()
 
-#evaluator = GeoWebNewsEvaluator(True)
-#evaluator.test_all(max_documents=120)
-#evaluator.test('191')
+evaluator = GeoWebNewsEvaluator(True)
+evaluator.test_all(max_documents=100)
+#evaluator.test('139')

@@ -106,7 +106,7 @@ class ToponymResolver:
   def _evidence(self, name, geoname, hierarchy, close_ids, regions, present_ids):
 
     score = 4 / len(hierarchy)
-    if geoname.name not in name:
+    if geoname.name not in name and not self._acronym(geoname.name) in name:
       dist = _levenshtein.distance(name, geoname.name)
       score -= (dist ** 1.5) / 10
 
@@ -119,6 +119,10 @@ class ToponymResolver:
         score += 0.5
 
     return score
+
+  def _acronym(self, name):
+    parts = name.split(' ')
+    return ''.join(p[0] for p in parts)
 
   def _find_city_ancestor(self, name, hierarchy, search_results):
     cities = [g for g in search_results if g.is_city and self._similar(g.name, name)]
