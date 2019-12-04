@@ -32,7 +32,7 @@ class GeoNamesDatabase(Database):
     self.cursor.execute(
         'CREATE TABLE hierarchy (geoname_id INT UNIQUE, ancestor_ids TEXT)')
     self.cursor.execute(
-        'CREATE TABLE children (geoname_id INT UNIQUE, result_ids TEXT)')
+        'CREATE TABLE children (geoname_id INT UNIQUE, child_ids TEXT)')
     self.commit_changes()
 
   def get_search(self, name):
