@@ -77,14 +77,14 @@ class ToponymResolver:
     highscore = -10
     for geoname in sorted_by_size[:10]:
       hierarchy = self.gns_cache.get_hierarchy(geoname.id)
-      score = self._score(geoname, hierarchy, context)
+      score = self._score(name, geoname, hierarchy, context)
       if score > highscore:
         chosen = geoname
         highscore = score
-    
+
     return chosen
 
-  def _score(self, geoname, hierarchy, context):
+  def _score(self, name, geoname, hierarchy, context):
     score = 0
     depth = len(hierarchy)
     pop = geoname.population
@@ -96,12 +96,12 @@ class ToponymResolver:
     regions = set(g.region() for g in context if g.adm1 != '-')
 
     for geoname in hierarchy[:-1]:
-      if geoname.id in prev_ids:
-        score += 0.5
-      if geoname.region() in regions:
-        score += 1.0
       if geoname.id in close_ids:
         score += 1.5
+      elif geoname.region() in regions:
+        score += 1.0
+      elif geoname.id in prev_ids:
+        score += 0.5
 
     return score
 
