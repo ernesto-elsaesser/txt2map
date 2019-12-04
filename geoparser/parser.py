@@ -14,6 +14,7 @@ class Geoparser:
       os.mkdir(cache_dir)
     self.recognizer = ToponymRecognizer(nlp_model)
     self.resolver = ToponymResolver(cache_dir)
+    self.matcher = OSMNameMatcher()
     self.search_local = local_search_dist_km > 0
     if self.search_local:
       self.osm_loader = OSMLoader(cache_dir, local_search_dist_km)
@@ -33,7 +34,7 @@ class Geoparser:
         logging.info('selected cluster: %s', cluster)
 
         osm_db = self.osm_loader.load_database(cluster)
-        cluster.local_matches = OSMNameMatcher.find_names(text, anchors, osm_db)
+        cluster.local_matches = self.matcher.find_names(text, anchors, osm_db)
 
         matches_str = ', '.join(m.name for m in cluster.local_matches)
         logging.info('matches: %s', matches_str)

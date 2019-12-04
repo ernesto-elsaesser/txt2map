@@ -14,9 +14,11 @@ class TestEvaluator:
     self.test_global_onto_distance()
     self.test_global_onto_distance_hard()
     self.test_global_top_defaults()
+    self.test_global_special_chars()
     self.test_local_node()
     self.test_local_way()
     self.test_local_relation()
+    self.test_local_abbrevs()
     report = self.eval.corpus_report()
     print(report)
 
@@ -49,10 +51,17 @@ class TestEvaluator:
     self.eval.verify_annotation(98, 'Mexico', 23, -102)
     self.eval.verify_annotation(109, 'Uruguay', -33, -56)
 
+  def test_global_special_chars(self):
+    text = 'The Mall of Asia in Paranaque City.'
+    self.eval.start_document('Global - Special Characters', text)
+    self.eval.verify_annotation(4, 'Mall of Asia', 14.5349995, 120.9832017)
+    self.eval.verify_annotation(20, 'Parañaque City', 14.48156, 121.01749)
+
   def test_local_node(self):
     text = 'We met at Checkpoint Charlie in Berlin.'
     self.eval.start_document('Local - OSM Node', text)
-    self.eval.verify_annotation(10, 'Checkpoint Charlie', 52.5075075, 13.3903737)
+    self.eval.verify_annotation(
+        10, 'Checkpoint Charlie', 52.5075075, 13.3903737)
 
   def test_local_way(self):
     text = 'When in Los Angeles check out Hollywood Blvd.'
@@ -64,3 +73,9 @@ class TestEvaluator:
     text = 'The Statue of Liberty is in New York.'
     self.eval.start_document('Local - OSM Relation', text)
     self.eval.verify_annotation(4, 'Statue of Liberty', 40.689167, -74.044444)
+
+  def test_local_abbrevs(self):
+    text = 'He painted St. Peter\'s Basilica in Rome.'
+    self.eval.start_document('Local - Abbreviations', text)
+    self.eval.verify_annotation(11, 'St. Peter\'s Basilica', 41.90216, 12.4536)
+    self.eval.verify_annotation(35, 'Rome', 41.89193, 12.51133)

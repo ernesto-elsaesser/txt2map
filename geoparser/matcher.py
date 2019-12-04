@@ -4,29 +4,39 @@ from .model import OSMMatch
 
 class OSMNameMatcher:
 
-  abbrevs = [
-      (re.compile('Street'), 'St'),
-      (re.compile('Avenue'), 'Ave'),
-      (re.compile('Boulevard'), 'Blvd'),
-      (re.compile('Freeway'), 'Fwy'),
-      (re.compile('Parkway'), 'Pkwy'),
-      (re.compile('Lane'), 'Ln'),
-      (re.compile('Road'), 'Rd'),
-      (re.compile('Drive'), 'Dr'),
-      (re.compile('Square'), 'Sq'),
-      (re.compile('North'), 'N'),
-      (re.compile('East'), 'E'),
-      (re.compile('South'), 'S'),
-      (re.compile('West'), 'W'),
-      (re.compile('Northeast'), 'NE'),
-      (re.compile('Southeast'), 'SE'),
-      (re.compile('Southwest'), 'SW'),
-      (re.compile('Northwest'), 'NW'),
-      (re.compile('Mount'), 'Mt.')
-  ]
+  abbr = {
+    'N': 'North',
+    'E': 'East',
+    'S': 'South',
+    'W': 'West',
+    'NE': 'Northeast',
+    'SE': 'Southeast',
+    'SW': 'Southwest',
+    'NW': 'Northwest',
+    'Mt.': 'Mount',
+    'St.': 'Saint'
+  }
 
-  @staticmethod
-  def find_names(text, anchors, osm_db):
+  abbr_end = {
+    'St': 'Street',
+    'Ave': 'Avenue',
+    'Blvd': 'Boulevard',
+    'Fwy': 'Freeway',
+    'Pkwy': 'Parkway',
+    'Ln': 'Lane',
+    'Rd': 'Road',
+    'Dr': 'Drive',
+    'Sq': 'Square'
+  }
+
+  def __init__(self):
+    self.abbreviations = []
+    for s, l in self.abbr.items():
+      self.abbreviations.append((re.compile(l), s))
+    for s, l in self.abbr_end.items():
+      self.abbreviations.append((re.compile(l), s))
+
+  def find_names(self, text, anchors, osm_db):
     text = text + ' '  # also catch matches in last word
     text_len = len(text)
     names = {}
@@ -41,7 +51,7 @@ class OSMNameMatcher:
       if prefix in suffixes_for_prefixes:
         suffixes = suffixes_for_prefixes[prefix]
       else:
-        suffixes = OSMNameMatcher.get_suffixes(prefix, osm_db)
+        suffixes = self.get_suffixes(prefix, osm_db)
         suffixes_for_prefixes[prefix] = suffixes
 
       text_pos = end
@@ -71,21 +81,25 @@ class OSMNameMatcher:
 
     return matches
 
-  @staticmethod
-  def get_suffixes(prefix, osm_db):
+  def get_suffixes(self, prefix, osm_db):
     found_names = osm_db.find_names(prefix)
     suffixes = []
     for name in found_names:
       suffix = name[len(prefix):]
       suffixes.append((name, suffix))
-      short_version = OSMNameMatcher.abbreviated(suffix)
+      short_version = self.abbreviated(suffix)
       if short_version != suffix:
         suffixes.append((name, short_version))
+    if prefix in self.abbr:
+      long_prefix = self.abbr[prefix]
+      found_names = osm_db.find_names(long_prefix)
+      for name in found_names:
+        suffix = name[len(long_prefix):]
+        suffixes.append((name, suffix))
     return suffixes
 
-  @staticmethod
-  def abbreviated(name):
+  def abbreviated(self, name):
     short_version = name
-    for regex, repl in OSMNameMatcher.abbrevs:
+    for regex, repl in self.abbreviations:
       short_version = regex.sub(repl, short_version)
     return short_version
