@@ -1,33 +1,53 @@
 import os
 import logging
 import math
+import sqlite3
 from .model import ResolvedToponym, ToponymCluster
 from .geonames import GeoNamesCache
+from .database import DefaultsDatabase
 
 class ToponymResolver:
 
   def __init__(self, cache_dir):
     self.gns_cache = GeoNamesCache(cache_dir)
+    dirname = os.path.dirname(__file__)
+    self.default_db_path = dirname + '/defaults.db'
 
-  def resolve(self, toponyms):
-    all_names = set(toponyms.values())
-    toponym_str = ', '.join(all_names)
-    logging.info('global entities: %s', toponym_str)
+  def resolve(self, tmap):
     logging.info('resolving ...')
+
+    default_db = sqlite3.connect(self.default_db_path)
+    defaults = DefaultsDatabase(default_db)
 
     search_results = {}
     selected = {}
-    for name in all_names:
-      geonames = self.gns_cache.search(name)
-      search_results[name] = geonames
-      if len(geonames) > 0:
-        selected[name] = max(geonames, key=lambda g: g.population)
+    for name in tmap.toponyms():
+      default_id = defaults.get_default(name)
+      if default_id != None:
+        default = self.gns_cache.get(default_id)
+        search_results[name] = [default]
+      else:
+        results = self.gns_cache.search(name)
+        search_results[name] = results
+        if len(results) == 0: continue
+        default = results[0]
+        if default.name != name:
+          default = max(results, key=lambda g: g.population)
+      selected[name] = default
 
     changed = True
     rounds = 0
-    while changed and rounds < 5:
+    while changed and rounds < 1: # 5:
       rounds += 1
-      (selected, changed) = self._select_with_context(selected, toponyms, search_results)
+      heuristically_selected = {}
+      changed = False
+      for name in selected:
+        results = search_results[name]
+        geoname = self._chose_heuristically(name, results, tmap, selected)
+        if geoname.id != selected[name].id:
+          changed = True
+        heuristically_selected[name] = geoname
+      selected = heuristically_selected
 
     resolved_toponyms = []
     for name, geoname in selected.items():
@@ -39,75 +59,61 @@ class ToponymResolver:
         if city_hierarchy != None:
           hierarchy = city_hierarchy
 
-      positions = [p for p, n in toponyms.items() if n == name]
+      positions = tmap.positions(name)
       resolved = ResolvedToponym(name, positions, hierarchy)
       resolved_toponyms.append(resolved)
 
     return resolved_toponyms
 
-  def _select_with_context(self, selected, toponyms, search_results_for_name):
-    sorted_positions = list(sorted(toponyms.keys()))
-    selected_with_context = {}
-    changed = False
-    for name in selected:
-      first = min(p for p, n in toponyms.items() if n == name)
-      before = []
-      after = []
-      for pos in sorted_positions:
-        context_name = toponyms[pos]
-        if context_name != name and context_name in selected:
-          geoname = selected[context_name]
-          if pos < first:
-            before.insert(0, geoname)
-          else:
-            after.append(geoname)
-      search_results = search_results_for_name[name]
-      geoname = self._chose_heuristically(name, search_results, before, after)
-      if geoname.id != selected[name].id:
-        changed = True
-      selected_with_context[name] = geoname
+  def _chose_heuristically(self, name, search_results, tmap, selected):
+    present_ids = set()
+    regions = set()
+    for n, g in selected.items():
+      if n == name: continue
+      present_ids.add(g.id)
+      if g.adm1 != '-':
+        regions.add(g.region())
 
-    return (selected_with_context, changed)
+    first_pos = tmap.first(name)
+    close_names = set(tmap.window(first_pos - 150, first_pos + 50))
+    close_names.remove(name)
+    close_ids = set(selected[n].id for n in close_names if n in selected)
 
-  def _chose_heuristically(self, name, search_results, before, after):
-    chosen = search_results[0]
+    chosen = selected[name]
     hierarchy = self.gns_cache.get_hierarchy(chosen.id)
-    if chosen.name == name and len(hierarchy) < 3:
-      return chosen
+    most_evidence = self._evidence(name, chosen, hierarchy,
+                                   close_ids, regions, present_ids)
 
     sorted_by_size = sorted(search_results, key=lambda c: c.population, reverse=True)
-    chosen = None
-    highscore = -10
+    if chosen in sorted_by_size:
+      sorted_by_size.remove(chosen)
+
+    treshold = 1.0
     for geoname in sorted_by_size[:10]:
       hierarchy = self.gns_cache.get_hierarchy(geoname.id)
-      score = self._score(name, geoname, hierarchy, before, after)
-      if score > highscore:
+      evidence = self._evidence(name, geoname, hierarchy,
+                             close_ids, regions, present_ids)
+      if evidence > most_evidence + treshold:
+        logging.info(f'chosen {geoname} over {chosen} for {name}')
         chosen = geoname
-        highscore = score
+        most_evidence = evidence
 
     return chosen
 
-  def _score(self, name, geoname, hierarchy, before, after):
-    score = 0
-    depth = len(hierarchy)
-    pop = geoname.population
-    if pop == 0: pop = 1
-    score += math.log10(pop) - depth
+  def _evidence(self, name, geoname, hierarchy, close_ids, regions, present_ids):
 
-    prev_ids = set(g.id for g in before[2:])
-    close_ids = set(g.id for g in before[:2] + after[:2])
-    regions = set(g.region() for g in before + after if g.adm1 != '-')
+    score = 4 / len(hierarchy)
 
     for ancestor in hierarchy[:-1]:
       if ancestor.id in close_ids:
         score += 1.5
       elif ancestor.region() in regions:
         score += 1.0
-      elif ancestor.id in prev_ids:
+      elif ancestor.id in present_ids:
         score += 0.5
 
     if geoname.name != name:
-      score -= 0.5
+      score -= 1.0
 
     return score
 

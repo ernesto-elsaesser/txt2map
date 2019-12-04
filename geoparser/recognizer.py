@@ -1,20 +1,23 @@
 import spacy
+from .model import ToponymMap
 
 
 class ToponymRecognizer:
 
-  def __init__(self, small_model=False):
-    model = 'en_core_web_sm' if small_model else 'en_core_web_md'
+  def __init__(self, nlp_model):
+    model = 'en_core_web_sm'
+    if nlp_model == 1: model = 'en_core_web_md'
+    elif nlp_model == 2: model = 'en_core_web_lg'
     self.nlp = spacy.load(model, disable=['parser'])
 
   def parse(self, text):
     doc = self.nlp(text)
-    toponyms = self.get_toponyms(doc)
+    tmap = self.get_toponyms(doc)
     anchors = self.get_anchors(doc)
-    return (toponyms, anchors)
+    return (tmap, anchors)
 
   def get_toponyms(self, doc):
-    toponyms = {}
+    tmap = ToponymMap()
     for ent in doc.ents:
       if ent.label_ not in ['GPE', 'LOC']:
         continue
@@ -25,8 +28,8 @@ class ToponymRecognizer:
       if name.startswith('the ') or name.startswith('The '):
         name = name[4:]
         pos += 4
-      toponyms[pos] = name
-    return toponyms
+      tmap.add(name, pos)
+    return tmap
 
   def get_anchors(self, doc):
     anchors = []

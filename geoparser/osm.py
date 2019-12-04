@@ -4,7 +4,8 @@ import requests
 import csv
 import io
 import sqlite3
-from .model import OSMElement, OSMDatabase
+from .model import OSMElement
+from .database import OSMDatabase
 from .geo import GeoUtil
 
 

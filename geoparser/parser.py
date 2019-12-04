@@ -9,19 +9,22 @@ from .matcher import OSMNameMatcher
 
 class Geoparser:
 
-  def __init__(self, small_nlp_model=False, local_search_dist_km=15, cache_dir='cache'):
+  def __init__(self, nlp_model=0, local_search_dist_km=15, cache_dir='cache'):
     if not os.path.exists(cache_dir):
       os.mkdir(cache_dir)
-    self.recognizer = ToponymRecognizer(small_nlp_model)
+    self.recognizer = ToponymRecognizer(nlp_model)
     self.resolver = ToponymResolver(cache_dir)
     self.search_local = local_search_dist_km > 0
     if self.search_local:
       self.osm_loader = OSMLoader(cache_dir, local_search_dist_km)
 
   def parse(self, text):
-    (toponyms, anchors) = self.recognizer.parse(text)
+    (tmap, anchors) = self.recognizer.parse(text)
 
-    resolved = self.resolver.resolve(toponyms)
+    toponym_str = ', '.join(tmap.toponyms())
+    logging.info('global entities: %s', toponym_str)
+
+    resolved = self.resolver.resolve(tmap)
     clusters = self.resolver.cluster(resolved)
 
     if self.search_local:

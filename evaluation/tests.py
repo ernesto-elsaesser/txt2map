@@ -5,7 +5,7 @@ from .evaluator import CorpusEvaluator
 class TestEvaluator:
 
   def __init__(self):
-    parser = Geoparser(small_nlp_model=True)
+    parser = Geoparser(nlp_model=0)
     self.eval = CorpusEvaluator(parser, 1)
     self.eval.start_corpus('Tests')
 

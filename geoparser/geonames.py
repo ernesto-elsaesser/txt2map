@@ -2,7 +2,8 @@ import os
 import requests
 import json
 import sqlite3
-from .model import GeoName, GeoNamesDatabase
+from .model import GeoName, DetailedGeoname
+from .database import GeoNamesDatabase
 
 
 class GeoNamesCache:
@@ -61,10 +62,17 @@ class GeoNamesAPI:
     return list(map(GeoName, json_array))
 
   @staticmethod
+  def get_children(id):
+    params = [('geonameId', id)]
+    json_data = GeoNamesAPI.get_json('children', params)
+    json_array = json_data['geonames']
+    return list(map(GeoName, json_array))
+
+  @staticmethod
   def get_geoname(id):
     params = [('geonameId', id)]
     json_data = GeoNamesAPI.get_json('get', params)
-    return GeoName(json_data)
+    return DetailedGeoname(json_data)
 
   @staticmethod
   def get_json(endpoint, params):
