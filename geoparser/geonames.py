@@ -45,7 +45,7 @@ class GeoNamesAPI:
 
   @staticmethod
   def search(name):
-    params = [('name_equals', name)]
+    params = [('q', name)]
     json_data = GeoNamesAPI.get_json('search', params)
     if not 'geonames' in json_data:
       return []

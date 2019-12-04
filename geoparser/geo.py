@@ -40,8 +40,7 @@ class GeoUtil:
     elif t == 'Polygon':
       inside = geojson_utils.point_in_polygon(target, geometry)
       if inside: return 0
-      centroid = geojson_utils.centroid(geometry)
-      point_coords = [centroid['coordinates']]
+      point_coords = GeoUtil._points_for_polygon(geometry)
     elif t == 'MultiPolygon':
       inside = geojson_utils.point_in_multipolygon(target, geometry)
       if inside: return 0
@@ -49,8 +48,7 @@ class GeoUtil:
       polygon = {}
       for coords in geometry['coordinates']:
         polygon['coordinates'] = coords
-        centroid = geojson_utils.centroid(polygon)
-        point_coords.append(centroid['coordinates'])
+        point_coords += GeoUtil._points_for_polygon(polygon)
     else:
       print(f'Unsupported geometry type: {t}')
       point_coords = []
@@ -66,3 +64,11 @@ class GeoUtil:
       elif dist < min_dist:
         min_dist = dist
     return (min_dist / 1000) - tolerance_km
+
+  @staticmethod
+  def _points_for_polygon(polygon):
+    centroid = geojson_utils.centroid(polygon)
+    point_coords = [centroid['coordinates']]
+    for coords in polygon['coordinates'][0]:
+      point_coords.append(coords)
+    return point_coords

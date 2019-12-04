@@ -28,11 +28,18 @@ class ToponymResolver:
     while changed and rounds < 5:
       rounds += 1
       (selected, changed) = self._select_with_context(selected, toponyms, search_results)
-    
+
     resolved_toponyms = []
     for name, geoname in selected.items():
-      positions = [p for p, n in toponyms.items() if n == name]
       hierarchy = self.gns_cache.get_hierarchy(geoname.id)
+
+      if not geoname.is_city:
+        results = search_results[name]
+        city_hierarchy = self._find_city_ancestor(hierarchy, results)
+        if city_hierarchy != None:
+          hierarchy = city_hierarchy
+
+      positions = [p for p, n in toponyms.items() if n == name]
       resolved = ResolvedToponym(name, positions, hierarchy)
       resolved_toponyms.append(resolved)
 
@@ -60,46 +67,29 @@ class ToponymResolver:
     return (selected_with_context, changed)
 
   def _chose_heuristically(self, name, search_results, context):
+    chosen = search_results[0]
+    hierarchy = self.gns_cache.get_hierarchy(chosen.id)
+    if chosen.name == name and len(hierarchy) < 3:
+      return chosen
 
-    sorted_results = sorted(search_results, key=lambda c: c.population, reverse=True)
-    options = sorted_results[:7] + search_results[:3]
-    
-    chosen_hierarchy = None
-    chosen_geoname = None
+    sorted_by_size = sorted(search_results, key=lambda c: c.population, reverse=True)
+    chosen = None
     highscore = -10
-    for geoname in options:
+    for geoname in sorted_by_size[:10]:
       hierarchy = self.gns_cache.get_hierarchy(geoname.id)
       score = self._score(geoname, hierarchy, context)
       if score > highscore:
-        chosen_hierarchy = hierarchy
-        chosen_geoname = geoname
+        chosen = geoname
         highscore = score
-
-    if chosen_geoname.is_city:
-      return chosen_geoname
-
-    # if best is no city and among the candidates is a similarly named city
-    # of which best is an ancestor, prefer the city candidate 
-    # (as OSM data is only requested for cities)
-    cities = [g for g in sorted_results if g.is_city and g.name in name]
-    min_depth = len(chosen_hierarchy)
-    max_depth = min_depth + 3
-    for geoname in cities[:10]:
-      hierarchy = self.gns_cache.get_hierarchy(geoname.id)
-      depth = len(hierarchy)
-      hierarchy_ids = [g.id for g in hierarchy]
-      if min_depth < depth < max_depth and chosen_geoname.id in hierarchy_ids:
-        chosen_geoname = geoname
-        break
     
-    return chosen_geoname
+    return chosen
 
   def _score(self, geoname, hierarchy, context):
     score = 0
+    depth = len(hierarchy)
     pop = geoname.population
     if pop == 0: pop = 1
-    log_pop = int(math.log10(pop))
-    score += (log_pop - 3)
+    score += math.log10(pop) - depth
 
     prev_ids = set(g.id for g in context[:-3])
     close_ids = set(g.id for g in context[-3:])
@@ -114,6 +104,22 @@ class ToponymResolver:
         score += 1.5
 
     return score
+
+  def _find_city_ancestor(self, hierarchy, search_results):
+    base = hierarchy[-1]
+    cities = [g for g in search_results if g.is_city and g.name in base.name]
+    cities = sorted(cities, key=lambda c: c.population, reverse=True)
+    min_depth = len(hierarchy)
+    max_depth = min_depth + 3
+
+    for geoname in cities[:10]:
+      city_hierarchy = self.gns_cache.get_hierarchy(geoname.id)
+      depth = len(city_hierarchy)
+      hierarchy_ids = [g.id for g in city_hierarchy]
+      if min_depth < depth < max_depth and base.id in hierarchy_ids:
+        return city_hierarchy
+
+    return None
 
   def cluster(self, resolved_toponyms):
     logging.info('clustering toponyms ...')
