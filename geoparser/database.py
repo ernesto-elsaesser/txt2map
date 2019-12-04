@@ -14,15 +14,6 @@ class Database:
     self.db.commit()
 
 
-class DefaultsDatabase(Database):
-
-  def get_default(self, name):
-    self.cursor.execute('SELECT geoname_id FROM defaults WHERE name = ?',
-                        (name, ))
-    row = self.cursor.fetchone()
-    return None if row == None else row[0]
-
-
 class GeoNamesDatabase(Database):
 
   def create_tables(self):

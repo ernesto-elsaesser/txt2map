@@ -65,6 +65,8 @@ class GeoNamesAPI:
   def get_children(id):
     params = [('geonameId', id)]
     json_data = GeoNamesAPI.get_json('children', params)
+    if not 'geonames' in json_data:
+      return []
     json_array = json_data['geonames']
     return list(map(GeoName, json_array))
 

@@ -1,36 +1,35 @@
 import os
 import logging
 import math
+import json
 import sqlite3
 from Levenshtein import _levenshtein
 from .model import ResolvedToponym, ToponymCluster
-from .geonames import GeoNamesCache
-from .database import DefaultsDatabase
+from .geonames import GeoNamesCache, GeoNamesAPI
 
 class ToponymResolver:
 
   def __init__(self, cache_dir):
     self.gns_cache = GeoNamesCache(cache_dir)
+
     dirname = os.path.dirname(__file__)
-    self.default_db_path = dirname + '/defaults.db'
+    top_level_file = dirname + '/top-level.json'
+    with open(top_level_file, 'r') as f:
+      json_dict = f.read()
+    self.top_level = json.loads(json_dict)
 
   def resolve(self, tmap):
     logging.info('resolving ...')
 
-    default_db = sqlite3.connect(self.default_db_path)
-    defaults = DefaultsDatabase(default_db)
-
     search_results = {}
     selected = {}
     for name in tmap.toponyms():
-      default_id = defaults.get_default(name)
-      if default_id != None:
-        default = self.gns_cache.get(default_id)
-        search_results[name] = [default]
+      if name in self.top_level:
+        default = self.gns_cache.get(self.top_level[name])
       else:
         results = self.gns_cache.search(name)
-        search_results[name] = results
         if len(results) == 0: continue
+        search_results[name] = results
         default = results[0]
         if not self._similar(default.name, name):
           default = max(results, key=lambda g: g.population)
@@ -38,11 +37,14 @@ class ToponymResolver:
 
     changed = True
     rounds = 0
-    while changed and rounds < 1: # 5:
+    while changed and rounds < 3:
       rounds += 1
       heuristically_selected = {}
       changed = False
       for name in selected:
+        if name not in search_results:
+          heuristically_selected[name] = selected[name]
+          continue
         results = search_results[name]
         geoname = self._chose_heuristically(name, results, tmap, selected)
         if geoname.id != selected[name].id:
@@ -172,8 +174,25 @@ class ToponymResolver:
         anchor = max(cities, key=lambda c: c.geoname.population)
       else:
         anchor = min(connected, key=lambda c: c.geoname.population)
+        child = self._get_single_child(anchor) # try to drill down
+        if child != None:
+          cities.append(child)
 
       cluster = ToponymCluster(connected, cities, anchor)
       clusters.append(cluster)
 
     return sorted(clusters, key=lambda c: c.mentions(), reverse=True)
+
+  def _get_single_child(self, resolved):
+    children = GeoNamesAPI.get_children(resolved.geoname.id)
+    single_child = None
+
+    while len(children) == 1:
+      single_child = children[0]
+      children = GeoNamesAPI.get_children(single_child.id)
+
+    if single_child == None:
+      return resolved if len(children) == 0 else None
+
+    hierarchy = self.gns_cache.get_hierarchy(single_child.id)
+    return ResolvedToponym(single_child.name, [], hierarchy)

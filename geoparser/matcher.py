@@ -71,7 +71,7 @@ class OSMNameMatcher:
             longest_match = name
           elif suffix[0].lower() == next_char.lower():
             trimmed_suffixes.append((name, suffix[1:]))
-          else:
+          elif len(suffix) > 1:
             trimmed_one_off.append((name, suffix))
             trimmed_one_off.append((name, suffix[1:]))
         suffixes = trimmed_suffixes

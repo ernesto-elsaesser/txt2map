@@ -1,6 +1,8 @@
+import os
+import json
+import re
 import spacy
 from .model import ToponymMap
-
 
 class ToponymRecognizer:
 
@@ -10,14 +12,24 @@ class ToponymRecognizer:
     elif nlp_model == 2: model = 'en_core_web_lg'
     self.nlp = spacy.load(model, disable=['parser'])
 
+    dirname = os.path.dirname(__file__)
+    top_level_file = dirname + '/top-level.json'
+    with open(top_level_file, 'r') as f:
+      json_dict = f.read()
+    names = json.loads(json_dict)
+    self.top_level_names = list(names.keys())
+
   def parse(self, text):
     doc = self.nlp(text)
-    tmap = self.get_toponyms(doc)
-    anchors = self.get_anchors(doc)
+    tmap = self._get_toponyms(text, doc)
+    anchors = self._get_anchors(doc)
     return (tmap, anchors)
 
-  def get_toponyms(self, doc):
+  def _get_toponyms(self, text, doc):
     tmap = ToponymMap()
+    for name in self.top_level_names:
+      for match in re.finditer(name, text):
+        tmap.add(name, match.start())
     for ent in doc.ents:
       if ent.label_ not in ['GPE', 'LOC']:
         continue
@@ -28,10 +40,11 @@ class ToponymRecognizer:
       if name.startswith('the ') or name.startswith('The '):
         name = name[4:]
         pos += 4
-      tmap.add(name, pos)
+      if not name in self.top_level_names:
+        tmap.add(name, pos)
     return tmap
 
-  def get_anchors(self, doc):
+  def _get_anchors(self, doc):
     anchors = []
     for token in doc:
       if token.pos_ == 'PROPN' and token.text[0].isupper():
