@@ -29,6 +29,7 @@ class GeoNamesCache:
     results = db.get_search(name)
     if results == None:
       results = GeoNamesAPI.search(name)
+      results = [g for g in results if g.id != 6295630] # remove Earth
       db.store_search(name, results)
     return results
 
