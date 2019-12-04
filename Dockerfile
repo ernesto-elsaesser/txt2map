@@ -1,5 +1,5 @@
 FROM python:3.8-slim
-RUN pip install flask requests spacy geojson_utils python-levenshtein
+RUN pip install flask requests spacy geojson_utils pylev
 WORKDIR /map2txt
 ADD ./geoparser /map2txt/geoparser
 ADD ./webserver /map2txt/webserver

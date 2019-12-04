@@ -3,7 +3,7 @@ import logging
 import math
 import json
 import sqlite3
-from Levenshtein import _levenshtein
+import pylev
 from .model import ResolvedToponym, ToponymCluster
 from .geonames import GeoNamesCache
 
@@ -107,7 +107,7 @@ class ToponymResolver:
 
     score = 4 / len(hierarchy)
     if geoname.name not in name and not self._acronym(geoname.name) in name:
-      dist = _levenshtein.distance(name, geoname.name)
+      dist = pylev.levenshtein(name, geoname.name)
       score -= (dist ** 1.5) / 10
 
     for ancestor in hierarchy[:-1]:
@@ -140,7 +140,7 @@ class ToponymResolver:
     return None
 
   def _similar(self, name1, name2):
-    return _levenshtein.distance(name1, name2) < 2
+    return pylev.levenshtein(name1, name2) < 2
 
   def cluster(self, resolved_toponyms):
     logging.info('clustering toponyms ...')
