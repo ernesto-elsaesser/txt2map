@@ -24,6 +24,8 @@ for continent in continents:
 names['U.S.'] = 6252001
 names['US'] = 6252001
 names['USA'] = 6252001
+names['UAE'] = 290557
+names['USSR'] = 8354411
 names['Atlantic'] = 3373405
 names['Atlantic Ocean'] = 3373405
 names['Pacific'] = 2363254
