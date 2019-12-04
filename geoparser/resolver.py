@@ -33,9 +33,9 @@ class ToponymResolver:
     for name, geoname in selected.items():
       hierarchy = self.gns_cache.get_hierarchy(geoname.id)
 
-      if not geoname.is_city:
+      if not geoname.is_city and len(hierarchy) > 2:
         results = search_results[name]
-        city_hierarchy = self._find_city_ancestor(hierarchy, results)
+        city_hierarchy = self._find_city_ancestor(name, hierarchy, results)
         if city_hierarchy != None:
           hierarchy = city_hierarchy
 
@@ -51,22 +51,25 @@ class ToponymResolver:
     changed = False
     for name in selected:
       first = min(p for p, n in toponyms.items() if n == name)
-      context = []
+      before = []
+      after = []
       for pos in sorted_positions:
         context_name = toponyms[pos]
         if context_name != name and context_name in selected:
-          context.append(selected[context_name])
-        if pos > first:
-          break  # include one behind first
+          geoname = selected[context_name]
+          if pos < first:
+            before.insert(0, geoname)
+          else:
+            after.append(geoname)
       search_results = search_results_for_name[name]
-      geoname = self._chose_heuristically(name, search_results, context)
+      geoname = self._chose_heuristically(name, search_results, before, after)
       if geoname.id != selected[name].id:
         changed = True
       selected_with_context[name] = geoname
 
     return (selected_with_context, changed)
 
-  def _chose_heuristically(self, name, search_results, context):
+  def _chose_heuristically(self, name, search_results, before, after):
     chosen = search_results[0]
     hierarchy = self.gns_cache.get_hierarchy(chosen.id)
     if chosen.name == name and len(hierarchy) < 3:
@@ -77,46 +80,47 @@ class ToponymResolver:
     highscore = -10
     for geoname in sorted_by_size[:10]:
       hierarchy = self.gns_cache.get_hierarchy(geoname.id)
-      score = self._score(name, geoname, hierarchy, context)
+      score = self._score(name, geoname, hierarchy, before, after)
       if score > highscore:
         chosen = geoname
         highscore = score
 
     return chosen
 
-  def _score(self, name, geoname, hierarchy, context):
+  def _score(self, name, geoname, hierarchy, before, after):
     score = 0
     depth = len(hierarchy)
     pop = geoname.population
     if pop == 0: pop = 1
     score += math.log10(pop) - depth
 
-    prev_ids = set(g.id for g in context[:-3])
-    close_ids = set(g.id for g in context[-3:])
-    regions = set(g.region() for g in context if g.adm1 != '-')
+    prev_ids = set(g.id for g in before[2:])
+    close_ids = set(g.id for g in before[:2] + after[:2])
+    regions = set(g.region() for g in before + after if g.adm1 != '-')
 
-    for geoname in hierarchy[:-1]:
-      if geoname.id in close_ids:
+    for ancestor in hierarchy[:-1]:
+      if ancestor.id in close_ids:
         score += 1.5
-      elif geoname.region() in regions:
+      elif ancestor.region() in regions:
         score += 1.0
-      elif geoname.id in prev_ids:
+      elif ancestor.id in prev_ids:
         score += 0.5
+
+    if geoname.name != name:
+      score -= 0.5
 
     return score
 
-  def _find_city_ancestor(self, hierarchy, search_results):
-    base = hierarchy[-1]
-    cities = [g for g in search_results if g.is_city and g.name in base.name]
+  def _find_city_ancestor(self, name, hierarchy, search_results):
+    cities = [g for g in search_results if g.is_city and g.name in name]
     cities = sorted(cities, key=lambda c: c.population, reverse=True)
-    min_depth = len(hierarchy)
-    max_depth = min_depth + 3
-
+    depth = len(hierarchy)
+    anchor_id = hierarchy[-2].id
     for geoname in cities[:10]:
       city_hierarchy = self.gns_cache.get_hierarchy(geoname.id)
-      depth = len(city_hierarchy)
+      city_depth = len(city_hierarchy)
       hierarchy_ids = [g.id for g in city_hierarchy]
-      if min_depth < depth < max_depth and base.id in hierarchy_ids:
+      if city_depth >= depth and anchor_id in hierarchy_ids:
         return city_hierarchy
 
     return None
