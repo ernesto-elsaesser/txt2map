@@ -11,4 +11,4 @@ logging.basicConfig(format='%(asctime)s %(message)s',
 
 evaluator = GeoWebNewsEvaluator(True)
 evaluator.test_all(max_documents=100)
-#evaluator.test('139')
+#evaluator.test('272')

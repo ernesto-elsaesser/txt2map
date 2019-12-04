@@ -56,7 +56,7 @@ class ToponymResolver:
     for name, geoname in selected.items():
       hierarchy = self.gns_cache.get_hierarchy(geoname.id)
 
-      if not geoname.is_city and len(hierarchy) > 2:
+      if not geoname.is_city and name in search_results:
         results = search_results[name]
         city_hierarchy = self._find_city_ancestor(name, hierarchy, results)
         if city_hierarchy != None:
@@ -140,8 +140,7 @@ class ToponymResolver:
     return None
 
   def _similar(self, name1, name2):
-    dist = _levenshtein.distance(name1, name2)
-    return dist / len(name1) < 0.25
+    return _levenshtein.distance(name1, name2) < 2
 
   def cluster(self, resolved_toponyms):
     logging.info('clustering toponyms ...')
