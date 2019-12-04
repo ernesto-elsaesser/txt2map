@@ -2,6 +2,7 @@ import os
 import logging
 import math
 import sqlite3
+from Levenshtein import _levenshtein
 from .model import ResolvedToponym, ToponymCluster
 from .geonames import GeoNamesCache
 from .database import DefaultsDatabase
@@ -103,6 +104,8 @@ class ToponymResolver:
   def _evidence(self, name, geoname, hierarchy, close_ids, regions, present_ids):
 
     score = 4 / len(hierarchy)
+    if name not in geoname.name and geoname.name not in name:
+      score /= _levenshtein.distance(name, geoname.name) + 1
 
     for ancestor in hierarchy[:-1]:
       if ancestor.id in close_ids:
@@ -111,9 +114,6 @@ class ToponymResolver:
         score += 1.0
       elif ancestor.id in present_ids:
         score += 0.5
-
-    if geoname.name != name:
-      score -= 1.0
 
     return score
 
@@ -133,11 +133,8 @@ class ToponymResolver:
     return None
 
   def _similar(self, name1, name2):
-    if len(name1) != len(name2):
-      return False
-    eq_mask = [1 if a == b else 0 for a, b in zip(name1.lower(), name2.lower())]
-    eq_count = sum(eq_mask)
-    return eq_count / len(name1) > 0.75
+    dist = _levenshtein.distance(name1, name2)
+    return dist / len(name1) < 0.25
 
   def cluster(self, resolved_toponyms):
     logging.info('clustering toponyms ...')

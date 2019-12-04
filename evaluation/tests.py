@@ -15,6 +15,7 @@ class TestEvaluator:
     self.test_global_onto_distance_hard()
     self.test_global_top_defaults()
     self.test_global_special_chars()
+    self.test_global_name_sim()
     self.test_local_node()
     self.test_local_way()
     self.test_local_relation()
@@ -50,6 +51,11 @@ class TestEvaluator:
     self.eval.verify_annotation(72, 'Africa', 7.1881, 21.09375)
     self.eval.verify_annotation(98, 'Mexico', 23, -102)
     self.eval.verify_annotation(109, 'Uruguay', -33, -56)
+
+  def test_global_name_sim(self):
+    text = 'It is very lonely on Fire Island.'
+    self.eval.start_document('Global - Prefer Similar Names', text)
+    self.eval.verify_annotation(21, 'Fire Island', 61.15944, -150.19861)
 
   def test_global_special_chars(self):
     text = 'The Mall of Asia in Paranaque City.'

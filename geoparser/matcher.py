@@ -62,7 +62,7 @@ class OSMNameMatcher:
         for name, suffix in suffixes:
           if suffix == '':
             longest_match = name
-          elif suffix[0] == next_char:
+          elif suffix[0].lower() == next_char.lower():
             trimmed_suffixes.append((name, suffix[1:]))
         suffixes = trimmed_suffixes
         text_pos += 1
