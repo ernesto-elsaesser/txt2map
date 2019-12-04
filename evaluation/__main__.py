@@ -10,5 +10,5 @@ logging.basicConfig(format='%(asctime)s %(message)s',
 #evaluator.test_all()
 
 evaluator = GeoWebNewsEvaluator(False)
-evaluator.test_all(50, 'eval-gwn-onto-50-lg.txt')
-#evaluator.test('302')
+evaluator.test_all(100, 'eval-gwn-onto-100-lg.txt')
+#evaluator.test('13')

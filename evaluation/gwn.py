@@ -25,17 +25,18 @@ class GeoWebNewsEvaluator:
       if max_documents != None and count > max_documents:
         break
       if path.endswith('.txt'):
-        self.test(path.replace('.txt', ''), print_report=False)
+        self.test(path.replace('.txt', ''))
         count += 1
 
-    report = self.eval.corpus_report()
-    logging.info('\n' + report)
+    summary = self.eval.corpus_summary()
+    logging.info(summary)
 
     if report_file != None:
+      report = self.eval.corpus_report()
       with open(report_file, mode='w', encoding='utf-8') as f:
         f.write(report)
 
-  def test(self, doc_id, print_report=True):
+  def test(self, doc_id):
     text_path = self.corpus_dir + doc_id + '.txt'
     with open(text_path, encoding='utf-8') as f:
       text = f.read()
@@ -76,8 +77,5 @@ class GeoWebNewsEvaluator:
 
           self.eval.verify_annotation(pos, name, lat, lng)
 
-    if print_report:
-      output = self.eval.document_report()
-    else:
-      output = self.eval.document_summary()
-    logging.info(output)
+    report = self.eval.document_report()
+    logging.info(report)

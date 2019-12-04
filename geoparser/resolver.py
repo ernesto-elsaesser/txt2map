@@ -94,7 +94,7 @@ class ToponymResolver:
       evidence = self._evidence(name, geoname, hierarchy,
                              close_ids, regions, present_ids)
       if evidence > most_evidence + treshold:
-        logging.info(f'chosen {geoname} over {chosen} for {name}')
+        logging.info(f'chose {geoname} over {chosen} for {name}')
         chosen = geoname
         most_evidence = evidence
 
@@ -127,6 +127,7 @@ class ToponymResolver:
       city_depth = len(city_hierarchy)
       hierarchy_ids = [g.id for g in city_hierarchy]
       if city_depth >= depth and anchor_id in hierarchy_ids:
+        logging.info(f'chose city {geoname} over non-city {hierarchy[-1]} for {name}')
         return city_hierarchy
 
     return None
