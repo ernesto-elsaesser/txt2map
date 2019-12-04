@@ -54,9 +54,9 @@ class TestEvaluator:
     self.eval.verify_annotation(109, 'Uruguay', -33, -56)
 
   def test_global_name_sim(self):
-    text = 'It is very lonely on Fire Island.'
+    text = 'Where is Fire Island?'
     self.eval.start_document('Global - Prefer Similar Names', text)
-    self.eval.verify_annotation(21, 'Fire Island', 61.15944, -150.19861)
+    self.eval.verify_annotation(9, 'Fire Island', 40.6476, -73.14595)
 
   def test_global_special_chars(self):
     text = 'The Mall of Asia in Paranaque City.'

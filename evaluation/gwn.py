@@ -19,7 +19,7 @@ class GeoWebNewsEvaluator:
     self.eval = CorpusEvaluator(parser, 161)
     self.eval.start_corpus('GWN')
 
-  def test_all(self, max_documents=None, report_file=None):
+  def test_all(self, save_report=True, max_documents=None):
     count = 1
     for path in os.listdir(self.corpus_dir):
       if max_documents != None and count > max_documents:
@@ -31,9 +31,11 @@ class GeoWebNewsEvaluator:
     summary = self.eval.corpus_summary()
     logging.info(summary)
 
-    if report_file != None:
+    if save_report:
       report = self.eval.corpus_report()
-      with open(report_file, mode='w', encoding='utf-8') as f:
+      now = datetime.datetime.now().date()
+      file_name = f'eval-gwn-{max_documents}-{now}.txt'
+      with open(file_name, mode='w', encoding='utf-8') as f:
         f.write(report)
 
   def test(self, doc_id):

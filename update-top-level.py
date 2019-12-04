@@ -6,7 +6,7 @@ names = {}
 
 def insert_names(geoname):
   print(geoname.name)
-  detailed = GeoNamesAPI.get_geoname(geoname.id) # use API directly to get details
+  detailed = GeoNamesAPI.get_geoname(geoname.id) # use API directly to get all names
   names[detailed.name] = geoname.id
   names[detailed.asciiname] = geoname.id
   for entry in detailed.altnames:
@@ -23,6 +23,7 @@ for continent in continents:
 
 names['U.S.'] = 6252001
 names['US'] = 6252001
+names['USA'] = 6252001
 names['Atlantic'] = 3373405
 names['Atlantic Ocean'] = 3373405
 names['Pacific'] = 2363254

@@ -49,7 +49,10 @@ class CorpusEvaluator:
           geonames[position] = toponym.geoname
       for match in cluster.local_matches:
         for position in match.positions:
-          osm_elements[position] = match.elements
+          if position in osm_elements:
+            osm_elements[position] += match.elements
+          else:
+            osm_elements[position] = match.elements
 
     self.results[self.corpus][document] = Result(geonames, osm_elements)
 

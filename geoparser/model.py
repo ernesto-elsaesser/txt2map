@@ -12,37 +12,31 @@ class GeoName:
       self.lng = float(data['lng'])
       self.cc = '-' if 'countryCode' not in data else data['countryCode']
       self.adm1 = '-' if 'adminCode1' not in data else data['adminCode1']
-      if 'fcode' in data:
-        self.is_city = data['fcode'].startswith('PP')
-      else:
-        self.is_city = False
+      self.fcl = data['fcl']
+      self.fcode = data['fcode']
+      # not cached:
+      if 'asciiName' in data:
+        self.asciiname = data['asciiName']
+      if 'alternateNames' in data:
+        self.altnames = data['alternateNames']
     else:
       self.id = row[0]
       self.name = row[1]
       self.population = row[2]
-      self.is_city = row[3]
-      self.lat = row[4]
-      self.lng = row[5]
-      self.cc = row[6]
-      self.adm1 = row[7]
+      self.lat = row[3]
+      self.lng = row[4]
+      self.fcl = row[5]
+      self.fcode = row[6]
+      self.cc = row[7]
+      self.adm1 = row[8]
+    
+    self.is_city = self.fcl == 'P'
   
   def region(self):
     return f'{self.cc}-{self.adm1}'
 
   def __repr__(self):
-    suffix = '*' if self.is_city else ''
-    return f'{self.name}{suffix} ({self.region()})'
-
-
-class DetailedGeoname(GeoName):
-
-  # data: dict
-  def __init__(self, data):
-    super().__init__(data=data)
-    self.fclass = data['fcl']
-    self.fcode = data['fcode']
-    self.altnames = data['alternateNames']
-    self.asciiname = data['asciiName']
+    return f'{self.name}, {self.adm1}, {self.cc} [{self.fcode}]'
 
 
 class ToponymMap:

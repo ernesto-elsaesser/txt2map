@@ -22,9 +22,10 @@ class GeoNamesDatabase(Database):
           geoname_id INT UNIQUE, 
           name TEXT,
           population INT,
-          is_city BOOLEAN,
           lat REAL,
           lng REAL,
+          fcl CHAR(1),
+          fcode VARCHAR(10),
           cc CHAR(2),
           adm1 TEXT)''')
     self.cursor.execute(
@@ -94,9 +95,9 @@ class GeoNamesDatabase(Database):
   def store_geoname(self, geoname):
     g = geoname
     try:
-      self.cursor.execute('INSERT INTO geonames VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-                          (g.id, g.name, g.population, g.is_city,
-                           g.lat, g.lng, g.cc, g.adm1))
+      self.cursor.execute('INSERT INTO geonames VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                          (g.id, g.name, g.population, g.lat, g.lng, 
+                          g.fcl, g.fcode, g.cc, g.adm1))
       self.commit_changes()
     except sqlite3.Error:
       pass

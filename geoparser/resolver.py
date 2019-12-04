@@ -107,7 +107,8 @@ class ToponymResolver:
 
     score = 4 / len(hierarchy)
     if geoname.name not in name:
-      score /= _levenshtein.distance(name, geoname.name) + 1
+      dist = _levenshtein.distance(name, geoname.name)
+      score -= (dist ** 1.5) / 10
 
     for ancestor in hierarchy[:-1]:
       if ancestor.id in close_ids:
@@ -123,13 +124,13 @@ class ToponymResolver:
     cities = [g for g in search_results if g.is_city and self._similar(g.name, name)]
     cities = sorted(cities, key=lambda c: c.population, reverse=True)
     depth = len(hierarchy)
-    anchor_id = hierarchy[-2].id
+    parent = hierarchy[-1]
     for geoname in cities[:10]:
       city_hierarchy = self.gns_cache.get_hierarchy(geoname.id)
       city_depth = len(city_hierarchy)
       hierarchy_ids = [g.id for g in city_hierarchy]
-      if city_depth >= depth and anchor_id in hierarchy_ids:
-        logging.info(f'chose city {geoname} over non-city {hierarchy[-1]} for {name}')
+      if city_depth > depth and parent.id in hierarchy_ids:
+        logging.info(f'chose city {geoname} over non-city {parent} for {name}')
         return city_hierarchy
 
     return None
@@ -161,8 +162,9 @@ class ToponymResolver:
         g2 = toponym.geoname
         if g1.cc == g2.cc != '-' and g1.adm1 == g2.adm1 != '-':
           connected.append(toponym)
-          bound_names.add(toponym.name)
-          seeds.remove(toponym)
+          if toponym in seeds:
+            bound_names.add(toponym.name)
+            seeds.remove(toponym)
         elif g2.id in hierarchy_ids:
           connected.append(toponym)
           if toponym in seeds:

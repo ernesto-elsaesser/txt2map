@@ -2,7 +2,7 @@ import os
 import requests
 import json
 import sqlite3
-from .model import GeoName, DetailedGeoname
+from .model import GeoName
 from .database import GeoNamesDatabase
 
 
@@ -56,6 +56,8 @@ class GeoNamesAPI:
   @staticmethod
   def search(name):
     params = [('q', name)]
+    for fcl in ['A','H','L','P']:
+      params.append(('featureClass', fcl))
     json_data = GeoNamesAPI.get_json('search', params)
     if not 'geonames' in json_data:
       return []
@@ -82,7 +84,7 @@ class GeoNamesAPI:
   def get_geoname(id):
     params = [('geonameId', id)]
     json_data = GeoNamesAPI.get_json('get', params)
-    return DetailedGeoname(json_data)
+    return GeoName(json_data)
 
   @staticmethod
   def get_json(endpoint, params):
