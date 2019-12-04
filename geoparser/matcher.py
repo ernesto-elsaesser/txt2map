@@ -56,15 +56,26 @@ class OSMNameMatcher:
 
       text_pos = end
       longest_match = None
-      while text_pos < text_len and len(suffixes) > 0:
+      one_off = []
+      while text_pos < text_len and len(suffixes + one_off) > 0:
         next_char = text[text_pos]
         trimmed_suffixes = []
+        trimmed_one_off = []
+        for name, suffix in one_off:
+          if suffix == '':
+            longest_match = name
+          elif suffix[0].lower() == next_char.lower():
+            trimmed_one_off.append((name, suffix[1:]))
         for name, suffix in suffixes:
           if suffix == '':
             longest_match = name
           elif suffix[0].lower() == next_char.lower():
             trimmed_suffixes.append((name, suffix[1:]))
+          else:
+            trimmed_one_off.append((name, suffix))
+            trimmed_one_off.append((name, suffix[1:]))
         suffixes = trimmed_suffixes
+        one_off = trimmed_one_off
         text_pos += 1
 
       if longest_match != None:

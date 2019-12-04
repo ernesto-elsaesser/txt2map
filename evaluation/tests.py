@@ -20,6 +20,7 @@ class TestEvaluator:
     self.test_local_way()
     self.test_local_relation()
     self.test_local_abbrevs()
+    self.test_local_fuzzy()
     report = self.eval.corpus_report()
     print(report)
 
@@ -85,3 +86,9 @@ class TestEvaluator:
     self.eval.start_document('Local - Abbreviations', text)
     self.eval.verify_annotation(11, 'St. Peter\'s Basilica', 41.90216, 12.4536)
     self.eval.verify_annotation(35, 'Rome', 41.89193, 12.51133)
+
+  def test_local_fuzzy(self):
+    text = 'She sang at Caesar\'s Palace in Las Vegas.'
+    self.eval.start_document('Local - Fuzzy Matching', text)
+    self.eval.verify_annotation(12, 'Caesar\'s Palace', 36.11672, -115.17518)
+    self.eval.verify_annotation(31, 'Las Vegas', 36.17497, -115.13722)
