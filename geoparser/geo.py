@@ -67,8 +67,9 @@ class GeoUtil:
 
   @staticmethod
   def _points_for_polygon(polygon):
-    centroid = geojson_utils.centroid(polygon)
-    point_coords = [centroid['coordinates']]
-    for coords in polygon['coordinates'][0]:
-      point_coords.append(coords)
+    coords = polygon['coordinates']
+    point_coords = []
+    if len(coords) > 0:
+      for coord_pair in coords[0]:
+        point_coords.append(coord_pair)
     return point_coords

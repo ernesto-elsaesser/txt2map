@@ -64,7 +64,7 @@ class CorpusEvaluator:
 
     if position in result.geonames:
       geoname = result.geonames[position]
-      geometry = self._get_geoname_geometry(geoname)
+      geometry = GeoUtil.make_point(geoname.lat, geoname.lng)
       ann.distance = GeoUtil.distance_beyond_tolerance(
           lat, lng, geometry, self.dist_limit)
     elif position in result.osm_elements:
@@ -116,18 +116,6 @@ class CorpusEvaluator:
     corpus_summary = self.corpus_summary(corpus=c)
     report += 'Overall: ' + corpus_summary
     return report
-
-  def _get_geoname_geometry(self, geoname):
-    dirname = os.path.dirname(__file__)
-    db = sqlite3.connect(dirname + '/shapes.db')
-    cursor = db.cursor()
-    cursor.execute(
-        'SELECT geojson FROM shapes WHERE geoname_id = ?', (geoname.id, ))
-    row = cursor.fetchone()
-    db.close()
-    if row == None:
-      return GeoUtil.make_point(geoname.lat, geoname.lng)
-    return json.loads(row[0])
 
   def _get_osm_element_geometries(self, osm_elements):
     json_response = OverpassAPI.load_geometries(osm_elements)

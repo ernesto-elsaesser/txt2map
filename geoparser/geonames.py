@@ -38,9 +38,17 @@ class GeoNamesCache:
     db = self.get_db()
     hierarchy = db.get_hierarchy(geoname_id)
     if hierarchy == None:
-      hierarchy = GeoNamesAPI.get_hierarchy(geoname_id)[1:] # skip Earth
+      hierarchy = GeoNamesAPI.get_hierarchy(geoname_id)[1:]  # skip Earth
       db.store_hierarchy(hierarchy)
     return hierarchy
+
+  def get_children(self, geoname_id):
+    db = self.get_db()
+    children = db.get_children(geoname_id)
+    if children == None:
+      children = GeoNamesAPI.get_children(geoname_id)
+      db.store_children(geoname_id, children)
+    return children
 
 
 class GeoNamesAPI:

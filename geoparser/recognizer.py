@@ -17,7 +17,7 @@ class ToponymRecognizer:
     with open(top_level_file, 'r') as f:
       json_dict = f.read()
     names = json.loads(json_dict)
-    self.top_level_names = list(names.keys())
+    self.top_level_names = list(sorted(names.keys(), key=lambda n: len(n)))
 
   def parse(self, text):
     doc = self.nlp(text)
@@ -37,6 +37,8 @@ class ToponymRecognizer:
       pos = ent.start_char
       if name.endswith('\'s'):
         name = name[:-2]
+      elif name.endswith('\''):
+        name = name[:-1]
       if name.startswith('the ') or name.startswith('The '):
         name = name[4:]
         pos += 4

@@ -28,16 +28,18 @@ class GeoNamesDatabase(Database):
           cc CHAR(2),
           adm1 TEXT)''')
     self.cursor.execute(
+        'CREATE TABLE search (name TEXT UNIQUE, result_ids TEXT)')
+    self.cursor.execute(
         'CREATE TABLE hierarchy (geoname_id INT UNIQUE, ancestor_ids TEXT)')
     self.cursor.execute(
-        'CREATE TABLE search (name UNIQUE, result_ids TEXT)')
+        'CREATE TABLE children (geoname_id INT UNIQUE, result_ids TEXT)')
     self.commit_changes()
 
   def get_search(self, name):
     self.cursor.execute('SELECT result_ids FROM search WHERE name = ?',
                         (name, ))
     row = self.cursor.fetchone()
-    return None if row == None else self._resolve_ids(row[0])
+    return self._resolve_ids(row)
 
   def store_search(self, name, geonames):
     result_ids = ','.join(str(g.id) for g in geonames)
@@ -51,7 +53,7 @@ class GeoNamesDatabase(Database):
     self.cursor.execute('SELECT ancestor_ids FROM hierarchy WHERE geoname_id = ?',
                         (geoname_id, ))
     row = self.cursor.fetchone()
-    return None if row == None else self._resolve_ids(row[0])
+    return self._resolve_ids(row)
 
   def store_hierarchy(self, geonames):
     geoname_id = geonames[-1].id
@@ -62,10 +64,26 @@ class GeoNamesDatabase(Database):
       self.store_geoname(geoname)
     self.commit_changes()
 
-  def _resolve_ids(self, id_str):
-    if id_str == '':
+  def get_children(self, geoname_id):
+    self.cursor.execute('SELECT child_ids FROM children WHERE geoname_id = ?',
+                        (geoname_id, ))
+    row = self.cursor.fetchone()
+    return self._resolve_ids(row)
+
+  def store_children(self, geoname_id, geonames):
+    child_ids = ','.join(str(g.id) for g in geonames)
+    self.cursor.execute('INSERT INTO children VALUES (?, ?)',
+                        (geoname_id, child_ids))
+    for geoname in geonames:
+      self.store_geoname(geoname)
+    self.commit_changes()
+
+  def _resolve_ids(self, row):
+    if row == None:
+      return None
+    if row[0] == '':
       return []
-    return [self.get_geoname(int(s)) for s in id_str.split(',')]
+    return [self.get_geoname(int(s)) for s in row[0].split(',')]
 
   def get_geoname(self, geoname_id):
     self.cursor.execute('SELECT * FROM geonames WHERE geoname_id = ?',

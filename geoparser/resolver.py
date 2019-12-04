@@ -5,7 +5,7 @@ import json
 import sqlite3
 from Levenshtein import _levenshtein
 from .model import ResolvedToponym, ToponymCluster
-from .geonames import GeoNamesCache, GeoNamesAPI
+from .geonames import GeoNamesCache
 
 class ToponymResolver:
 
@@ -106,7 +106,7 @@ class ToponymResolver:
   def _evidence(self, name, geoname, hierarchy, close_ids, regions, present_ids):
 
     score = 4 / len(hierarchy)
-    if name not in geoname.name and geoname.name not in name:
+    if geoname.name not in name:
       score /= _levenshtein.distance(name, geoname.name) + 1
 
     for ancestor in hierarchy[:-1]:
@@ -184,12 +184,12 @@ class ToponymResolver:
     return sorted(clusters, key=lambda c: c.mentions(), reverse=True)
 
   def _get_single_child(self, resolved):
-    children = GeoNamesAPI.get_children(resolved.geoname.id)
+    children = self.gns_cache.get_children(resolved.geoname.id)
     single_child = None
 
     while len(children) == 1:
       single_child = children[0]
-      children = GeoNamesAPI.get_children(single_child.id)
+      children = self.gns_cache.get_children(single_child.id)
 
     if single_child == None:
       return resolved if len(children) == 0 else None
