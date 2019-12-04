@@ -31,7 +31,7 @@ class ToponymResolver:
         search_results[name] = results
         if len(results) == 0: continue
         default = results[0]
-        if default.name != name:
+        if not self._similar(default.name, name):
           default = max(results, key=lambda g: g.population)
       selected[name] = default
 
@@ -118,7 +118,7 @@ class ToponymResolver:
     return score
 
   def _find_city_ancestor(self, name, hierarchy, search_results):
-    cities = [g for g in search_results if g.is_city and g.name in name]
+    cities = [g for g in search_results if g.is_city and self._similar(g.name, name)]
     cities = sorted(cities, key=lambda c: c.population, reverse=True)
     depth = len(hierarchy)
     anchor_id = hierarchy[-2].id
@@ -131,6 +131,13 @@ class ToponymResolver:
         return city_hierarchy
 
     return None
+
+  def _similar(self, name1, name2):
+    if len(name1) != len(name2):
+      return False
+    eq_mask = [1 if a == b else 0 for a, b in zip(name1.lower(), name2.lower())]
+    eq_count = sum(eq_mask)
+    return eq_count / len(name1) > 0.75
 
   def cluster(self, resolved_toponyms):
     logging.info('clustering toponyms ...')
