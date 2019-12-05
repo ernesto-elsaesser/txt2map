@@ -13,7 +13,7 @@ class GeoName:
       self.cc = '-' if 'countryCode' not in data else data['countryCode']
       self.adm1 = '-' if 'adminCode1' not in data else data['adminCode1']
       self.fcl = data['fcl']
-      self.fcode = data['fcode']
+      self.fcode = '-' if 'fcode' not in data else data['fcode']
       # not cached:
       if 'asciiName' in data:
         self.asciiname = data['asciiName']

@@ -106,7 +106,7 @@ class ToponymResolver:
   def _evidence(self, name, geoname, hierarchy, close_ids, regions, present_ids):
 
     score = 4 / len(hierarchy)
-    if geoname.name not in name and not self._acronym(geoname.name) in name:
+    if geoname.name not in name and not self._acronym(geoname.name) == name:
       dist = pylev.levenshtein(name, geoname.name)
       score -= (dist ** 1.5) / 10
 
@@ -122,7 +122,7 @@ class ToponymResolver:
 
   def _acronym(self, name):
     parts = name.split(' ')
-    return ''.join(p[0] for p in parts)
+    return ''.join(p[0] for p in parts if len(p) > 0)
 
   def _find_city_ancestor(self, name, hierarchy, search_results):
     cities = [g for g in search_results if g.is_city and self._similar(g.name, name)]
@@ -179,9 +179,10 @@ class ToponymResolver:
         anchor = max(cities, key=lambda c: c.geoname.population)
       else:
         anchor = min(connected, key=lambda c: c.geoname.population)
-        child = self._get_single_child(anchor) # try to drill down
-        if child != None:
-          cities.append(child)
+        if len(anchor.hierarchy) > 1:
+          child = self._get_single_child(anchor) # try to drill down
+          if child != None:
+            cities.append(child)
 
       cluster = ToponymCluster(connected, cities, anchor)
       clusters.append(cluster)
