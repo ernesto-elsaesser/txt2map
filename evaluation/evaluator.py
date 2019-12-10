@@ -1,19 +1,26 @@
 import os
 import logging
-import json
-import sqlite3
-from osm2geojson import json2geojson
+import csv
 from geoparser import Geoparser, GeoNamesCache, OverpassAPI, GeoUtil
 
 
 class Annotation:
 
-  def __init__(self, position, name):
+  def __init__(self, position, name, lat, lng):
     self.position = position
     self.name = name
-    self.present = True
-    self.correct = True
-    self.distance = 0
+    self.lat = lat
+    self.lng = lng
+    self.distance = None
+    self.geoname = None
+    self.osm_element = None
+    self.remark = None
+
+  def recognized(self):
+    return self.geoname != None or self.osm_element != None
+
+  def resolved(self, accuracy_km):
+    return self.distance != None and self.distance < accuracy_km
 
 
 class Result:
@@ -26,10 +33,8 @@ class Result:
 
 class CorpusEvaluator:
 
-  def __init__(self, geoparser, accuracy_km):
-    self.dist_limit = accuracy_km
+  def __init__(self, geoparser):
     self.parser = geoparser
-    self.gns_cache = geoparser.resolver.gns_cache
     self.results = {}
 
   def start_corpus(self, corpus):
@@ -56,80 +61,61 @@ class CorpusEvaluator:
 
     self.results[self.corpus][document] = Result(geonames, osm_elements)
 
-  def geoname_to_coordinates(self, geoname_id):
-    geoname = self.gns_cache.get(geoname_id)
-    return (geoname.lat, geoname.lng)
-
-  def verify_annotation(self, position, name, lat, lng):
-    c, d = self.corpus, self.document
+  def verify_annotation(self, annotation):
+    c, d, a = self.corpus, self.document, annotation
     result = self.results[c][d]
-    ann = Annotation(position, name)
 
-    if position in result.geonames:
-      geoname = result.geonames[position]
+    if a.position in result.geonames:
+      geoname = result.geonames[a.position]
       geometry = GeoUtil.make_point(geoname.lat, geoname.lng)
-      ann.distance = GeoUtil.distance_beyond_tolerance(
-          lat, lng, geometry, self.dist_limit)
-    elif position in result.osm_elements:
-      osm_elements = result.osm_elements[position]
-      feature_collection = self._get_osm_element_geometries(osm_elements)
-      ann.distance = GeoUtil.min_distance_beyond_tolerance(
-          lat, lng, feature_collection, self.dist_limit)
-    else:
-      ann.present = False
-      ann.correct = False
+      a.geoname = geoname
+      a.distance = GeoUtil.distance_to_geometry(a.lat, a.lng, geometry)
+    
+    if a.position in result.osm_elements:
+      elements = result.osm_elements[a.position]
+      json_geometries = OverpassAPI.load_geometries(elements)
+      (dist, element) = GeoUtil.min_distance_osm_element(a.lat, a.lng, json_geometries)
+      a.osm_element = element
+      a.distance = dist
 
-    if ann.distance > 0:
-      ann.correct = False
+    self.results[c][d].annotations.append(a)
 
-    self.results[c][d].annotations.append(ann)
-
-  def document_summary(self, corpus=None, document=None):
+  def document_summary(self, accuracy_km, corpus=None, document=None):
     c = corpus or self.corpus
     d = document or self.document
     result = self.results[c][d]
-    return self._summary(result.annotations)
+    return self._summary(result.annotations, accuracy_km)
 
-  def corpus_summary(self, corpus=None):
+  def corpus_summary(self, accuracy_km, corpus=None):
     c = corpus or self.corpus
     results = self.results[c]
     all_annotations = sum([r.annotations for r in results.values()], [])
-    return self._summary(all_annotations)
+    return self._summary(all_annotations, accuracy_km)
 
-  def document_report(self, corpus=None, document=None):
-    c = corpus or self.corpus
-    d = document or self.document
-    result = self.results[c][d]
-    summary = self.document_summary(corpus=c, document=d)
-    report = f'{d}: {summary}\n'
-    for a in result.annotations:
-      if a.correct: continue
-      if a.present:
-        report += f'- Coordinate off by {a.distance:.1f} for {a.name} at {a.position}\n'
-      else:
-        report += f'- Missing annotation for {a.name} at {a.position}\n'
-    return report
+  def report_csv(self):
+    lines = ''
+    for c in self.results:
+      for d in self.results[c]:
+        for a in self.results[c][d].annotations:
+          p = a.position
+          n = a.name
+          r = a.remark or ''
+          dist = gid = osmref =''
+          if a.distance != None:
+            dist = f'{a.distance:.2f}'
+          if a.geoname != None:
+            gid = str(a.geoname.id)
+          if a.osm_element != None:
+            osmref = str(a.osm_element)
+          lines += f'{c}\t{d}\t{p}\t{n}\t{r}\t{dist}\t{gid}\t{osmref}\n'
+    return lines
 
-  def corpus_report(self, corpus=None):
-    c = corpus or self.corpus
-    results = self.results[c]
-    report = ''
-    for d in results:
-      report += self.document_report(corpus=c, document=d)
-    corpus_summary = self.corpus_summary(corpus=c)
-    report += 'Overall: ' + corpus_summary
-    return report
-
-  def _get_osm_element_geometries(self, osm_elements):
-    json_response = OverpassAPI.load_geometries(osm_elements)
-    return json2geojson(json_response)
-
-  def _summary(self, annotations):
+  def _summary(self, annotations, accuracy_km):
     total = len(annotations)
     if total == 0:
       return 'no annotations'
-    present = [a for a in annotations if a.present]
-    correct = [a for a in annotations if a.correct]
-    rel_present = int((len(present)/total) * 100)
-    rel_correct = int((len(correct)/total) * 100)
-    return f'{total} annotations, {rel_present}% recognized, {rel_correct}% resolved'
+    recognized = [a for a in annotations if a.recognized()]
+    resolved = [a for a in annotations if a.resolved(accuracy_km)]
+    p_recognized = int((len(recognized)/total) * 100)
+    p_resolved = int((len(resolved)/total) * 100)
+    return f'{total} annotations, {p_recognized}% recognized, {p_resolved}% resolved'

@@ -1,1 +1,2 @@
-from .evaluator import CorpusEvaluator
+from .tests import TestEvaluator
+from .gwn import GeoWebNewsEvaluator

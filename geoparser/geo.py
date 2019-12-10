@@ -1,4 +1,6 @@
 import geojson_utils
+from osm2geojson import json2geojson
+from .model import OSMElement
 
 class GeoUtil:
 
@@ -18,19 +20,7 @@ class GeoUtil:
     return [s,w,n,e]
 
   @staticmethod
-  def min_distance_beyond_tolerance(lat, lng, feature_collection, tolerance_km):
-    min_dist = float('inf')
-    for feature in feature_collection['features']:
-      geometry = feature['geometry']
-      dist = GeoUtil.distance_beyond_tolerance(lat, lng, geometry, tolerance_km)
-      if dist == 0:
-        return 0
-      elif dist < min_dist:
-        min_dist = dist
-    return min_dist
-
-  @staticmethod
-  def distance_beyond_tolerance(lat, lng, geometry, tolerance_km):
+  def distance_to_geometry(lat, lng, geometry):
     target = GeoUtil.make_point(lat, lng)
     t = geometry['type']
     if t == 'Point':
@@ -55,15 +45,28 @@ class GeoUtil:
 
     point = {}
     min_dist = float('inf')
-    limit = tolerance_km * 1000 
     for coordinates in point_coords:
       point['coordinates'] = coordinates
       dist = geojson_utils.point_distance(point, target)
-      if dist < limit:
-        return 0
-      elif dist < min_dist:
+      if dist < min_dist:
         min_dist = dist
-    return (min_dist / 1000) - tolerance_km
+    return min_dist / 1000
+
+  @staticmethod
+  def min_distance_osm_element(lat, lng, json_geometries):
+    feature_collection = json2geojson(json_geometries)
+    min_dist = float('inf')
+    element = None
+    for feature in feature_collection['features']:
+      geometry = feature['geometry']
+      dist = GeoUtil.distance_to_geometry(lat, lng, geometry)
+      if dist < min_dist:
+        min_dist = dist
+        properties = feature['properties']
+        element = OSMElement(properties['id'], properties['type'])
+        if dist == 0:
+          break
+    return (min_dist, element)
 
   @staticmethod
   def _points_for_polygon(polygon):

@@ -4,7 +4,7 @@ import csv
 import json
 import datetime
 from geoparser import Geoparser
-from .evaluator import CorpusEvaluator
+from .evaluator import Annotation, CorpusEvaluator
 
 class GeoWebNewsEvaluator:
 
@@ -15,8 +15,8 @@ class GeoWebNewsEvaluator:
     dirname = os.path.dirname(__file__)
     self.corpus_dir = dirname + '/corpora/GeoWebNews/'
     search_dist = 15 if verify_street_level else 0
-    parser = Geoparser(nlp_model=2, local_search_dist_km=search_dist)
-    self.eval = CorpusEvaluator(parser, 161)
+    self.parser = Geoparser(nlp_model=2, local_search_dist_km=search_dist)
+    self.eval = CorpusEvaluator(self.parser)
     self.eval.start_corpus('GWN')
 
   def test_all(self, save_report=True, max_documents=None):
@@ -28,13 +28,13 @@ class GeoWebNewsEvaluator:
         self.test(path.replace('.txt', ''))
         count += 1
 
-    summary = self.eval.corpus_summary()
+    summary = self.eval.corpus_summary(161)
     logging.info(summary)
 
     if save_report:
-      report = self.eval.corpus_report()
+      report = self.eval.report_csv()
       now = datetime.datetime.now().date()
-      file_name = f'eval-gwn-{max_documents}-{now}.txt'
+      file_name = f'eval-gwn-{max_documents}-{now}.csv'
       with open(file_name, mode='w', encoding='utf-8') as f:
         f.write(report)
 
@@ -49,7 +49,7 @@ class GeoWebNewsEvaluator:
     with open(annotation_path, encoding='utf-8') as f:
       reader = csv.reader(f, delimiter='\t')
 
-      tag_data = {}
+      annotations = {}
       for row in reader:
         tag_id = row[0]
         data = row[1].split(' ')
@@ -59,25 +59,28 @@ class GeoWebNewsEvaluator:
           if annotation_type in self.used_annotation_types:
             position = int(data[1])
             name = row[2]
-            tag_data[tag_id] = (position, name)
+            annotations[tag_id] = Annotation(position, name, 0, 0)
 
         elif tag_id.startswith('#'):  # BRAT annotator note
           tag_id = data[1]
-          if tag_id not in tag_data:
+          if tag_id not in annotations:
               continue
 
-          (pos, name) = tag_data[tag_id]
+          a = annotations[tag_id]
           if ',' in row[2]:
             if not self.verify_street_level:
               continue
             coords = row[2].split(',')
-            lat = float(coords[0].strip())
-            lng = float(coords[1].strip())
+            a.lat = float(coords[0].strip())
+            a.lng = float(coords[1].strip())
+            a.remark = 'hard'
           else:
             geoname_id = int(row[2])
-            (lat, lng) = self.eval.geoname_to_coordinates(geoname_id)
+            geoname = self.parser.resolver.gns_cache.get(geoname_id)
+            a.lat = geoname.lat
+            a.lng = geoname.lng
 
-          self.eval.verify_annotation(pos, name, lat, lng)
+          self.eval.verify_annotation(a)
 
-    report = self.eval.document_report()
-    logging.info(report)
+    summary = self.eval.document_summary(161)
+    logging.info(summary)
