@@ -53,7 +53,7 @@ class GeoUtil:
     return min_dist / 1000
 
   @staticmethod
-  def min_distance_osm_element(lat, lng, json_geometries):
+  def closest_osm_element(lat, lng, json_geometries):
     feature_collection = json2geojson(json_geometries)
     min_dist = float('inf')
     element = None

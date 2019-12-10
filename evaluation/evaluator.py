@@ -75,10 +75,12 @@ class CorpusEvaluator:
     
     if a.position in result.osm_elements and not geoname_match:
       elements = result.osm_elements[a.position]
-      json_geometries = OverpassAPI.load_geometries(elements)
-      (dist, element) = GeoUtil.min_distance_osm_element(a.lat, a.lng, json_geometries)
-      a.osm_element = element
-      a.distance = dist
+      osm_json = OverpassAPI.load_geometries(elements)
+      (dist, element) = GeoUtil.closest_osm_element(a.lat, a.lng, osm_json)
+      if a.distance == None or a.distance > dist:
+        a.osm_element = element
+        a.distance = dist
+        a.geoname = None
 
     self.results[c][d].annotations.append(a)
 
@@ -95,7 +97,7 @@ class CorpusEvaluator:
     return self._summary(all_annotations, accuracy_km)
 
   def report_csv(self):
-    lines = ''
+    lines = 'Corpus\tDocument\tPosition\tName\tDistance\tGeoName ID\tOSM Reference\tRemark\n'
     for c in self.results:
       for d in self.results[c]:
         for a in self.results[c][d].annotations:
@@ -109,7 +111,7 @@ class CorpusEvaluator:
             gid = str(a.geoname.id)
           if a.osm_element != None:
             osmref = str(a.osm_element)
-          lines += f'{c}\t{d}\t{p}\t{n}\t{r}\t{dist}\t{gid}\t{osmref}\n'
+          lines += f'{c}\t{d}\t{p}\t{n}\t{dist}\t{gid}\t{osmref}\t{r}\n'
     return lines
 
   def _summary(self, annotations, accuracy_km):

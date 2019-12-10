@@ -19,14 +19,18 @@ class GeoWebNewsEvaluator:
     self.eval = CorpusEvaluator(self.parser)
     self.eval.start_corpus('GWN')
 
-  def test_all(self, save_report=True, max_documents=None):
-    count = 1
-    for path in os.listdir(self.corpus_dir):
-      if max_documents != None and count > max_documents:
-        break
-      if path.endswith('.txt'):
-        self.test(path.replace('.txt', ''))
-        count += 1
+  def test_all(self, save_report=True, doc_range=range(200)):
+    paths = os.listdir(self.corpus_dir)
+    docs = [p.replace('.txt', '') for p in paths if p.endswith('.txt')]
+    docs = list(sorted(docs))
+
+    try:
+      for i in doc_range:
+        logging.info(f'= {i} =')
+        self.test(docs[i])
+    except:
+      logging.warning(f'--- EXCEPTION ---')
+      pass
 
     summary = self.eval.corpus_summary(161)
     logging.info(summary)
@@ -34,9 +38,10 @@ class GeoWebNewsEvaluator:
     if save_report:
       report = self.eval.report_csv()
       now = datetime.datetime.now().date()
-      file_name = f'eval-gwn-{max_documents}-{now}.csv'
+      file_name = f'eval-gwn-{now}.csv'
       with open(file_name, mode='w', encoding='utf-8') as f:
         f.write(report)
+      logging.info('wrote results to ' + file_name)
 
   def test(self, doc_id):
     text_path = self.corpus_dir + doc_id + '.txt'
