@@ -14,7 +14,7 @@ class Annotation:
     self.distance = None
     self.geoname = None
     self.osm_element = None
-    self.remark = None
+    self.remark = ''
 
   def recognized(self):
     return self.geoname != None or self.osm_element != None
@@ -97,21 +97,18 @@ class CorpusEvaluator:
     return self._summary(all_annotations, accuracy_km)
 
   def report_csv(self):
-    lines = 'Corpus\tDocument\tPosition\tName\tDistance\tGeoName ID\tOSM Reference\tRemark\n'
+    lines = 'Corpus\tDocument\tPosition\tName\tRemark\tSource\tID\tDistance\n'
     for c in self.results:
       for d in self.results[c]:
         for a in self.results[c][d].annotations:
-          p = a.position
-          n = a.name
-          r = a.remark or ''
-          dist = gid = osmref =''
-          if a.distance != None:
-            dist = f'{a.distance:.2f}'
+          lines += f'{c}\t{d}\t{a.position}\t{a.name}\t{a.remark}\t'
+          if a.distance == None:
+            lines += f'\t\t\n'
+            continue
           if a.geoname != None:
-            gid = str(a.geoname.id)
-          if a.osm_element != None:
-            osmref = str(a.osm_element)
-          lines += f'{c}\t{d}\t{p}\t{n}\t{dist}\t{gid}\t{osmref}\t{r}\n'
+            lines += f'GEO\t{a.geoname.id}\t{a.distance:.2f}\n'
+          else:
+            lines += f'OSM\t{a.osm_element}\t{a.distance:.2f}\n'
     return lines
 
   def _summary(self, annotations, accuracy_km):

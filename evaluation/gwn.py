@@ -26,24 +26,23 @@ class GeoWebNewsEvaluator:
 
     try:
       for i in doc_range:
-        logging.info(f'= {i} =')
-        self.test(docs[i])
+        self.test(docs[i], i)
     except:
       logging.warning(f'--- EXCEPTION ---')
       pass
 
     summary = self.eval.corpus_summary(161)
-    logging.info(summary)
+    logging.info('Overall: %s', summary)
 
     if save_report:
       report = self.eval.report_csv()
-      now = datetime.datetime.now().date()
+      now = datetime.datetime.now().strftime('%Y-%m-%d-%H%M')
       file_name = f'eval-gwn-{now}.csv'
       with open(file_name, mode='w', encoding='utf-8') as f:
         f.write(report)
       logging.info('wrote results to ' + file_name)
 
-  def test(self, doc_id):
+  def test(self, doc_id, doc_num=1):
     text_path = self.corpus_dir + doc_id + '.txt'
     with open(text_path, encoding='utf-8') as f:
       text = f.read()
@@ -88,4 +87,4 @@ class GeoWebNewsEvaluator:
           self.eval.verify_annotation(a)
 
     summary = self.eval.document_summary(161)
-    logging.info(summary)
+    logging.info('Document %i: %s', doc_num, summary)
