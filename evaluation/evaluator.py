@@ -64,14 +64,16 @@ class CorpusEvaluator:
   def verify_annotation(self, annotation):
     c, d, a = self.corpus, self.document, annotation
     result = self.results[c][d]
+    geoname_match = False
 
     if a.position in result.geonames:
       geoname = result.geonames[a.position]
       geometry = GeoUtil.make_point(geoname.lat, geoname.lng)
       a.geoname = geoname
       a.distance = GeoUtil.distance_to_geometry(a.lat, a.lng, geometry)
+      geoname_match = a.distance == 0
     
-    if a.position in result.osm_elements:
+    if a.position in result.osm_elements and not geoname_match:
       elements = result.osm_elements[a.position]
       json_geometries = OverpassAPI.load_geometries(elements)
       (dist, element) = GeoUtil.min_distance_osm_element(a.lat, a.lng, json_geometries)
