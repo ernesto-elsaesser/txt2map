@@ -2,6 +2,7 @@ import os
 import logging
 import math
 import json
+import csv
 import sqlite3
 import pylev
 from .model import ResolvedToponym, ToponymCluster
@@ -18,6 +19,16 @@ class ToponymResolver:
       json_dict = f.read()
     self.top_level = json.loads(json_dict)
 
+    self.demonyms = {}
+    demonyms_file = dirname + '/demonyms.csv'
+    with open(demonyms_file, 'r') as f:
+      reader = csv.reader(f, delimiter='\t')
+      for row in reader:
+        toponym = row[0]
+        demos = row[1].split(',')
+        for demonym in demos:
+          self.demonyms[demonym] = toponym
+
   def resolve(self, tmap):
     logging.info('resolving ...')
 
@@ -26,6 +37,9 @@ class ToponymResolver:
     for name in tmap.toponyms():
       if name in self.top_level:
         default = self.gns_cache.get(self.top_level[name])
+      elif name in self.demonyms:
+        toponym = self.demonyms[name]
+        default = self.gns_cache.get(self.top_level[toponym])
       else:
         results = self.gns_cache.search(name)
         if len(results) == 0: continue

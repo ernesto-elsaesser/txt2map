@@ -20,15 +20,12 @@ class ToponymRecognizer:
     names = json.loads(json_dict)
     self.top_level_names = list(names.keys())
 
-    self.demonyms = {}
+    self.demonyms = []
     demonyms_file = dirname + '/demonyms.csv'
     with open(demonyms_file, 'r') as f:
       reader = csv.reader(f, delimiter='\t')
       for row in reader:
-        toponym = row[0]
-        demos = row[1].split(',')
-        for demonym in demos:
-          self.demonyms[demonym] = toponym
+        self.demonyms += row[1].split(',')
 
   def parse(self, text):
     doc = self.nlp_sm(text)
@@ -41,13 +38,13 @@ class ToponymRecognizer:
 
   def _get_toponyms(self, text, ents):
     tmap = ToponymMap()
-    
+
     for name in self.top_level_names:
       for match in re.finditer(name, text):
         tmap.add(name, match.start())
     for demonym in self.demonyms:
       for match in re.finditer(demonym, text):
-        tmap.add(self.demonyms[demonym], match.start())
+        tmap.add(demonym, match.start())
 
     for ent in ents:
       if ent.label_ not in ['GPE', 'LOC', 'NORP']:
@@ -62,9 +59,6 @@ class ToponymRecognizer:
         name = name[:-2]
       elif name.endswith('\''):
         name = name[:-1]
-      
-      if ent.label_ == 'NORP' and name in self.demonyms:
-        continue
 
       tmap.add(name, pos)
 

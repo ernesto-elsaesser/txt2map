@@ -35,7 +35,7 @@ class GeoWebNewsEvaluator:
       return
 
     csv_str = self.eval.results_csv()
-    now = datetime.datetime.now().strftime('%Y-%m-%d-%H:%M')
+    now = datetime.datetime.now().strftime('%Y-%m-%d-%H%M')
     file_name = f'eval-gwn-{now}.csv'
     with open(file_name, mode='w', encoding='utf-8') as f:
       f.write(csv_str)
