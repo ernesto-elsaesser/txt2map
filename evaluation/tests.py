@@ -7,7 +7,6 @@ class TestEvaluator:
   def __init__(self):
     parser = Geoparser(nlp_model=0)
     self.eval = CorpusEvaluator(parser)
-    self.eval.start_corpus('Tests')
 
   def test_all(self):
     self.test_global_default_sense()

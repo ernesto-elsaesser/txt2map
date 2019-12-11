@@ -1,16 +1,20 @@
 import geojson_utils
-from osm2geojson import json2geojson
 from .model import OSMElement
 
 class GeoUtil:
 
   @staticmethod
-  def make_point(lat, lng):
+  def geojson_point(lat, lng):
       return {'type': 'Point', 'coordinates': [lng, lat]}
 
   @staticmethod
+  def geojson_polygon(lat_lngs):
+      coords = [[lng, lat] for lat, lng in lat_lngs]
+      return {'type': 'Polygon', 'coordinates': [coords]}
+
+  @staticmethod
   def bounding_box(lat, lng, corner_dist):
-    start = GeoUtil.make_point(lat, lng)
+    start = GeoUtil.geojson_point(lat, lng)
     ne = geojson_utils.destination_point(start, 45, corner_dist)
     n = ne['coordinates'][1]
     e = ne['coordinates'][0]
@@ -20,59 +24,71 @@ class GeoUtil:
     return [s,w,n,e]
 
   @staticmethod
-  def distance_to_geometry(lat, lng, geometry):
-    target = GeoUtil.make_point(lat, lng)
-    t = geometry['type']
-    if t == 'Point':
-      point_coords = [geometry['coordinates']]
-    elif t == 'LineString':
-      point_coords = geometry['coordinates']
-    elif t == 'Polygon':
-      inside = geojson_utils.point_in_polygon(target, geometry)
-      if inside: return 0
-      point_coords = GeoUtil._points_for_polygon(geometry)
-    elif t == 'MultiPolygon':
-      inside = geojson_utils.point_in_multipolygon(target, geometry)
-      if inside: return 0
-      point_coords = []
-      polygon = {}
-      for coords in geometry['coordinates']:
-        polygon['coordinates'] = coords
-        point_coords += GeoUtil._points_for_polygon(polygon)
-    else:
-      print(f'Unsupported geometry type: {t}')
-      point_coords = []
-
-    point = {}
-    min_dist = float('inf')
-    for coordinates in point_coords:
-      point['coordinates'] = coordinates
-      dist = geojson_utils.point_distance(point, target)
-      if dist < min_dist:
-        min_dist = dist
-    return min_dist / 1000
+  def distance(lat1, lng1, lat2, lng2):
+    p1 = GeoUtil.geojson_point(lat1, lng1)
+    p2 = GeoUtil.geojson_point(lat2, lng2)
+    dist = geojson_utils.point_distance(p1, p2)
+    return dist / 1000
 
   @staticmethod
-  def closest_osm_element(lat, lng, json_geometries):
-    feature_collection = json2geojson(json_geometries)
+  def minimum_distance(lat, lng, lat_lngs):
+
+    if len(lat_lngs) > 2 and lat_lngs[0] == lat_lngs[-1]:
+      point = GeoUtil.geojson_point(lat, lng)
+      polygon = GeoUtil.geojson_polygon(lat_lngs)
+      is_inside = geojson_utils.point_in_polygon(point, polygon)
+      if is_inside:
+        return 0
+
     min_dist = float('inf')
-    element = None
-    for feature in feature_collection['features']:
-      geometry = feature['geometry']
-      dist = GeoUtil.distance_to_geometry(lat, lng, geometry)
+    for lat2, lng2 in lat_lngs:
+      dist = GeoUtil.distance(lat, lng, lat2, lng2)
+      if dist == 0:
+        return 0
       if dist < min_dist:
         min_dist = dist
-        properties = feature['properties']
-        element = OSMElement(properties['id'], properties['type'])
+
+    return min_dist
+
+  @staticmethod
+  def closest_osm_element(lat, lng, osm_json):
+    elements = osm_json['elements']
+    min_dist = float('inf')
+    closest = None
+    full_ids = [f'{e["type"]}/{e["id"]}' for e in elements]
+
+    for e in elements:
+      dist = GeoUtil._osm_element_distance(lat, lng, e, full_ids)
+      if dist < min_dist:
+        closest = OSMElement(e['id'], e['type'])
+        if dist == 0:
+          return (0, closest)
+        min_dist = dist
+
+    return (min_dist, closest)
+
+  @staticmethod
+  def _osm_element_distance(lat, lng, el, excluded):
+    t = el['type']
+    if t == 'node':
+      return GeoUtil.distance(lat, lng, el['lat'], el['lon'])
+    elif t == 'way':
+      lat_lngs = [(p['lat'], p['lon']) for p in el['geometry']]
+      return GeoUtil.minimum_distance(lat, lng, lat_lngs)
+    elif t == 'relation':
+      distances = []
+      for m in el['members']:
+        if m['role'] in ['label', 'admin_centre', 'subarea', 'inner']:
+          continue
+        if f'{m["type"]}/{m["ref"]}' in excluded:
+          continue
+        if m['type'] == 'relation':
+          print('Super-relations not supported!')
+          continue
+        dist = GeoUtil._osm_element_distance(lat, lng, m, None)
+        distances.append(dist)
         if dist == 0:
           break
-    return (min_dist, element)
-
-  @staticmethod
-  def _points_for_polygon(polygon):
-    coords = polygon['coordinates']
-    point_coords = []
-    if len(coords) > 0:
-      for coord_pair in coords[0]:
-        point_coords.append(coord_pair)
-    return point_coords
+      if len(distances) == 0:
+        return float('inf')
+      return min(distances)

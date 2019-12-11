@@ -10,46 +10,47 @@ class GeoWebNewsEvaluator:
 
   used_annotation_types = ['Literal']
 
-  def __init__(self, verify_street_level):
-    self.verify_street_level = verify_street_level
+  def __init__(self):
     dirname = os.path.dirname(__file__)
     self.corpus_dir = dirname + '/corpora/GeoWebNews/'
-    search_dist = 15 if verify_street_level else 0
-    self.parser = Geoparser(nlp_model=2, local_search_dist_km=search_dist)
-    self.eval = CorpusEvaluator(self.parser)
-    self.eval.start_corpus('GWN')
-
-  def test_all(self, save_report=True, doc_range=range(200)):
     paths = os.listdir(self.corpus_dir)
     docs = [p.replace('.txt', '') for p in paths if p.endswith('.txt')]
-    docs = list(sorted(docs))
+    self.docs = list(sorted(docs, key=lambda s: int(s)))
 
+    self.parser = Geoparser(nlp_model=2)
+    self.eval = CorpusEvaluator(self.parser)
+
+  def test_all(self, save_report=True, doc_range=range(200)):
     try:
       for i in doc_range:
-        self.test(docs[i], i)
+        self.test(i, False)
+      logging.info(f'--- FINISHED ---')
     except:
       logging.warning(f'--- EXCEPTION ---')
-      pass
 
     summary = self.eval.corpus_summary(161)
     logging.info('Overall: %s', summary)
 
-    if save_report:
-      report = self.eval.report_csv()
-      now = datetime.datetime.now().strftime('%Y-%m-%d-%H%M')
-      file_name = f'eval-gwn-{now}.csv'
-      with open(file_name, mode='w', encoding='utf-8') as f:
-        f.write(report)
-      logging.info('wrote results to ' + file_name)
+    if not save_report:
+      return
 
-  def test(self, doc_id, doc_num=1):
-    text_path = self.corpus_dir + doc_id + '.txt'
+    csv_str = self.eval.results_csv()
+    now = datetime.datetime.now().strftime('%Y-%m-%d-%H:%M')
+    file_name = f'eval-gwn-{now}.csv'
+    with open(file_name, mode='w', encoding='utf-8') as f:
+      f.write(csv_str)
+    logging.info('wrote results to ' + file_name)
+
+  def test(self, doc_idx, print_report=True):
+    doc = self.docs[doc_idx]
+    text_path = self.corpus_dir + doc + '.txt'
     with open(text_path, encoding='utf-8') as f:
       text = f.read()
 
-    self.eval.start_document(doc_id, text)
+    doc_name = f'GWN-{doc} [{doc_idx}]'
+    self.eval.start_document(doc_name, text)
 
-    annotation_path = self.corpus_dir + doc_id + '.ann'
+    annotation_path = self.corpus_dir + doc + '.ann'
     with open(annotation_path, encoding='utf-8') as f:
       reader = csv.reader(f, delimiter='\t')
 
@@ -58,7 +59,7 @@ class GeoWebNewsEvaluator:
         tag_id = row[0]
         data = row[1].split(' ')
 
-        if tag_id.startswith('T'):  # BRAT token
+        if tag_id.startswith('T'):  # BRAT toke
           annotation_type = data[0]
           if annotation_type in self.used_annotation_types:
             position = int(data[1])
@@ -72,8 +73,6 @@ class GeoWebNewsEvaluator:
 
           a = annotations[tag_id]
           if ',' in row[2]:
-            if not self.verify_street_level:
-              continue
             coords = row[2].split(',')
             a.lat = float(coords[0].strip())
             a.lng = float(coords[1].strip())
@@ -87,4 +86,7 @@ class GeoWebNewsEvaluator:
           self.eval.verify_annotation(a)
 
     summary = self.eval.document_summary(161)
-    logging.info('Document %i: %s', doc_num, summary)
+    logging.info(summary)
+
+    if print_report:
+      print(self.eval.results_csv())

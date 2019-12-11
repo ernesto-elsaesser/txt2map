@@ -37,12 +37,8 @@ class CorpusEvaluator:
     self.parser = geoparser
     self.results = {}
 
-  def start_corpus(self, corpus):
-    self.corpus = corpus
-    self.results[corpus] = {}
-
   def start_document(self, document, text):
-    logging.info('--- %s / %s ---', self.corpus, document)
+    logging.info('--- %s ---', document)
     self.document = document
     geonames = {}
     osm_elements = {}
@@ -59,18 +55,17 @@ class CorpusEvaluator:
           else:
             osm_elements[position] = match.elements
 
-    self.results[self.corpus][document] = Result(geonames, osm_elements)
+    self.results[document] = Result(geonames, osm_elements)
 
   def verify_annotation(self, annotation):
-    c, d, a = self.corpus, self.document, annotation
-    result = self.results[c][d]
+    result = self.results[self.document]
+    a = annotation
     geoname_match = False
 
     if a.position in result.geonames:
       geoname = result.geonames[a.position]
-      geometry = GeoUtil.make_point(geoname.lat, geoname.lng)
       a.geoname = geoname
-      a.distance = GeoUtil.distance_to_geometry(a.lat, a.lng, geometry)
+      a.distance = GeoUtil.distance(a.lat, a.lng, geoname.lat, geoname.lng)
       geoname_match = a.distance == 0
     
     if a.position in result.osm_elements and not geoname_match:
@@ -82,33 +77,28 @@ class CorpusEvaluator:
         a.distance = dist
         a.geoname = None
 
-    self.results[c][d].annotations.append(a)
+    result.annotations.append(a)
 
-  def document_summary(self, accuracy_km, corpus=None, document=None):
-    c = corpus or self.corpus
+  def document_summary(self, accuracy_km, document=None):
     d = document or self.document
-    result = self.results[c][d]
-    return self._summary(result.annotations, accuracy_km)
+    return self._summary(self.results[d].annotations, accuracy_km)
 
-  def corpus_summary(self, accuracy_km, corpus=None):
-    c = corpus or self.corpus
-    results = self.results[c]
-    all_annotations = sum([r.annotations for r in results.values()], [])
+  def corpus_summary(self, accuracy_km):
+    all_annotations = sum([r.annotations for r in self.results.values()], [])
     return self._summary(all_annotations, accuracy_km)
 
-  def report_csv(self):
-    lines = 'Corpus\tDocument\tPosition\tName\tRemark\tSource\tID\tDistance\n'
-    for c in self.results:
-      for d in self.results[c]:
-        for a in self.results[c][d].annotations:
-          lines += f'{c}\t{d}\t{a.position}\t{a.name}\t{a.remark}\t'
-          if a.distance == None:
-            lines += f'\t\t\n'
-            continue
-          if a.geoname != None:
-            lines += f'GEO\t{a.geoname.id}\t{a.distance:.2f}\n'
-          else:
-            lines += f'OSM\t{a.osm_element}\t{a.distance:.2f}\n'
+  def results_csv(self):
+    lines = 'Document\tPosition\tName\tRemark\tCoordinate\tSource\tID\tDistance\n'
+    for d in self.results:
+      for a in self.results[d].annotations:
+        lines += f'{d}\t{a.position}\t{a.name}\t{a.remark}\t{a.lat},{a.lng}\t'
+        if a.distance == None:
+          lines += f'\t\t\n'
+          continue
+        if a.geoname != None:
+          lines += f'GEO\t{a.geoname.id}\t{a.distance:.2f}\n'
+        else:
+          lines += f'OSM\t{a.osm_element}\t{a.distance:.2f}\n'
     return lines
 
   def _summary(self, annotations, accuracy_km):
