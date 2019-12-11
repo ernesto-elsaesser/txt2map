@@ -5,7 +5,7 @@ from .evaluator import Annotation, CorpusEvaluator
 class TestEvaluator:
 
   def __init__(self):
-    parser = Geoparser(nlp_model=0)
+    parser = Geoparser(use_large_model=False)
     self.eval = CorpusEvaluator(parser)
 
   def test_all(self):
@@ -15,6 +15,8 @@ class TestEvaluator:
     self.test_global_top_defaults()
     self.test_global_special_chars()
     self.test_global_name_sim()
+    self.test_global_demonyms()
+    self.test_embedded()
     self.test_local_node()
     self.test_local_way()
     self.test_local_relation()
@@ -61,6 +63,16 @@ class TestEvaluator:
     text = 'The Mall of Asia in Paranaque City.'
     anns = [('Mall of Asia', 14.5349995, 120.9832017)]
     self._test(False, 'Special Characters', text, anns)
+
+  def test_global_demonyms(self):
+    text = 'Che Guevara is burried in the Cuban city of Santa Clara.'
+    anns = [('Santa Clara', 22.40694, -79.96472)]
+    self._test(False, 'Demonyms', text, anns)
+
+  def test_embedded(self):
+    text = 'He is from South Africa.'
+    anns = [('South Africa', -29, 24)]
+    self._test(False, 'Embedded Names', text, anns)
 
   def test_local_node(self):
     text = 'We met at Checkpoint Charlie in Berlin.'

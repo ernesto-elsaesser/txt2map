@@ -9,10 +9,10 @@ from .matcher import OSMNameMatcher
 
 class Geoparser:
 
-  def __init__(self, nlp_model=1, local_search_dist_km=15, cache_dir='cache'):
+  def __init__(self, use_large_model=True, local_search_dist_km=15, cache_dir='cache'):
     if not os.path.exists(cache_dir):
       os.mkdir(cache_dir)
-    self.recognizer = ToponymRecognizer(nlp_model)
+    self.recognizer = ToponymRecognizer(use_large_model)
     self.resolver = ToponymResolver(cache_dir)
     self.matcher = OSMNameMatcher()
     self.search_local = local_search_dist_km > 0

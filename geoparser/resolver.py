@@ -78,7 +78,7 @@ class ToponymResolver:
         regions.add(g.region())
 
     first_pos = tmap.first(name)
-    close_names = set(tmap.window(first_pos - 150, first_pos + 50))
+    close_names = set(tmap.toponyms_in_window(first_pos - 150, first_pos + 50))
     close_names.remove(name)
     close_ids = set(selected[n].id for n in close_names if n in selected)
 

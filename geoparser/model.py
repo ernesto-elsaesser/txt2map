@@ -42,22 +42,35 @@ class GeoName:
 class ToponymMap:
 
   def __init__(self):
-    self.map = {}
+    self.names = {}
 
   def add(self, name, pos):
-    self.map[pos] = name
+    end = pos + len(name)
+
+    all_positions = list(self.names.keys())
+    for l in all_positions:
+      r = l + len(self.names[l])
+      if l <= pos and end <= r:  # already covered
+        return
+      elif pos <= l and r <= end: # covers previous
+        del self.names[l]
+
+    self.names[pos] = name
 
   def toponyms(self):
-    return set(self.map.values())
+    return set(self.names.values())
+
+  def is_annotated(self, pos):
+    return pos in self.names
 
   def positions(self, name):
-    return [p for p, n in self.map.items() if n == name]
+    return [p for p, n in self.names.items() if n == name]
 
   def first(self, name):
     return min(self.positions(name))
 
-  def window(self, left, right):
-    return [self.map[p] for p in self.map.keys() if left < p < right]
+  def toponyms_in_window(self, left, right):
+    return [n for p, n in self.names.items() if left < p < right]
 
 
 class ResolvedToponym:

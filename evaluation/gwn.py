@@ -17,7 +17,7 @@ class GeoWebNewsEvaluator:
     docs = [p.replace('.txt', '') for p in paths if p.endswith('.txt')]
     self.docs = list(sorted(docs, key=lambda s: int(s)))
 
-    self.parser = Geoparser(nlp_model=2)
+    self.parser = Geoparser()
     self.eval = CorpusEvaluator(self.parser)
 
   def test_all(self, save_report=True, doc_range=range(200)):
