@@ -14,12 +14,17 @@ def insert_names(geoname):
       names[entry['name']] = geoname.id
 
 
-continents = cache.get_children(6295630)  # Earth
+continents = cache.get_children(6295630) # Earth
 for continent in continents:
   insert_names(continent)
   countries = cache.get_children(continent.id)
   for country in countries:
     insert_names(country)
+    if country.id == '2635167': # United Kingdom
+      united_countries = cache.get_children(country.id)
+      for united_country in united_countries:
+        insert_names(united_country)
+
 
 names['U.S.'] = 6252001
 names['US'] = 6252001

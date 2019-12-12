@@ -25,8 +25,9 @@ class GeoWebNewsEvaluator:
       for i in doc_range:
         self.test(i, False)
       logging.info(f'--- FINISHED ---')
-    except:
+    except Exception as e:
       logging.warning(f'--- EXCEPTION ---')
+      logging.warning(repr(e))
 
     summary = self.eval.corpus_summary(161)
     logging.info('Overall: %s', summary)
