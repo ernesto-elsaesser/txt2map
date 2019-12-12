@@ -43,18 +43,17 @@ class OSMNameMatcher:
     prev_match_end = 0
     suffixes_for_prefixes = {}
 
-    for start, end in anchors:
+    for start, prefix in anchors:
       if start < prev_match_end:
         continue
 
-      prefix = text[start:end]
       if prefix in suffixes_for_prefixes:
         suffixes = suffixes_for_prefixes[prefix]
       else:
         suffixes = self.get_suffixes(prefix, osm_db)
         suffixes_for_prefixes[prefix] = suffixes
 
-      text_pos = end
+      text_pos = start + len(prefix)
       longest_match = None
       one_off = []
       while text_pos < text_len and len(suffixes + one_off) > 0:
@@ -79,7 +78,7 @@ class OSMNameMatcher:
         text_pos += 1
 
       if longest_match != None:
-        prev_match_end = text_pos - 1
+        prev_match_end = start + len(longest_match)
         if longest_match not in names:
           names[longest_match] = []
         names[longest_match].append(start)
