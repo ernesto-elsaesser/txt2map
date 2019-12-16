@@ -48,10 +48,12 @@ class LGLEvaluator:
     toponyms = article.find('toponyms')
 
     for toponym in toponyms:
+      tag = toponym.find('gaztag')
+      if tag == None:
+        continue
+
       position = int(toponym.find('start').text)
       name = toponym.find('phrase').text
-
-      tag = toponym.find('gaztag')
       geoname_id = tag.get('geonameid')
       lat = float(tag.find('lat').text)
       lon = float(tag.find('lon').text)
