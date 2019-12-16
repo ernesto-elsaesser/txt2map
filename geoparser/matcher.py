@@ -95,6 +95,7 @@ class OSMNameMatcher:
     found_names = osm_db.find_names(prefix)
     suffixes = []
     for name in found_names:
+      if name.isdigit(): continue
       suffix = name[len(prefix):]
       suffixes.append((name, suffix))
       short_version = self.abbreviated(suffix)

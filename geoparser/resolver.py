@@ -219,12 +219,11 @@ class ToponymResolver:
 
   def _find_local_context(self, res_set):
     hierarchy = res_set.hierarchy()
-
-    if len(hierarchy) == 1:  # no local context for continents
-      return []
-
     geoname = res_set.geoname()
     name = res_set.name
+
+    if len(hierarchy) == 1 or geoname.fcl != 'A':
+      return []
 
     while True:
 
