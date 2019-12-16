@@ -68,5 +68,6 @@ class ToponymRecognizer:
   def _add_anchors(self, tokens, doc):
     for token in tokens:
       first = token.text[0]
-      if first.isdigit() or (token.pos_ == 'PROPN' and first.isupper()):
+      stop = token.is_stop
+      if first.isdigit() or (first.isupper() and not stop):
         doc.add_anchor(token.idx, token.text)

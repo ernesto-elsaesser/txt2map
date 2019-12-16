@@ -36,14 +36,14 @@ class OSMNameMatcher:
     for s, l in self.abbr_end.items():
       self.abbreviations.append((re.compile(l), s))
 
-  def find_names(self, text, anchors, osm_db):
-    text = text + ' '  # also catch matches in last word
+  def find_names(self, doc, osm_db):
+    text = doc.text + ' '  # also catch matches in last word
     text_len = len(text)
     names = {}
     prev_match_end = 0
     suffixes_for_prefixes = {}
 
-    for start, prefix in anchors:
+    for start, prefix in doc.anchors.items():
       if start < prev_match_end:
         continue
 

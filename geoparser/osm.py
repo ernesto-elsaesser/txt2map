@@ -16,9 +16,9 @@ class OSMLoader:
     self.cache_dir = cache_dir
     self.search_dist = search_dist
 
-  def load_database(self, cluster):
+  def load_database(self, geonames):
     logging.info('loading OSM data ...')
-    sorted_ids = sorted(str(id) for id in cluster.city_ids())
+    sorted_ids = sorted(str(g.id) for g in geonames)
     cluster_id = '-'.join(sorted_ids)
     file_path = f'{self.cache_dir}/{cluster_id}-{self.search_dist}km.db'
     is_cached = os.path.exists(file_path)
@@ -27,7 +27,7 @@ class OSMLoader:
 
     if not is_cached:
       def bbox(g): return GeoUtil.bounding_box(g.lat, g.lon, self.search_dist)
-      boxes = [bbox(g) for g in cluster.city_geonames]
+      boxes = [bbox(g) for g in geonames]
       csv_reader = OverpassAPI.load_names_in_bounding_boxes(boxes)
       name_count = self.store_data(osm_db, csv_reader, 1, [2, 3, 4, 5])
       logging.info('created database with %d unique names.', name_count)
@@ -51,9 +51,9 @@ class OSMLoader:
     return name_count
 
   def load_geometries(self, elements):
-    sorted_refs = sorted(e.short_ref() for e in elements)
-    all_refs = '-'.join(sorted_refs)
-    file_path = f'{self.cache_dir}/{all_refs}.json'
+    max_ref = max(e.short_ref() for e in elements)
+    num = len(elements) - 1
+    file_path = f'{self.cache_dir}/{max_ref}+{num}.json'
     is_cached = os.path.exists(file_path)
 
     if is_cached:

@@ -56,17 +56,15 @@ class Document:
     for l in all_positions:
       r = l + len(self.names[l])
       if l <= pos and end <= r:  # already covered
-        return
+        return False
       elif pos <= l and r <= end: # covers previous
         del self.names[l]
 
     self.names[pos] = name
+    return True
 
   def toponyms(self):
     return set(self.names.values())
-
-  def is_annotated(self, pos):
-    return pos in self.names
 
   def positions(self, name):
     return [p for p, n in self.names.items() if n == name]
@@ -98,13 +96,11 @@ class ResolutionSet:
   # positions: [int]
   # candidates: [Candidate]
   # selected_idx: int
-  # local_context GeoName?
   def __init__(self, name, positions, candidates):
     self.name = name
     self.positions = positions
     self.candidates = candidates
     self.selected_idx = 0
-    self.local_context = None
 
   def selected(self):
     return self.candidates[self.selected_idx]
@@ -127,14 +123,14 @@ class ToponymCluster:
 
   # sets: [ResolutionSet]
   # anchor: ResolutionSet
-  # city_geonames: [GeoName]
+  # local_context: [GeoName]
   # size: int
   # local_matches: [OSMMatch]
   # confidence: float
-  def __init__(self, sets, anchor):
+  def __init__(self, sets, anchor, local_context):
     self.sets = sets
-    self.local_contexts = [rn.local_context for rn in sets if rn.local_context != None]
     self.anchor = anchor
+    self.local_context = local_context
     self.size = len(sets)
     self.local_matches = []
     self.confidence = 0
@@ -150,6 +146,8 @@ class ToponymCluster:
 
   def __repr__(self):
     anchor_repr = repr(self.anchor)
+    if self.size == 1:
+      return anchor_repr
     names = ','.join(rs.name for rs in self.sets)
     return f'{anchor_repr} ({names})'
 

@@ -60,7 +60,7 @@ class TestEvaluator:
 
   def test_global_name_sim(self):
     text = 'Where is Fire Island?'
-    anns = [('Fire Island', 0, 0, 5117146)]
+    anns = [('Fire Island', 0, 0, 5117145)]
     self._test(False, 'Prefer Similar Names', text, anns)
 
   def test_global_demonyms(self):
@@ -69,7 +69,7 @@ class TestEvaluator:
     self._test(False, 'Demonyms', text, anns)
 
   def test_ancestors(self):
-    text = 'Avoyelles task force arrests 14. It happened in the Cottonport area.'
+    text = 'Avoyelles task force arrests 14. They live in Cottonport, US.'
     anns = [('Avoyelles', 0, 0, 4315243), ('Cottonport', 0, 0, 4320874)]
     self._test(False, 'Find Ancestors', text, anns)
 

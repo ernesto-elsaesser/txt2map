@@ -57,9 +57,6 @@ class ToponymResolver:
       for res_set in ambiguous_sets:
         changed = self._select_heuristically(res_set, selected, doc) or changed
 
-    for res_set in all_sets:
-      self._find_local_context(res_set)
-
     return all_sets
 
   def _create_resolution_set(self, name, doc):
@@ -101,8 +98,7 @@ class ToponymResolver:
           continue
         found = False
         for match in re.finditer(a.name, doc.text):
-          doc.add_toponym(a.name, match.start())
-          found = True
+          found = doc.add_toponym(a.name, match.start()) or found
         if found:
           hierarchy = self.gns_cache.get_hierarchy(a.id)
           candidate = Candidate(hierarchy)
@@ -152,7 +148,7 @@ class ToponymResolver:
 
   def _evidence(self, name, candidate, close_ids, regions, present_ids):
 
-    score = 4 / len(candidate.path)
+    score = 4 / len(candidate.hierarchy)
 
     c_name = candidate.geoname.name
     if c_name not in name and not self._acronym(c_name) == name:
@@ -172,43 +168,6 @@ class ToponymResolver:
   def _acronym(self, name):
     parts = name.split(' ')
     return ''.join(p[0] for p in parts if len(p) > 0)
-
-  def _find_local_context(self, res_set):
-    hierarchy = res_set.hierarchy()
-
-    if len(hierarchy) == 1:  # no local context for continents
-      return False
-
-    geoname = res_set.geoname()
-    name = res_set.name
-
-    while True:
-
-      if geoname.is_city:
-        res_set.local_context = geoname
-        return
-
-      children = self.gns_cache.get_children(geoname.id)
-
-      if len(children) == 0:
-        # if there's nothing below, assume we are already local
-        res_set.local_context = geoname  
-        return
-
-      elif len(children) == 1:
-        child = children[0]
-        if child.name in name or name in child.name:
-          geoname = child
-          continue
-
-      else:
-        children = sorted(children, key=lambda g: g.population, reverse=True)
-        for child in children:
-          if child.name in name or name in child.name:
-            geoname = child
-            continue
-
-      return False
 
   def _similar(self, name1, name2):
     return pylev.levenshtein(name1, name2) < 2
@@ -248,10 +207,42 @@ class ToponymResolver:
 
       if len(city_sets) > 0:
         anchor = max(city_sets, key=lambda c: c.population())
+        local_context = [rs.geoname() for rs in city_sets]
       else:
-        anchor = min(connected, key=lambda c: c.geoname())
+        anchor = min(connected, key=lambda c: c.population())
+        local_context = self._find_local_context(anchor)
 
-      cluster = ToponymCluster(connected, anchor)
+      cluster = ToponymCluster(connected, anchor, local_context)
       clusters.append(cluster)
 
     return sorted(clusters, key=lambda c: c.mentions(), reverse=True)
+
+  def _find_local_context(self, res_set):
+    hierarchy = res_set.hierarchy()
+
+    if len(hierarchy) == 1:  # no local context for continents
+      return []
+
+    geoname = res_set.geoname()
+    name = res_set.name
+
+    while True:
+
+      children = self.gns_cache.get_children(geoname.id)
+
+      if len(children) == 0:
+        # if there's nothing below, assume we are already local
+        logging.info(f'using {geoname} as local context for {name}')
+        return [geoname]
+
+      else:
+        children = sorted(children, key=lambda g: g.population, reverse=True)
+        for child in children:
+          if child.name in name or name in child.name:
+            if child.is_city:
+              logging.info(f'using {child} as local context for {name}')
+              return [child]
+            geoname = child
+            continue
+
+      return []

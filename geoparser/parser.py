@@ -20,21 +20,22 @@ class Geoparser:
       self.osm_loader = OSMLoader(cache_dir, local_search_dist_km)
 
   def parse(self, text):
-    (tmap, anchors) = self.recognizer.parse(text)
+    doc = self.recognizer.parse(text)
 
-    toponym_str = ', '.join(tmap.toponyms())
+    toponym_str = ', '.join(doc.toponyms())
     logging.info('global entities: %s', toponym_str)
 
-    resolved = self.resolver.resolve(tmap)
+    resolved = self.resolver.resolve(doc)
     clusters = self.resolver.cluster(resolved)
 
     if self.search_local:
-      city_clusters = [c for c in clusters if len(c.cities) > 0]
-      for cluster in city_clusters:
-        logging.info('selected cluster: %s', cluster)
+      for cluster in clusters:
+        if len(cluster.local_context) == 0:
+          continue
 
-        osm_db = self.osm_loader.load_database(cluster)
-        cluster.local_matches = self.matcher.find_names(text, anchors, osm_db)
+        logging.info('selected cluster: %s', cluster)
+        osm_db = self.osm_loader.load_database(cluster.local_context)
+        cluster.local_matches = self.matcher.find_names(doc, osm_db)
 
         matches_str = ', '.join(m.name for m in cluster.local_matches)
         logging.info('matches: %s', matches_str)

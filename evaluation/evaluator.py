@@ -66,9 +66,9 @@ class CorpusEvaluator:
 
     clusters = self.parser.parse(text)
     for cluster in clusters:
-      for toponym in cluster.toponyms:
-        for position in toponym.positions:
-          geonames[position] = toponym.geoname
+      for res_set in cluster.sets:
+        for position in res_set.positions:
+          geonames[position] = res_set.geoname()
       for match in cluster.local_matches:
         for position in match.positions:
           if position in osm_elements:
