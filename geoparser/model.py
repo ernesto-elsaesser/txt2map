@@ -142,13 +142,13 @@ class ToponymCluster:
     return sum(len(rs.positions) for rs in self.sets)
 
   def path(self):
-    return self.anchor.hierarchy()
+    return [g.name for g in self.anchor.hierarchy()]
 
   def __repr__(self):
     anchor_repr = repr(self.anchor)
     if self.size == 1:
       return anchor_repr
-    names = ','.join(rs.name for rs in self.sets)
+    names = ', '.join(rs.name for rs in self.sets)
     return f'{anchor_repr} ({names})'
 
 

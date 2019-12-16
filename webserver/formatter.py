@@ -6,17 +6,17 @@ class ResponseFormatter:
     return [self._cluster_to_dict(c) for c in clusters]
     
   def _cluster_to_dict(self, cluster):
-    geoname_matches = [self._toponym_to_dict(t) for t in cluster.toponyms]
+    geoname_matches = [self._res_set_to_dict(rs) for rs in cluster.sets]
     osm_matches = [self._osm_match_to_dict(m) for m in cluster.local_matches]
     return {'geoname_matches': geoname_matches,
             'osm_matches': osm_matches,
             'path': cluster.path(),
             'confidence': cluster.confidence}
 
-  def _toponym_to_dict(self, toponym):
-    return {'name': toponym.name,
-            'positions': toponym.positions,
-            'geoname_id': toponym.geoname.id}
+  def _res_set_to_dict(self, res_set):
+    return {'name': res_set.name,
+            'positions': res_set.positions,
+            'geoname_id': res_set.geoname().id}
 
   def _osm_match_to_dict(self, match):
     return {'name': match.name,
