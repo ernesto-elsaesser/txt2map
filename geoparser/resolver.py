@@ -46,6 +46,10 @@ class ToponymResolver:
       ambiguous_sets.append(rs)
       all_sets += self._scan_for_ancestors(rs, doc, all_toponyms)
 
+    # some annotations may have been overwritten by ancestors
+    all_toponyms = doc.toponyms()
+    ambiguous_sets = [rs for rs in ambiguous_sets if rs.name in all_toponyms]
+
     changed = True
     rounds = 0
     while changed and rounds < 3:

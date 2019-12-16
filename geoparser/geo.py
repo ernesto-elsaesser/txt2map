@@ -1,4 +1,5 @@
 import geojson_utils
+import math
 from .model import OSMElement
 
 class GeoUtil:
@@ -32,8 +33,9 @@ class GeoUtil:
 
   @staticmethod
   def minimum_distance(lat, lon, lat_lons):
+    l = len(lat_lons)
 
-    if len(lat_lons) > 2 and lat_lons[0] == lat_lons[-1]:
+    if l > 2 and lat_lons[0] == lat_lons[-1]:
       point = GeoUtil.geojson_point(lat, lon)
       polygon = GeoUtil.geojson_polygon(lat_lons)
       is_inside = geojson_utils.point_in_polygon(point, polygon)
@@ -41,7 +43,9 @@ class GeoUtil:
         return 0
 
     min_dist = float('inf')
-    for lat2, lon2 in lat_lons:
+    step = int(math.ceil(l / 10))
+    for idx in range(0, l, step):
+      (lat2, lon2) = lat_lons[idx]
       dist = GeoUtil.distance(lat, lon, lat2, lon2)
       if dist == 0:
         return 0
