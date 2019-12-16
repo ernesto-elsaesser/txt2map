@@ -9,7 +9,7 @@ class GeoName:
       self.name = data['name']
       self.population = data['population']
       self.lat = float(data['lat'])
-      self.lng = float(data['lng'])
+      self.lon = float(data['lng'])
       self.cc = '-' if 'countryCode' not in data else data['countryCode']
       self.adm1 = '-' if 'adminCode1' not in data else data['adminCode1']
       self.fcl = data['fcl']
@@ -24,7 +24,7 @@ class GeoName:
       self.name = row[1]
       self.population = row[2]
       self.lat = row[3]
-      self.lng = row[4]
+      self.lon = row[4]
       self.fcl = row[5]
       self.fcode = row[6]
       self.cc = row[7]

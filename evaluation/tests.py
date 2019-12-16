@@ -104,9 +104,9 @@ class TestEvaluator:
     prefix = 'Local' if is_local else 'Global'
     document = prefix + ' - ' + title
     self.eval.start_document(document, text)
-    for name, lat, lng in annotations:
+    for name, lat, lon in annotations:
       pos = text.find(name)
-      annotation = Annotation(pos, name, lat, lng)
+      annotation = Annotation(pos, name, lat, lon)
       self.eval.verify_annotation(annotation)
     summary = self.eval.document_summary(1)
     print(summary)

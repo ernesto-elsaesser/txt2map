@@ -26,7 +26,7 @@ class OSMLoader:
     osm_db = OSMDatabase(db)
 
     if not is_cached:
-      def bbox(g): return GeoUtil.bounding_box(g.lat, g.lng, self.search_dist)
+      def bbox(g): return GeoUtil.bounding_box(g.lat, g.lon, self.search_dist)
       boxes = [bbox(g) for g in cluster.city_geonames]
       csv_reader = OverpassAPI.load_names_in_bounding_boxes(boxes)
       name_count = self.store_data(osm_db, csv_reader, 1, [2, 3, 4, 5])

@@ -96,7 +96,7 @@ class GeoNamesDatabase(Database):
     g = geoname
     try:
       self.cursor.execute('INSERT INTO geonames VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                          (g.id, g.name, g.population, g.lat, g.lng, 
+                          (g.id, g.name, g.population, g.lat, g.lon, 
                           g.fcl, g.fcode, g.cc, g.adm1))
       self.commit_changes()
     except sqlite3.Error:
@@ -129,7 +129,7 @@ class OSMDatabase(Database):
       rowid = self.get_rowid(name)
     type_code = element.type_code()
     self.cursor.execute('INSERT INTO osm VALUES(?, ?, ?)',
-                        (element.reference, rowid, type_code))
+                        (element.id, rowid, type_code))
     return inserted
 
   def find_names(self, prefix):

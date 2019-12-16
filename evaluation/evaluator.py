@@ -16,11 +16,12 @@ class Match:
 
 class Annotation:
 
-  def __init__(self, position, name, lat, lng):
+  def __init__(self, position, name, lat, lon, geoname_id):
     self.position = position
     self.name = name
     self.lat = lat
-    self.lng = lng
+    self.lon = lon
+    self.geoname_id = geoname_id
     self.matches = []
     self.remark = ''
 
@@ -84,7 +85,10 @@ class CorpusEvaluator:
     if a.position in result.geonames:
       geoname = result.geonames[a.position]
       reference = 'g' + str(geoname.id)
-      distance = GeoUtil.distance(a.lat, a.lng, geoname.lat, geoname.lng)
+      if a.geoname_id == geoname.id:
+        distance = 0.0
+      else:
+        distance = GeoUtil.distance(a.lat, a.lon, geoname.lat, geoname.lon)
       match = Match(reference, distance, True)
       a.matches.append(match)
     
@@ -92,7 +96,7 @@ class CorpusEvaluator:
       elements = result.osm_elements[a.position]
       json_elements = self.parser.osm_loader.load_geometries(elements)
       for e in json_elements:
-        distance = GeoUtil.osm_element_distance(a.lat, a.lng, e)
+        distance = GeoUtil.osm_element_distance(a.lat, a.lon, e)
         reference = e['type'][0] + str(e['id'])
         match = Match(reference, distance, False)
         a.matches.append(match)
@@ -108,7 +112,7 @@ class CorpusEvaluator:
     return self._summary(all_annotations, accuracy_km)
 
   def results_csv(self):
-    lines = 'Document\tPosition\tName\tLatitude\tLongitude\tResolved\tMin. Distance\tEntities\tRemark\n'
+    lines = 'Document\tPosition\tName\tResolved\tMin. Distance\tEntities\tRemark\n'
     for d in self.results:
       for a in self.results[d].annotations:
         p = a.position
@@ -123,7 +127,7 @@ class CorpusEvaluator:
           md = f'{min_dist:.2f}'
           matches = ','.join(str(m) for m in a.matches)
 
-        lines += f'{d}\t{p}\t{a.name}\t{a.lat}\t{a.lng}\t{res}\t{md}\t{matches}\t{rem}\n'
+        lines += f'{d}\t{p}\t{a.name}\t{res}\t{md}\t{matches}\t{rem}\n'
     return lines
 
   def _summary(self, annotations, accuracy_km):

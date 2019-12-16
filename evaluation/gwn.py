@@ -23,7 +23,7 @@ class GeoWebNewsEvaluator:
   def test_all(self, save_report=True, doc_range=range(200)):
     for i in doc_range:
       self.test(i, False)
-      
+
     logging.info(f'--- FINISHED ---')
     summary = self.eval.corpus_summary(161)
     logging.info('Overall: %s', summary)
@@ -61,7 +61,7 @@ class GeoWebNewsEvaluator:
           if annotation_type in self.used_annotation_types:
             position = int(data[1])
             name = row[2]
-            annotations[tag_id] = Annotation(position, name, 0, 0)
+            annotations[tag_id] = Annotation(position, name, 0, 0, None)
 
         elif tag_id.startswith('#'):  # BRAT annotator note
           tag_id = data[1]
@@ -72,13 +72,14 @@ class GeoWebNewsEvaluator:
           if ',' in row[2]:
             coords = row[2].split(',')
             a.lat = float(coords[0].strip())
-            a.lng = float(coords[1].strip())
+            a.lon = float(coords[1].strip())
             a.remark = 'hard'
           else:
             geoname_id = int(row[2])
             geoname = self.parser.resolver.gns_cache.get(geoname_id)
+            a.geoname_id = geoname_id
             a.lat = geoname.lat
-            a.lng = geoname.lng
+            a.lon = geoname.lon
 
           self.eval.verify_annotation(a)
 
