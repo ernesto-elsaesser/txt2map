@@ -2,6 +2,7 @@ import logging
 import os
 import requests
 import csv
+import json
 import io
 import sqlite3
 from .model import OSMElement
@@ -49,6 +50,25 @@ class OSMLoader:
     osm_db.commit_changes()
     return name_count
 
+  def load_geometries(self, elements):
+    sorted_refs = sorted(e.short_ref() for e in elements)
+    all_refs = '-'.join(sorted_refs)
+    file_path = f'{self.cache_dir}/{all_refs}.json'
+    is_cached = os.path.exists(file_path)
+
+    if is_cached:
+      with open(file_path, 'r') as f:
+        json_str = f.read()
+      json_data = json.loads(json_str)
+    else:
+      osm_json = OverpassAPI.load_geometries(elements)
+      json_data = osm_json['elements']
+      with open(file_path, 'w') as f:
+        json_str = json.dumps(json_data)
+        f.write(json_str)
+
+    return json_data
+
 
 class OverpassAPI:
 
@@ -71,7 +91,7 @@ class OverpassAPI:
   def load_geometries(elements):
     query = '[out:json]; ('
     for elem in elements:
-      query += f'{elem.element_type}({elem.reference}); '
+      query += f'{elem.element_type}({elem.id}); '
     query += '); out geom;'
     response = OverpassAPI.post_query(query)
     return response.json()

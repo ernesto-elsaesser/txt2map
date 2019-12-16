@@ -21,14 +21,10 @@ class GeoWebNewsEvaluator:
     self.eval = CorpusEvaluator(self.parser)
 
   def test_all(self, save_report=True, doc_range=range(200)):
-    try:
-      for i in doc_range:
-        self.test(i, False)
-      logging.info(f'--- FINISHED ---')
-    except Exception as e:
-      logging.warning(f'--- EXCEPTION ---')
-      logging.warning(repr(e))
-
+    for i in doc_range:
+      self.test(i, False)
+      
+    logging.info(f'--- FINISHED ---')
     summary = self.eval.corpus_summary(161)
     logging.info('Overall: %s', summary)
 

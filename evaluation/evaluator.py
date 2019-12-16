@@ -3,6 +3,16 @@ import logging
 import csv
 from geoparser import Geoparser, GeoNamesCache, OverpassAPI, GeoUtil
 
+class Match:
+
+  def __init__(self, reference, distance, is_global):
+    self.reference = reference
+    self.distance = distance
+    self.is_global = is_global
+
+  def __repr__(self):
+    return f'{self.reference}:{self.distance:.2f}'
+
 
 class Annotation:
 
@@ -11,16 +21,26 @@ class Annotation:
     self.name = name
     self.lat = lat
     self.lng = lng
-    self.distance = None
-    self.geoname = None
-    self.osm_element = None
+    self.matches = []
     self.remark = ''
 
+  def min_distance(self):
+    if len(self.matches) == 0:
+      return None
+    return min(m.distance for m in self.matches)
+
+  def has_global_match(self):
+    global_matches = [m for m in self.matches if m.is_global]
+    return len(global_matches) > 0
+
   def recognized(self):
-    return self.geoname != None or self.osm_element != None
+    return len(self.matches) > 0
 
   def resolved(self, accuracy_km):
-    return self.distance != None and self.distance < accuracy_km
+    min_dist = self.min_distance()
+    if min_dist == None:
+      return False
+    return min_dist < accuracy_km
 
 
 class Result:
@@ -60,22 +80,22 @@ class CorpusEvaluator:
   def verify_annotation(self, annotation):
     result = self.results[self.document]
     a = annotation
-    geoname_match = False
 
     if a.position in result.geonames:
       geoname = result.geonames[a.position]
-      a.geoname = geoname
-      a.distance = GeoUtil.distance(a.lat, a.lng, geoname.lat, geoname.lng)
-      geoname_match = a.distance == 0
+      reference = 'g' + str(geoname.id)
+      distance = GeoUtil.distance(a.lat, a.lng, geoname.lat, geoname.lng)
+      match = Match(reference, distance, True)
+      a.matches.append(match)
     
-    if a.position in result.osm_elements and not geoname_match:
+    if a.position in result.osm_elements:
       elements = result.osm_elements[a.position]
-      osm_json = OverpassAPI.load_geometries(elements)
-      (dist, element) = GeoUtil.closest_osm_element(a.lat, a.lng, osm_json)
-      if a.distance == None or a.distance > dist:
-        a.osm_element = element
-        a.distance = dist
-        a.geoname = None
+      json_elements = self.parser.osm_loader.load_geometries(elements)
+      for e in json_elements:
+        distance = GeoUtil.osm_element_distance(a.lat, a.lng, e)
+        reference = e['type'][0] + str(e['id'])
+        match = Match(reference, distance, False)
+        a.matches.append(match)
 
     result.annotations.append(a)
 
@@ -88,17 +108,22 @@ class CorpusEvaluator:
     return self._summary(all_annotations, accuracy_km)
 
   def results_csv(self):
-    lines = 'Document\tPosition\tName\tRemark\tCoordinate\tSource\tID\tDistance\n'
+    lines = 'Document\tPosition\tName\tLatitude\tLongitude\tResolved\tMin. Distance\tEntities\tRemark\n'
     for d in self.results:
       for a in self.results[d].annotations:
-        lines += f'{d}\t{a.position}\t{a.name}\t{a.remark}\t{a.lat},{a.lng}\t'
-        if a.distance == None:
-          lines += f'\t\t\n'
-          continue
-        if a.geoname != None:
-          lines += f'GEO\t{a.geoname.id}\t{a.distance:.2f}\n'
-        else:
-          lines += f'OSM\t{a.osm_element}\t{a.distance:.2f}\n'
+        p = a.position
+        res = 0
+        md = ''
+        matches = ''
+        rem = a.remark
+
+        min_dist = a.min_distance()
+        if min_dist != None:
+          res = 1 if a.has_global_match() else 2
+          md = f'{min_dist:.2f}'
+          matches = ','.join(str(m) for m in a.matches)
+
+        lines += f'{d}\t{p}\t{a.name}\t{a.lat}\t{a.lng}\t{res}\t{md}\t{matches}\t{rem}\n'
     return lines
 
   def _summary(self, annotations, accuracy_km):

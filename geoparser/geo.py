@@ -51,24 +51,7 @@ class GeoUtil:
     return min_dist
 
   @staticmethod
-  def closest_osm_element(lat, lng, osm_json):
-    elements = osm_json['elements']
-    min_dist = float('inf')
-    closest = None
-    full_ids = [f'{e["type"]}/{e["id"]}' for e in elements]
-
-    for e in elements:
-      dist = GeoUtil._osm_element_distance(lat, lng, e, full_ids)
-      if dist < min_dist:
-        closest = OSMElement(e['id'], e['type'])
-        if dist == 0:
-          return (0, closest)
-        min_dist = dist
-
-    return (min_dist, closest)
-
-  @staticmethod
-  def _osm_element_distance(lat, lng, el, excluded):
+  def osm_element_distance(lat, lng, el):
     t = el['type']
     if t == 'node':
       return GeoUtil.distance(lat, lng, el['lat'], el['lon'])
@@ -80,12 +63,10 @@ class GeoUtil:
       for m in el['members']:
         if m['role'] in ['label', 'admin_centre', 'subarea', 'inner']:
           continue
-        if f'{m["type"]}/{m["ref"]}' in excluded:
-          continue
         if m['type'] == 'relation':
           print('Super-relations not supported!')
           continue
-        dist = GeoUtil._osm_element_distance(lat, lng, m, None)
+        dist = GeoUtil.osm_element_distance(lat, lng, m)
         distances.append(dist)
         if dist == 0:
           break

@@ -129,17 +129,23 @@ class OSMElement:
 
   type_names = ['node', 'way', 'relation']
 
-  # reference: int
+  # id: int
   # element_type: 'node' or 'way' or 'relation'
-  def __init__(self, reference, element_type):
-    self.reference = reference
+  def __init__(self, id, element_type):
+    self.id = id
     self.element_type = element_type
 
+  def reference(self):
+    return self.element_type + '/' + str(self.id)
+
+  def short_ref(self):
+    return self.element_type[0] + str(self.id)
+
   def __repr__(self):
-    return f'{self.element_type}/{self.reference}'
+    return self.short_ref()
 
   def url(self):
-    return 'https://www.openstreetmap.org/' + str(self)
+    return 'https://www.openstreetmap.org/' + self.reference()
 
   def type_code(self):
     return self.type_names.index(self.element_type)
