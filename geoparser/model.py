@@ -39,12 +39,17 @@ class GeoName:
     return f'{self.name}, {self.adm1}, {self.cc} [{self.fcode}]'
 
 
-class ToponymMap:
+class Document:
 
-  def __init__(self):
+  def __init__(self, text):
+    self.text = text
     self.names = {}
+    self.anchors = {}
 
-  def add(self, name, pos):
+  def add_anchor(self, start, text):
+    self.anchors[start] = text
+
+  def add_toponym(self, name, pos):
     end = pos + len(name)
 
     all_positions = list(self.names.keys())
@@ -73,56 +78,80 @@ class ToponymMap:
     return [n for p, n in self.names.items() if left < p < right]
 
 
-class ResolvedToponym:
+class Candidate:
+
+  # hierarchy: [GeoName]
+  # geoname: GeoName
+  # ancestors: [GeoName]
+  def __init__(self, hierarchy):
+    self.hierarchy = hierarchy
+    self.geoname = hierarchy[-1]
+    self.ancestors = hierarchy[:-1]
+
+  def __repr__(self):
+    return repr(self.geoname)
+
+
+class ResolutionSet:
 
   # name: str
   # positions: [int]
-  # hierarchy: [GeoName]
-  def __init__(self, name, positions, hierarchy):
+  # candidates: [Candidate]
+  # selected_idx: int
+  # local_context GeoName?
+  def __init__(self, name, positions, candidates):
     self.name = name
     self.positions = positions
-    self.geoname = hierarchy[-1]
-    self.hierarchy = hierarchy
+    self.candidates = candidates
+    self.selected_idx = 0
+    self.local_context = None
+
+  def selected(self):
+    return self.candidates[self.selected_idx]
+
+  def geoname(self):
+    return self.selected().geoname
+
+  def hierarchy(self):
+    return self.selected().hierarchy
+
+  def population(self):
+    return self.geoname().population
 
   def __repr__(self):
-    return ' > '.join(g.name for g in self.hierarchy)
+    hierarchy = self.selected().hierarchy
+    return ' > '.join(g.name for g in hierarchy)
 
 
 class ToponymCluster:
 
-  # toponyms: [ResolvedToponym]
-  # cities: [ResolvedToponym]
-  # anchor: ResolvedToponym
-  def __init__(self, toponyms, cities, anchor):
-    self.toponyms = toponyms
-    self.cities = cities
+  # sets: [ResolutionSet]
+  # anchor: ResolutionSet
+  # city_geonames: [GeoName]
+  # size: int
+  # local_matches: [OSMMatch]
+  # confidence: float
+  def __init__(self, sets, anchor):
+    self.sets = sets
+    self.local_contexts = [rn.local_context for rn in sets if rn.local_context != None]
     self.anchor = anchor
-    self.city_geonames = [t.geoname for t in cities]
-    self.size = len(toponyms)
+    self.size = len(sets)
     self.local_matches = []
     self.confidence = 0
 
-  def city_ids(self):
-    return [g.id for g in self.city_geonames]
-
   def population(self):
-    return self.anchor.geoname.population
+    return self.anchor.population()
 
   def mentions(self):
-    return sum(len(t.positions) for t in self.toponyms)
+    return sum(len(rs.positions) for rs in self.sets)
 
   def path(self):
-    return [g.name for g in self.anchor.hierarchy]
+    return self.anchor.hierarchy()
 
   def __repr__(self):
-    path = self.path()
-    cities = sorted(
-        self.city_geonames, key=lambda g: g.population, reverse=True)
-    repr_str = ' > '.join(path)
-    for geoname in cities:
-      if geoname.name != path[-1]:
-        repr_str += ' + ' + geoname.name
-    return repr_str
+    anchor_repr = repr(self.anchor)
+    names = ','.join(rs.name for rs in self.sets)
+    return f'{anchor_repr} ({names})'
 
 
 class OSMElement:

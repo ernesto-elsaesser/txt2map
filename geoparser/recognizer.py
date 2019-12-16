@@ -3,7 +3,7 @@ import json
 import csv
 import re
 import spacy
-from .model import ToponymMap
+from .model import Document
 
 class ToponymRecognizer:
 
@@ -28,23 +28,26 @@ class ToponymRecognizer:
         self.demonyms += row[1].split(',')
 
   def parse(self, text):
-    doc = self.nlp_sm(text)
-    ents = doc.ents
-    if self.use_large_model:
-      ents += self.nlp_lg(text).ents
-    tmap = self._get_toponyms(text, ents)
-    anchors = self._get_anchors(doc)
-    return (tmap, anchors)
-
-  def _get_toponyms(self, text, ents):
-    tmap = ToponymMap()
+    doc = Document(text)
 
     for name in self.top_level_names:
       for match in re.finditer(name, text):
-        tmap.add(name, match.start())
+        doc.add_toponym(name, match.start())
     for demonym in self.demonyms:
       for match in re.finditer(demonym, text):
-        tmap.add(demonym, match.start())
+        doc.add_toponym(demonym, match.start())
+
+    spacy_doc = self.nlp_sm(text)
+    self._add_anchors(spacy_doc, doc)
+    
+    ents = spacy_doc.ents
+    if self.use_large_model:
+      ents += self.nlp_lg(text).ents
+
+    self._add_toponyms(ents, doc)
+    return doc
+
+  def _add_toponyms(self, ents, doc):
 
     for ent in ents:
       if ent.label_ not in ['GPE', 'LOC', 'NORP']:
@@ -60,14 +63,10 @@ class ToponymRecognizer:
       elif name.endswith('\''):
         name = name[:-1]
 
-      tmap.add(name, pos)
+      doc.add_toponym(name, pos)
 
-    return tmap
-
-  def _get_anchors(self, doc):
-    anchors = []
-    for token in doc:
+  def _add_anchors(self, tokens, doc):
+    for token in tokens:
       first = token.text[0]
       if first.isdigit() or (token.pos_ == 'PROPN' and first.isupper()):
-        anchors.append((token.idx, token.text))
-    return anchors
+        doc.add_anchor(token.idx, token.text)
