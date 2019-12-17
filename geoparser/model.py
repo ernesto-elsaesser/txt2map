@@ -115,8 +115,7 @@ class ResolutionSet:
     return self.geoname().population
 
   def __repr__(self):
-    hierarchy = self.selected().hierarchy
-    return ' > '.join(g.name for g in hierarchy)
+    return ' > '.join(g.name for g in self.hierarchy())
 
 
 class ToponymCluster:
