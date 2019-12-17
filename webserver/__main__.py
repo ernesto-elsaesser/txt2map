@@ -25,12 +25,12 @@ def serve_form():
 @app.route('/', methods=['POST'])
 def parse_text():
   req_text = request.get_data(as_text=True)
-  results = parser.parse(req_text)
+  doc = parser.parse(req_text)
   accept = request.headers['Accept']
   if 'text/plain' in accept:
-    return formatter.results_to_text(results)
+    return formatter.doc_to_text(doc)
   else:
-    out_json = formatter.results_to_json(results)
+    out_json = formatter.doc_to_json(doc)
     return jsonify(out_json)
 
 

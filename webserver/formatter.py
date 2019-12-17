@@ -2,38 +2,41 @@
 
 class ResponseFormatter:
 
-  def results_to_json(self, clusters):
-    return [self._cluster_to_dict(c) for c in clusters]
+  def doc_to_json(self, doc):
+    return [self._context_to_dict(c, doc) for c in doc.local_contexts.values()]
     
-  def _cluster_to_dict(self, cluster):
-    geoname_matches = [self._res_set_to_dict(rs) for rs in cluster.sets]
-    osm_matches = [self._osm_match_to_dict(m) for m in cluster.local_matches]
-    return {'geoname_matches': geoname_matches,
-            'osm_matches': osm_matches,
-            'path': cluster.path(),
-            'confidence': cluster.confidence}
+  def _context_to_dict(self, context, doc):
+    global_matches = [self._global_to_dict(t, doc) for t in context.global_toponyms]
+    local_matches = [self._local_to_dict(t, context) for t in context.positions]
+    path = [g.name for g in context.hierarchy]
+    return {'global_matches': global_matches,
+            'local_matches': local_matches,
+            'path': path,
+            'confidence': context.confidence}
 
-  def _res_set_to_dict(self, res_set):
-    return {'name': res_set.name,
-            'positions': res_set.positions,
-            'geoname_id': res_set.geoname().id}
+  def _global_to_dict(self, toponym, doc):
+    return {'name': toponym,
+            'positions': doc.positions[toponym],
+            'geoname_id': doc.geonames[toponym].id}
 
-  def _osm_match_to_dict(self, match):
-    return {'name': match.name,
-            'positions': match.positions,
-            'osm_elements': self._osm_element_urls(match)}
+  def _local_to_dict(self, toponym, context):
+    elements = context.osm_elements[toponym]
+    urls = [e.url() for e in elements]
+    return {'name': toponym,
+            'positions': context.positions[toponym],
+            'osm_elements': urls}
 
-  def results_to_text(self, clusters):
+  def doc_to_text(self, doc):
+    contexts = doc.local_contexts.values()
+    contexts = sorted(contexts, key=lambda c: c.confidence, reverse=True)
+
     text = ''
-    for cluster in clusters:
-      text += f'{cluster} (c={cluster.confidence:.2f}):\n'
-      for match in cluster.local_matches:
-        count = len(match.positions)
-        text += f'\t{match.name} ({count}x)\n'
-        for url in self._osm_element_urls(match):
-          text += f'\t\t{url}\n'
+    for context in contexts:
+      path = ' > '.join(g.name for g in context.hierarchy)
+      topos = ', '.join(context.global_toponyms)
+      text += f'{path} ({topos} | c={context.confidence:.2f}):\n'
+      for toponym, elements in context.osm_elements.items():
+        count = len(elements)
+        text += f'\t{toponym} ({count} elements)\n'
       text += '\n'
     return text.encode('utf-8')
-
-  def _osm_element_urls(self, match):
-    return [e.url() for e in match.elements]

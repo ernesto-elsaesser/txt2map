@@ -30,16 +30,27 @@ class ToponymResolver:
 
     # un-default unconnected low-level toponyms
     groups = self._group_by_region()
+    unstables = set()
     if len(groups) > 1:
       for toponyms in groups:
         if len(toponyms) == 1:
-          single = toponyms[0]
-          if single not in self.defaults:
-            continue
-          geoname = self.defaults[single]
-          if not geoname.is_continent and not geoname.is_country:
-            del self.defaults[single]
-            self._fetch_candidates(single)
+          unstables.add(toponyms[0])
+        elif len(toponyms) == 2:
+          for group in groups:
+            if group == toponyms: continue
+            if toponyms[0] in group:
+              unstables.add(toponyms[1])
+            if toponyms[1] in group:
+              unstables.add(toponyms[0])
+    
+    for toponym in unstables:
+      if toponym not in self.defaults:
+        continue
+      geoname = self.defaults[toponym]
+      if not geoname.is_continent and not geoname.is_country:
+        logging.info(f'Considering non-default senses for {toponym}')
+        del self.defaults[toponym]
+        self._fetch_candidates(toponym)
 
     # fetch all hierarchies for non-defaults
     for _, candidates in self.non_defaults.items():
@@ -89,7 +100,10 @@ class ToponymResolver:
 
     for ancestor in hierarchy[:-1]:
       toponym = ancestor.name
-      if ancestor.population >= 50000 or toponym in self.recognized:
+      if ancestor.population >= 50000:
+        continue
+      overlaps = [t for t in self.recognized if toponym in t]
+      if len(overlaps) > 0:
         continue
       positions = []
       for match in re.finditer(toponym, self.doc.text):

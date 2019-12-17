@@ -41,7 +41,7 @@ class ToponymRecognizer:
         self.lookup_tree[key] = []
       self.lookup_tree[key].append(toponym)
 
-    self.matcher = NameMatcher(False, True, 2, False)
+    self.matcher = NameMatcher(False, False, 2, False)
 
   def parse(self, text):
     doc = Document(text)
