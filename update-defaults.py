@@ -105,8 +105,8 @@ defaults['Southern Ocean'] = 4036776
 
 stop_words = ['West', 'South', 'East', 'North',
               'North-West', 'South-West', 'North-East', 
-              'South-East', 'Ocean', 'Island']
-              
+              'South-East', 'Ocean', 'Island', 'Delta', 'Bay']
+
 for word in stop_words:
   if word in defaults:
     del defaults[word]

@@ -73,10 +73,10 @@ class GeoWebNewsEvaluator:
             coords = row[2].split(',')
             a.lat = float(coords[0].strip())
             a.lon = float(coords[1].strip())
-            a.remark = 'hard'
+            a.comment = 'hard'
           else:
             geoname_id = int(row[2])
-            geoname = self.parser.resolver.gns_cache.get(geoname_id)
+            geoname = self.parser.gns_cache.get(geoname_id)
             a.geoname_id = geoname_id
             a.lat = geoname.lat
             a.lon = geoname.lon

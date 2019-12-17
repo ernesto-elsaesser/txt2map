@@ -79,7 +79,8 @@ class ToponymRecognizer:
       is_num = first.isdigit()
       is_title = first.isupper()
       if is_title or is_num:
-        doc.add_anchor(token.idx, token.text, is_num, token.is_stop)
+        is_stop = token.is_stop and not token.text == 'US'
+        doc.add_anchor(token.idx, token.text, is_num, is_stop)
 
   def _add_ner_toponyms(self, ents, doc):
 
@@ -87,6 +88,11 @@ class ToponymRecognizer:
     new_toponyms = {}
 
     for ent in ents:
+      if ent.label_ == 'PERSON':
+        names = ent.text.split(' ')
+        for name in names:
+          doc.clear(name)
+
       if ent.label_ not in ['GPE', 'LOC']:
         continue
 

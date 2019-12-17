@@ -6,5 +6,7 @@ logging.basicConfig(format='%(asctime)s %(message)s',
                     datefmt="%H:%M:%S")
 
 evaluator = GeoWebNewsEvaluator()
-#evaluator.test_all()
-evaluator.test(35)
+#evaluator.test_all(doc_range=range(10))
+evaluator.test(46)
+#evaluator.test(111)
+#evaluator.test(155)

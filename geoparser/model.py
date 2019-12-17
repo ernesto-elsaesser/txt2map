@@ -124,6 +124,12 @@ class Document:
   def resolve(self, toponym, geoname):
     self.geonames[toponym] = geoname
 
+  def clear(self, non_toponym):
+    if non_toponym in self.positions:
+      del self.positions[non_toponym]
+      if non_toponym in self.geonames:
+        del self.geonames[non_toponym]
+
   def add_local_context(self, context):
     key = '/'.join(reversed([g.name for g in context.hierarchy]))
     self.local_contexts[key] = context
