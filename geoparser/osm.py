@@ -16,11 +16,11 @@ class OSMLoader:
   def __init__(self, cache_dir, search_dist):
     self.cache_dir = cache_dir
     self.search_dist = search_dist
-    self.matcher = NameMatcher()
+    self.matcher = NameMatcher(True, True, 4, True)
 
   def find_local_matches(self, cluster, doc):
     db = self._load_database(cluster.local_context)
-    names = self.matcher.find_names(doc, True, lambda p: db.find_names(p))
+    names = self.matcher.find_names(doc, lambda p: db.find_names(p))
 
     context = LocalContext(cluster)
     for name, positions in names.items():

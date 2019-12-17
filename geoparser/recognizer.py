@@ -41,7 +41,7 @@ class ToponymRecognizer:
         self.lookup_tree[key] = []
       self.lookup_tree[key].append(toponym)
 
-    self.matcher = NameMatcher()
+    self.matcher = NameMatcher(False, True, 2, False)
 
   def parse(self, text):
     doc = Document(text)
@@ -49,7 +49,7 @@ class ToponymRecognizer:
     spacy_doc = self.nlp_sm(text)
     self._add_anchors(spacy_doc, doc)
 
-    names = self.matcher.find_names(doc, False, self._lookup_prefix)
+    names = self.matcher.find_names(doc, self._lookup_prefix)
     for name, positions in names.items():
       doc.recognize(name, positions)
       toponym = name
@@ -76,10 +76,10 @@ class ToponymRecognizer:
   def _add_anchors(self, tokens, doc):
     for token in tokens:
       first = token.text[0]
-      if first.isdigit():
-        doc.add_num_anchor(token.idx, token.text)
-      elif first.isupper() and not token.is_stop:
-        doc.add_anchor(token.idx, token.text)
+      is_num = first.isdigit()
+      is_title = first.isupper()
+      if is_title or is_num:
+        doc.add_anchor(token.idx, token.text, is_num, token.is_stop)
 
   def _add_ner_toponyms(self, ents, doc):
 

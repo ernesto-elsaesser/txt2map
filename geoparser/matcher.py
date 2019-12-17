@@ -28,23 +28,27 @@ class NameMatcher:
     'Sq': 'Square'
   }
 
-  def __init__(self):
+  def __init__(self, use_nums, use_stops, min_len, fuzzy):
+    self.use_nums = use_nums
+    self.use_stops = use_stops
+    self.min_len = min_len
+    self.fuzzy = fuzzy
     self.abbreviations = []
     for s, l in self.abbr.items():
       self.abbreviations.append((re.compile(l), s))
     for s, l in self.abbr_end.items():
       self.abbreviations.append((re.compile(l), s))
 
-  def find_names(self, doc, with_nums, lookup_prefix):
+  def find_names(self, doc, lookup_prefix):
     text_len = len(doc.text)
     names = {}
     prev_match_end = 0
     suffixes_for_prefixes = {}
 
-    anchors = doc.get_anchors(with_nums)
-    for start, prefix in anchors.items():
-      if start < prev_match_end:
-        continue
+    for start, (prefix, is_num, is_stop) in doc.anchors.items():
+      if is_num and not self.use_nums: continue
+      if is_stop and not self.use_stops: continue
+      if start < prev_match_end: continue
 
       if prefix in suffixes_for_prefixes:
         suffixes = suffixes_for_prefixes[prefix]
@@ -69,7 +73,7 @@ class NameMatcher:
             longest_match = name
           elif suffix[0].lower() == next_char.lower():
             trimmed_suffixes.append((name, suffix[1:]))
-          elif len(suffix) > 1:
+          elif self.fuzzy and next_char != ' ' and len(suffix) > 1:
             trimmed_one_off.append((name, suffix))
             trimmed_one_off.append((name, suffix[1:]))
         suffixes = trimmed_suffixes
@@ -88,7 +92,8 @@ class NameMatcher:
     found_names = lookup_prefix(prefix)
     suffixes = []
     for name in found_names:
-      if name.isdigit(): continue
+      if len(name) < self.min_len:
+        continue
       suffix = name[len(prefix):]
       suffixes.append((name, suffix))
       short_version = self.abbreviated(suffix)

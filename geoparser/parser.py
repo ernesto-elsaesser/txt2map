@@ -62,20 +62,21 @@ class Geoparser:
       for toponym in context.global_toponyms:
         mentions += doc.mention_count(toponym)
       mention_counts[key] = mentions
-      match_counts[key] = len(context.spans)
+      match_counts[key] = len(context.positions)
       population_counts[key] = context.hierarchy[-1].population
 
       if len(context.global_toponyms) > 1:
         context.confidence += 0.2
-      if len(context.spans) > 1:
+      if len(context.positions) > 1:
         context.confidence += 0.2
 
     most_global_mentions = max(contexts, key=lambda k: mention_counts[k])
-    contexts[most_global_mentions].confidence += 0.4
+    if mention_counts[most_global_mentions] > 1:
+      contexts[most_global_mentions].confidence += 0.3
 
     most_local_matches = max(contexts, key=lambda k: match_counts[k])
     if match_counts[most_local_matches] > 1:
-      contexts[most_local_matches].confidence += 0.1
+      contexts[most_local_matches].confidence += 0.2
 
     biggest_population = max(contexts, key=lambda k: population_counts[k])
     contexts[biggest_population].confidence += 0.1

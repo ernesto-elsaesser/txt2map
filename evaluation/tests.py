@@ -15,6 +15,7 @@ class TestEvaluator:
     self.test_global_top_defaults()
     self.test_global_name_sim()
     self.test_global_demonyms()
+    self.test_global_two()
     self.test_embedded()
     self.test_ancestors()
     self.test_local_node()
@@ -68,6 +69,12 @@ class TestEvaluator:
     anns = [('Santa Clara', 0, 0, 3537906)]
     self._test(False, 'Demonyms', text, anns)
 
+  def test_global_two(self):
+    text = 'Paris in in France and Los Angeles in California.'
+    anns = [('Paris', 0, 0, 2988507), ('France', 0, 0, 3017382),
+            ('Los Angeles', 0, 0, 5368361), ('California', 0, 0, 5332921)]
+    self._test(False, 'Two Clusters', text, anns)
+
   def test_ancestors(self):
     text = 'Avoyelles task force arrests 14. They live in Cottonport, US.'
     anns = [('Avoyelles', 0, 0, 4315243), ('Cottonport', 0, 0, 4320874)]
@@ -85,7 +92,8 @@ class TestEvaluator:
 
   def test_local_way(self):
     text = 'When in Los Angeles check out Hollywood Blvd.'
-    anns = [('Hollywood Blvd', 34.101596, -118.338724, None)]
+    anns = [('Los Angeles', 0, 0, 5368361),
+            ('Hollywood Blvd', 34.101596, -118.338724, None)]
     self._test(True, 'OSM Way', text, anns)
 
   def test_local_relation(self):

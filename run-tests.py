@@ -7,4 +7,4 @@ logging.basicConfig(format='%(asctime)s %(message)s',
 
 evaluator = TestEvaluator()
 evaluator.test_all()
-#evaluator.test_global_name_sim()
+#evaluator.test_ancestors()

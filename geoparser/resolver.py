@@ -1,5 +1,6 @@
 import os
 import logging
+import re
 import pylev
 from .model import ToponymCluster
 from .geonames import GeoNamesCache
@@ -38,8 +39,7 @@ class ToponymResolver:
           geoname = self.defaults[single]
           if not geoname.is_continent and not geoname.is_country:
             del self.defaults[single]
-            first = self._fetch_candidates(single)
-            self._fetch_hierarchy(first)
+            self._fetch_candidates(single)
 
     # fetch all hierarchies for non-defaults
     for _, candidates in self.non_defaults.items():
@@ -87,6 +87,19 @@ class ToponymResolver:
     hierarchy = self.gns_cache.get_hierarchy(geoname.id)
     self.hierarchies[geoname.id] = hierarchy
 
+    for ancestor in hierarchy[:-1]:
+      toponym = ancestor.name
+      if ancestor.population >= 50000 or toponym in self.recognized:
+        continue
+      positions = []
+      for match in re.finditer(toponym, self.doc.text):
+        positions.append(match.start())
+      if len(positions) > 0:
+        logging.info(f'Found {toponym} as ancestor of {geoname}')
+        self.doc.recognize(toponym, positions)
+        self.doc.resolve(toponym, ancestor)
+        self.defaults[toponym] = ancestor
+
   def _currently_selected(self):
     selected = {}
     for toponym in self.defaults:
@@ -108,7 +121,7 @@ class ToponymResolver:
       if toponym in grouped:
         continue
 
-      (apos, spos) = self._find_ancestors_and_siblings(selected[toponym])
+      (apos, spos) = self._find_ancestors_and_siblings(toponym, selected[toponym])
       ancestors = list(apos.keys())
       siblings = list(spos.keys())
       group = [toponym] + ancestors + siblings
@@ -119,20 +132,20 @@ class ToponymResolver:
 
     return groups
 
-  def _find_ancestors_and_siblings(self, geoname):
+  def _find_ancestors_and_siblings(self, toponym, geoname):
     region = geoname.region()
-    hierarchy = self.hierarchies[geoname.id]
-    ancestor_ids = [g.id for g in hierarchy[:-1]]
+    ancestors = self.hierarchies[geoname.id][:-1]
+    ancestor_ids = [g.id for g in ancestors]
     ancestors = {}
     siblings = {}
     selected = self._currently_selected()
-    for toponym, g in selected.items():
-      if g == geoname:
+    for t, g in selected.items():
+      if t == toponym:
         continue
       if g.id in ancestor_ids:
-        ancestors[toponym] = self.recognized[toponym]
+        ancestors[t] = self.recognized[t]
       elif g.region() == region:
-        siblings[toponym] = self.recognized[toponym]
+        siblings[t] = self.recognized[t]
     return (ancestors, siblings)
 
   def _select_heuristically(self, toponym):
@@ -160,7 +173,7 @@ class ToponymResolver:
     name = geoname.name
     acronym = self._acronym(name)
     hierarchy = self.hierarchies[geoname.id]
-    (apos, spos) = self._find_ancestors_and_siblings(geoname)
+    (apos, spos) = self._find_ancestors_and_siblings(toponym, geoname)
 
     score = 4 / len(hierarchy)
 

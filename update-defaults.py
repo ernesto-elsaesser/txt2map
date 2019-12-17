@@ -103,6 +103,12 @@ defaults['Indian Ocean'] = 1545739
 defaults['Arctic Ocean'] = 2960860
 defaults['Southern Ocean'] = 4036776
 
+stop_words = ['West', 'South', 'East', 'North',
+              'North-West', 'South-West', 'North-East', 
+              'South-East', 'Ocean', 'Island']
+for word in stop_words:
+  if word in defaults:
+    del defaults[word]
 
 defaults_str = json.dumps(defaults)
 defaults_file = 'geoparser/defaults.json'

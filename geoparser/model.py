@@ -110,23 +110,13 @@ class Document:
 
   def __init__(self, text):
     self.text = text + ' ' # allow matching of last word
-
     self.anchors = {}
-    self.anchors_no_num = {}
-
     self.positions = {}
     self.geonames = {}
     self.local_contexts = {}
 
-  def add_anchor(self, start, text):
-    self.anchors[start] = text
-    self.anchors_no_num[start] = text
-
-  def add_num_anchor(self, start, text):
-    self.anchors[start] = text
-
-  def get_anchors(self, with_num):
-    return self.anchors if with_num else self.anchors_no_num
+  def add_anchor(self, start, text, is_num, is_stop):
+    self.anchors[start] = (text, is_num, is_stop)
 
   def recognize(self, toponym, positions):
     self.positions[toponym] = positions
@@ -135,7 +125,7 @@ class Document:
     self.geonames[toponym] = geoname
 
   def add_local_context(self, context):
-    key = ' > '.join(g.name for g in context.hierarchy)
+    key = '/'.join(reversed([g.name for g in context.hierarchy]))
     self.local_contexts[key] = context
 
   def toponyms(self):
