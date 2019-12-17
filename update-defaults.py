@@ -17,23 +17,6 @@ def insert(name, id, pop):
   top_pops[name] = pop
 
 
-# make sure we have all countries and their alt names
-cache = GeoNamesCache()
-continents = cache.get_children(6295630)  # Earth
-for continent in continents:
-  print('loading countires in', continent.name)
-  countries = cache.get_children(continent.id)
-  for country in countries:
-    # use API directly to get all names
-    detailed = GeoNamesAPI.get_geoname(country.id)
-    pop = detailed.population
-    insert(detailed.name, country.id, pop)
-    insert(detailed.asciiname, country.id, pop)
-    for entry in detailed.altnames:
-      if 'lang' in entry and entry['lang'] == 'en' and entry['name'] != country.name:
-        insert(entry['name'], country.id, pop)
-
-
 # data can be loaded from http://download.geonames.org/export/dump/
 all_countries_path = '../allCountries.txt'
 data_file = open(all_countries_path, encoding='utf-8')
@@ -69,6 +52,9 @@ for row in reader:
   if not len(name) > 3:
     continue
 
+  if fcl == 'P':
+    pop *= 50
+
   id = row[0]
   insert(name, id, pop)
 
@@ -82,6 +68,23 @@ for row in reader:
   if reader.line_num > next_log:
     print('at row', next_log)
     next_log += 500_000
+
+
+# make sure we have all countries and their alt names
+cache = GeoNamesCache()
+continents = cache.get_children(6295630)  # Earth
+for continent in continents:
+  print('loading countries in', continent.name)
+  countries = cache.get_children(continent.id)
+  for country in countries:
+    # use API directly to get all names
+    detailed = GeoNamesAPI.get_geoname(country.id)
+    pop = detailed.population
+    insert(detailed.name, country.id, pop)
+    insert(detailed.asciiname, country.id, pop)
+    for entry in detailed.altnames:
+      if 'lang' in entry and entry['lang'] == 'en' and entry['name'] != country.name:
+        insert(entry['name'], country.id, pop)
 
 
 # common abbreviations

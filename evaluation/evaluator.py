@@ -5,50 +5,79 @@ from geoparser import Geoparser, GeoNamesCache, OverpassAPI, GeoUtil
 
 class Match:
 
-  def __init__(self, reference, distance, is_global):
+  def __init__(self, reference, distance, is_full):
     self.reference = reference
     self.distance = distance
-    self.is_global = is_global
+    self.is_full = is_full
 
-  def __repr__(self):
-    return f'{self.reference}:{self.distance:.2f}'
+  def dist_str(self):
+    return f'{self.distance:.2f}'
 
 
 class Annotation:
 
-  def __init__(self, position, name, lat, lon, geoname_id):
+  def __init__(self, position, phrase, lat, lon, geoname_id):
     self.position = position
-    self.name = name
+    self.phrase = phrase
     self.lat = lat
     self.lon = lon
     self.geoname_id = geoname_id
-    self.matches = []
+    self.global_match = None
+    self.local_match = None
     self.remark = ''
 
-  def min_distance(self):
-    if len(self.matches) == 0:
-      return None
-    return min(m.distance for m in self.matches)
+  def _matches(self):
+    return filter(lambda m: m != None, [self.global_match, self.local_match])
 
-  def has_global_match(self):
-    global_matches = [m for m in self.matches if m.is_global]
-    return len(global_matches) > 0
+  def rec_type(self):
+    if self.global_match != None:
+      if self.global_match.is_full: return 2
+      if self.local_match == None: return 1
+    if self.local_match != None:
+      return 2 if self.local_match.is_full else 1
+    return 0
+
+  def res_type(self):
+    if self.global_match != None:
+      return 2
+    elif self.local_match != None:
+      return 1
+    else:
+      return 0
+
+  def match_dists(self):
+    md = glr = gld = lcr = lcd = ''
+    if self.global_match != None:
+      glr = self.global_match.reference
+      gld = self.global_match.dist_str()
+      md = gld
+      dist = self.global_match.distance
+    if self.local_match != None:
+      glr = self.local_match.reference
+      gld = self.local_match.dist_str()
+      if md == '' or self.local_match.distance < dist:
+        md = gld
+    return (glr, gld, lcr, lcd, md)
 
   def recognized(self):
-    return len(self.matches) > 0
+    return self.global_match != None or self.local_match != None
 
-  def resolved(self, accuracy_km):
-    min_dist = self.min_distance()
-    if min_dist == None:
-      return False
-    return min_dist < accuracy_km
+  def resolved_accurately(self, accuracy_km):
+    if self.global_match != None:
+      if self.global_match.distance < accuracy_km:
+        return True
+    if self.local_match != None:
+      if self.local_match.distance < accuracy_km:
+        return True
+    return False
 
 
 class Result:
 
-  def __init__(self, geonames, osm_elements):
-    self.geonames = geonames
-    self.osm_elements = osm_elements
+  def __init__(self, doc, global_, local):
+    self.doc = doc
+    self.global_ = global_
+    self.local = local
     self.annotations = []
 
 
@@ -61,45 +90,59 @@ class CorpusEvaluator:
   def start_document(self, document, text):
     logging.info('--- %s ---', document)
     self.document = document
-    geonames = {}
-    osm_elements = {}
+    global_ = {}
+    local = {}
 
-    clusters = self.parser.parse(text)
-    for cluster in clusters:
-      for res_set in cluster.sets:
-        for position in res_set.positions:
-          geonames[position] = res_set.geoname()
-      for match in cluster.local_matches:
-        for position in match.positions:
-          if position in osm_elements:
-            osm_elements[position] += match.elements
+    doc = self.parser.parse(text)
+    for toponym, positions in doc.positions.items():
+      for position in positions:
+        global_[position] = toponym
+
+    for key, context in doc.local_contexts.items():
+      for toponym, positions in context.positions.items():
+        for position in positions:
+          tupel = (key, toponym)
+          if position in local:
+            local[position].append(tupel)
           else:
-            osm_elements[position] = match.elements
+            local[position] = [tupel]
 
-    self.results[document] = Result(geonames, osm_elements)
+    self.results[document] = Result(doc, global_, local)
 
   def verify_annotation(self, annotation):
     result = self.results[self.document]
     a = annotation
 
-    if a.position in result.geonames:
-      geoname = result.geonames[a.position]
-      reference = 'g' + str(geoname.id)
+    if a.position in result.global_:
+      toponym = result.global_[a.position]
+      geoname = result.doc.geonames[toponym]
       if a.geoname_id == geoname.id:
         distance = 0.0
       else:
         distance = GeoUtil.distance(a.lat, a.lon, geoname.lat, geoname.lon)
-      match = Match(reference, distance, True)
-      a.matches.append(match)
+      full_match = toponym == a.phrase
+      a.global_match = Match(str(geoname.id), distance, full_match)
     
-    if a.position in result.osm_elements:
-      elements = result.osm_elements[a.position]
-      json_elements = self.parser.osm_loader.load_geometries(elements)
-      for e in json_elements:
-        distance = GeoUtil.osm_element_distance(a.lat, a.lon, e)
-        reference = e['type'][0] + str(e['id'])
-        match = Match(reference, distance, False)
-        a.matches.append(match)
+    if a.position in result.local:
+      tupels = result.local[a.position]
+      best_match = None
+      best_full = None
+      min_dist = float('inf')
+      min_dist_full = float('inf')
+      for key, toponym in tupels:
+        full_match = toponym == a.phrase
+        elements = result.doc.local_contexts[key].osm_elements[toponym]
+        json_elements = self.parser.osm_loader.load_geometries(elements)
+        for e in json_elements:
+          reference = e['type'] + '/' + str(e['id'])
+          distance = GeoUtil.osm_element_distance(a.lat, a.lon, e)
+          if distance < min_dist:
+            min_dist = distance
+            best_match = Match(reference, distance, full_match)
+          if full_match and distance < min_dist_full:
+            min_dist_full = distance
+            best_full = Match(reference, distance, full_match)
+      a.local_match = best_full or best_match
 
     result.annotations.append(a)
 
@@ -112,22 +155,15 @@ class CorpusEvaluator:
     return self._summary(all_annotations, accuracy_km)
 
   def results_csv(self):
-    lines = 'Document\tPosition\tName\tResolved\tMin. Distance\tEntities\tRemark\n'
+    lines = 'Document\tPos\tPhrase\tRec\tRes\tMin. Dist.\tGlobal\tGlobal Dist.\tLocal\tLocal Dist.\tRemark\n'
     for d in self.results:
       for a in self.results[d].annotations:
         p = a.position
-        res = 0
-        md = ''
-        matches = ''
+        rec = a.rec_type()
+        res = a.res_type()
+        (glr, gld, lcr, lcd, md) = a.match_dists()
         rem = a.remark
-
-        min_dist = a.min_distance()
-        if min_dist != None:
-          res = 1 if a.has_global_match() else 2
-          md = f'{min_dist:.2f}'
-          matches = ','.join(str(m) for m in a.matches)
-
-        lines += f'{d}\t{p}\t{a.name}\t{res}\t{md}\t{matches}\t{rem}\n'
+        lines += f'{d}\t{p}\t{a.phrase}\t{rec}\t{res}\t{md}\t{glr}\t{gld}\t{lcr}\t{lcd}\t{rem}\n'
     return lines
 
   def _summary(self, annotations, accuracy_km):
@@ -135,7 +171,7 @@ class CorpusEvaluator:
     if total == 0:
       return 'no annotations'
     recognized = [a for a in annotations if a.recognized()]
-    resolved = [a for a in annotations if a.resolved(accuracy_km)]
+    resolved = [a for a in annotations if a.resolved_accurately(accuracy_km)]
     p_recognized = int((len(recognized)/total) * 100)
     p_resolved = int((len(resolved)/total) * 100)
     return f'{total} annotations, {p_recognized}% recognized, {p_resolved}% resolved'

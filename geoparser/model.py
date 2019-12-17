@@ -31,6 +31,8 @@ class GeoName:
       self.adm1 = row[8]
     
     self.is_city = self.fcl == 'P'
+    self.is_country = self.fcode.startswith('PCL')
+    self.is_continent = self.fcode == 'CONT'
   
   def region(self):
     return f'{self.cc}-{self.adm1}'
@@ -39,48 +41,6 @@ class GeoName:
     return f'{self.name}, {self.adm1}, {self.cc} [{self.fcode}]'
 
 
-class Document:
-
-  def __init__(self, text):
-    self.text = text + ' ' # allow matching of last word
-
-    self.anchors = {}
-    self.anchors_no_num = {}
-
-    self.globals = {}
-    self.geonames = {}
-    self.locals = {}
-    self.osm_elements = {}
-
-  def add_anchor(self, start, text):
-    self.anchors[start] = text
-    self.anchors_no_num[start] = text
-
-  def add_num_anchor(self, start, text):
-    self.anchors[start] = text
-
-  def get_anchors(self, with_num):
-    return self.anchors if with_num else self.anchors_no_num
-
-  def recognize_globally(self, toponym, positions):
-    self.globals[toponym] = positions
-
-  def resolve_globally(self, toponym, positions, geoname):
-    self.recognize_globally(toponym, positions)
-    self.geonames[toponym] = geoname
-
-  def global_toponyms(self):
-    return list(self.globals.keys())
-
-  def resolve_locally(self, toponym, positions, osm_elements, path):
-    key = ' > '.join(path)
-    if key not in self.locals:
-      self.locals[key] = {}
-    self.locals[key][toponym] = positions
-    if key not in self.osm_elements:
-      self.osm_elements[key] = {}
-    self.osm_elements[key][toponym] = osm_elements
-
 
 class ToponymCluster:
 
@@ -88,26 +48,15 @@ class ToponymCluster:
   # hierarchy: [GeoName]
   # local_context: [GeoName]
   # size: int
-  # local_matches: [OSMMatch]
-  # confidence: float
-  def __init__(self, toponyms, hierarchy, local_context, mentions):
+  def __init__(self, toponyms, hierarchy, local_context):
     self.toponyms = toponyms
     self.hierarchy = hierarchy
     self.local_context = local_context
-    self.mentions = mentions
     self.anchor = hierarchy[-1]
     self.size = len(toponyms)
-    self.local_matches = []
-    self.confidence = 0
-
-  def population(self):
-    return self.anchor.population
-
-  def path(self):
-    return [g.name for g in self.hierarchy]
 
   def __repr__(self):
-    path_str = ' > '.join(self.path())
+    path_str = ' > '.join(g.name for g in self.hierarchy)
     if self.size == 1:
       return path_str
     names = ', '.join(self.toponyms)
@@ -138,3 +87,59 @@ class OSMElement:
 
   def type_code(self):
     return self.type_names.index(self.element_type)
+
+
+class LocalContext:
+
+  def __init__(self, cluster):
+    self.hierarchy = cluster.hierarchy
+    self.global_toponyms = cluster.toponyms
+    self.positions = {}
+    self.osm_elements = {}
+    self.confidence = 0
+
+  def resolve(self, toponym, positions, osm_elements):
+    self.positions[toponym] = positions
+    self.osm_elements[toponym] = osm_elements
+
+  def toponyms(self):
+    return list(self.positions.keys())
+
+
+class Document:
+
+  def __init__(self, text):
+    self.text = text + ' ' # allow matching of last word
+
+    self.anchors = {}
+    self.anchors_no_num = {}
+
+    self.positions = {}
+    self.geonames = {}
+    self.local_contexts = {}
+
+  def add_anchor(self, start, text):
+    self.anchors[start] = text
+    self.anchors_no_num[start] = text
+
+  def add_num_anchor(self, start, text):
+    self.anchors[start] = text
+
+  def get_anchors(self, with_num):
+    return self.anchors if with_num else self.anchors_no_num
+
+  def recognize(self, toponym, positions):
+    self.positions[toponym] = positions
+
+  def resolve(self, toponym, geoname):
+    self.geonames[toponym] = geoname
+
+  def add_local_context(self, context):
+    key = ' > '.join(g.name for g in context.hierarchy)
+    self.local_contexts[key] = context
+
+  def toponyms(self):
+    return list(self.positions.keys())
+
+  def mention_count(self, toponym):
+    return len(self.positions[toponym])

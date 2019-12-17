@@ -5,7 +5,7 @@ import csv
 import json
 import io
 import sqlite3
-from .model import OSMElement
+from .model import LocalContext, OSMElement
 from .database import OSMDatabase
 from .geo import GeoUtil
 from .matcher import NameMatcher
@@ -21,11 +21,14 @@ class OSMLoader:
   def find_local_matches(self, cluster, doc):
     db = self._load_database(cluster.local_context)
     names = self.matcher.find_names(doc, True, lambda p: db.find_names(p))
-    path = cluster.path()
+
+    context = LocalContext(cluster)
     for name, positions in names.items():
       elements = db.get_elements(name)
-      doc.resolve_locally(name, positions, elements, path)
-    return names.keys()
+      context.resolve(name, positions, elements)
+    doc.add_local_context(context)
+
+    return context
 
   def _load_database(self, geonames):
     logging.info('loading OSM data ...')

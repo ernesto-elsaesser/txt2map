@@ -11,8 +11,8 @@ class Geoparser:
   def __init__(self, use_large_model=True, local_search_dist_km=15, cache_dir='cache'):
     if not os.path.exists(cache_dir):
       os.mkdir(cache_dir)
-    self.recognizer = ToponymRecognizer(use_large_model)
     self.gns_cache = GeoNamesCache(cache_dir)
+    self.recognizer = ToponymRecognizer(self.gns_cache, use_large_model)
     self.search_local = local_search_dist_km > 0
     if self.search_local:
       self.osm_loader = OSMLoader(cache_dir, local_search_dist_km)
@@ -21,49 +21,61 @@ class Geoparser:
     doc = self.recognizer.parse(text)
 
     toponym_str = ', '.join(doc.toponyms())
-    logging.info('global entities: %s', toponym_str)
+    logging.info('global toponyms: %s', toponym_str)
 
     resolver = ToponymResolver(self.gns_cache, doc)
     resolver.resolve()
-    clusters = resolver.make_cluster()
+    clusters = resolver.make_clusters()
 
     if self.search_local:
       for cluster in clusters:
         if len(cluster.local_context) == 0:
           continue
 
-        logging.info('selected cluster: %s', cluster)
-        match_names = self.osm_loader.find_local_matches(cluster, doc)
+        logging.info('selected context: %s', cluster)
+        context = self.osm_loader.find_local_matches(cluster, doc)
 
-        matches_str = ', '.join(match_names)
-        logging.info('matches: %s', matches_str)
+        toponym_str = ', '.join(context.toponyms())
+        logging.info('local toponyms: %s', toponym_str)
 
-    self.assign_confidences(clusters)
+    self.assign_confidences(doc)
     logging.info('finished.')
 
-    return sorted(clusters, key=lambda c: c.confidence, reverse=True)
+    return doc
 
-  def assign_confidences(self, clusters):
+  def assign_confidences(self, doc):
+    contexts = doc.local_contexts
 
-    if len(clusters) == 0:
+    if len(contexts) == 0:
       return
 
-    if len(clusters) == 1:
-      clusters[0].confidence = 1.0
+    if len(contexts) == 1:
+      vals = list(contexts.values())
+      vals[0].confidence = 1.0
       return
 
-    most_gns_matches = max(clusters, key=lambda c: c.mentions())
-    most_gns_matches.confidence += 0.4
+    mention_counts = {}
+    match_counts = {}
+    population_counts = {}
+    for key, context in contexts.items():
+      mentions = 0
+      for toponym in context.global_toponyms:
+        mentions += doc.mention_count(toponym)
+      mention_counts[key] = mentions
+      match_counts[key] = len(context.spans)
+      population_counts[key] = context.hierarchy[-1].population
 
-    most_osm_matches = max(clusters, key=lambda c: len(c.local_matches))
-    if len(most_osm_matches.local_matches) > 0:
-      most_osm_matches.confidence += 0.3
+      if len(context.global_toponyms) > 1:
+        context.confidence += 0.2
+      if len(context.spans) > 1:
+        context.confidence += 0.2
 
-    biggest_population = max(clusters, key=lambda c: c.population())
-    biggest_population.confidence += 0.1
+    most_global_mentions = max(contexts, key=lambda k: mention_counts[k])
+    contexts[most_global_mentions].confidence += 0.4
 
-    for cluster in clusters:
-      if cluster.size > 1:
-        cluster.confidence += 0.2
-      if len(cluster.local_matches) > 1 and cluster is not most_osm_matches:
-        cluster.confidence += 0.2
+    most_local_matches = max(contexts, key=lambda k: match_counts[k])
+    if match_counts[most_local_matches] > 1:
+      contexts[most_local_matches].confidence += 0.1
+
+    biggest_population = max(contexts, key=lambda k: population_counts[k])
+    contexts[biggest_population].confidence += 0.1

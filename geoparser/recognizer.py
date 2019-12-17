@@ -8,7 +8,9 @@ from .matcher import NameMatcher
 
 class ToponymRecognizer:
 
-  def __init__(self, use_large_model):
+  def __init__(self, gns_cache, use_large_model):
+    self.gns_cache = gns_cache
+
     # TODO: check if large model makes difference
     self.use_large_model = False #use_large_model
     self.nlp_sm = spacy.load('en_core_web_sm', disable=['parser'])
@@ -49,11 +51,13 @@ class ToponymRecognizer:
 
     names = self.matcher.find_names(doc, False, self._lookup_prefix)
     for name, positions in names.items():
+      doc.recognize(name, positions)
       toponym = name
       if toponym in self.demonyms:
         toponym = self.demonyms[toponym]
-      geoname = self.defaults[toponym]
-      doc.resolve_globally(name, positions, geoname)
+      geoname_id = self.defaults[toponym]
+      geoname = self.gns_cache.get(geoname_id)
+      doc.resolve(name, geoname)
 
     ents = spacy_doc.ents
     if self.use_large_model:
@@ -79,7 +83,7 @@ class ToponymRecognizer:
 
   def _add_ner_toponyms(self, ents, doc):
 
-    known_toponyms = doc.global_toponyms()
+    known_toponyms = doc.toponyms()
     new_toponyms = {}
 
     for ent in ents:
@@ -110,4 +114,4 @@ class ToponymRecognizer:
       new_toponyms[name].append(start)
 
     for toponym, positions in new_toponyms.items():
-      doc.recognize_globally(toponym, positions)
+      doc.recognize(toponym, positions)

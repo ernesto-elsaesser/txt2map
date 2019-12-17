@@ -9,7 +9,7 @@ class ToponymResolver:
   def __init__(self, gns_cache, doc):
     self.gns_cache = gns_cache
     self.doc = doc
-    self.recognized = doc.globals
+    self.recognized = doc.positions
     self.defaults = doc.geonames
     self.non_defaults = {}
     self.selections = {}
@@ -27,16 +27,24 @@ class ToponymResolver:
     for geoname in self._currently_selected().values():
         self._fetch_hierarchy(geoname)
 
-    # assess defaults
-    undefaulted = []
-    for toponym in self.defaults:
-      if self._should_consider_non_defaults(toponym):
-        undefaulted.append(toponym)
-        first = self._fetch_candidates(toponym)
-        self._fetch_hierarchy(first)
+    # un-default unconnected low-level toponyms
+    groups = self._group_by_region()
+    if len(groups) > 1:
+      for toponyms in groups:
+        if len(toponyms) == 1:
+          single = toponyms[0]
+          if single not in self.defaults:
+            continue
+          geoname = self.defaults[single]
+          if not geoname.is_continent and not geoname.is_country:
+            del self.defaults[single]
+            first = self._fetch_candidates(single)
+            self._fetch_hierarchy(first)
 
-    for toponym in undefaulted:
-      del self.defaults[toponym]
+    # fetch all hierarchies for non-defaults
+    for _, candidates in self.non_defaults.items():
+      for candidate in candidates:
+        self._fetch_hierarchy(candidate)
 
     # choose best non-defaults
     changed = True
@@ -54,7 +62,7 @@ class ToponymResolver:
 
     # commit choices
     for toponym, geoname in self._currently_selected().items():
-      self.doc.resolve_globally(toponym, geoname)
+      self.doc.resolve(toponym, geoname)
 
   def _fetch_candidates(self, toponym):
     search_results = self.gns_cache.search(toponym)
@@ -87,16 +95,34 @@ class ToponymResolver:
       selected[toponym] = self.non_defaults[toponym][self.selections[toponym]]
     return selected
 
-  def _should_consider_non_defaults(self, toponym):
-    # TODO: WHAT IF geoname IS ANCESTOR??
-    geoname = self.defaults[toponym]
-    (apos, spos) = self._find_ancestors_and_siblings(geoname)
-    return len(apos) + len(spos) == 0
+  def _group_by_region(self):
+    selected = self._currently_selected()
+    resolved = list(selected.keys())
+    seeds = list(sorted(resolved, key=lambda t: selected[t].population))
+    # smallest first to avoid using top levels as seeds
+
+    groups = []
+    grouped = set()
+
+    for toponym in seeds:
+      if toponym in grouped:
+        continue
+
+      (apos, spos) = self._find_ancestors_and_siblings(selected[toponym])
+      ancestors = list(apos.keys())
+      siblings = list(spos.keys())
+      group = [toponym] + ancestors + siblings
+
+      for t in group:
+        grouped.add(t)
+      groups.append(group)
+
+    return groups
 
   def _find_ancestors_and_siblings(self, geoname):
     region = geoname.region()
     hierarchy = self.hierarchies[geoname.id]
-    ancestor_ids = [g.id for g in hierarchy[-1]]
+    ancestor_ids = [g.id for g in hierarchy[:-1]]
     ancestors = {}
     siblings = {}
     selected = self._currently_selected()
@@ -124,7 +150,7 @@ class ToponymResolver:
       evidence = self._evidence(toponym, candidate)
       if evidence > most_evidence + treshold:
         logging.info(f'chose {candidate} over {selected} for {toponym}')
-        new_selection = selection
+        new_selection = idx
         most_evidence = evidence
 
     return new_selection
@@ -157,31 +183,15 @@ class ToponymResolver:
   def _similar(self, name1, name2):
     return pylev.levenshtein(name1, name2) < 2
 
-  def make_cluster(self):
+  def make_clusters(self):
     logging.info('clustering toponyms ...')
 
+    groups = self._group_by_region()
     selected = self._currently_selected()
-    resolved = list(selected.keys())
-    seeds = list(sorted(resolved,
-      key=lambda t: selected[t].population, reverse=True))
-
     clusters = []
-    used = set()
 
-    for toponym in seeds:
-      if toponym in used:
-        continue
-
-      (apos, spos) = self._find_ancestors_and_siblings(selected[toponym])
-      ancestors = list(apos.keys())
-      siblings = list(spos.keys())
-      connected = [toponym] + ancestors + siblings
-
-      used.add(toponym)
-      for sibling in siblings:
-        used.add(sibling)
-
-      geonames = [selected[t] for t in connected]
+    for toponyms in groups:
+      geonames = [selected[t] for t in toponyms]
       cities = [g for g in geonames if g.is_city]
 
       if len(cities) > 0:
@@ -189,16 +199,15 @@ class ToponymResolver:
         local_context = cities
       else:
         anchor = min(geonames, key=lambda c: c.population)
-        local_context = self._drill_down_to_local(anchor)
+        local_context = self._drill_down(anchor)
 
-      mentions = sum(len(self.recognized[t]) for t in connected)
-
-      cluster = ToponymCluster(connected, anchor, local_context, mentions)
+      hierarchy = self.hierarchies[anchor.id]
+      cluster = ToponymCluster(toponyms, hierarchy, local_context)
       clusters.append(cluster)
 
-    return sorted(clusters, key=lambda c: c.mentions, reverse=True)
+    return clusters
 
-  def _drill_down_to_local(self, geoname):
+  def _drill_down(self, geoname):
     hierarchy = self.hierarchies[geoname.id]
 
     if len(hierarchy) == 1 or geoname.fcl != 'A':
@@ -217,12 +226,17 @@ class ToponymResolver:
 
       else:
         children = sorted(children, key=lambda g: g.population, reverse=True)
+        similar_child = None
         for child in children:
           if child.name in name or name in child.name:
             if child.is_city:
               logging.info(f'using {child} as local context for {name}')
               return [child]
-            geoname = child
-            continue
+            similar_child = child
+            break
+
+        if similar_child != None:
+          geoname = similar_child
+          continue
 
       return []
