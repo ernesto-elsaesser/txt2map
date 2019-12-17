@@ -1,171 +1,152 @@
 import os
 import logging
-import math
-import json
-import csv
-import sqlite3
-import re
 import pylev
-from .model import Candidate, ResolutionSet, ToponymCluster
+from .model import ToponymCluster
 from .geonames import GeoNamesCache
 
 class ToponymResolver:
 
-  def __init__(self, cache_dir):
-    self.gns_cache = GeoNamesCache(cache_dir)
+  def __init__(self, gns_cache, doc):
+    self.gns_cache = gns_cache
+    self.doc = doc
+    self.recognized = doc.globals
+    self.defaults = doc.geonames
+    self.non_defaults = {}
+    self.selections = {}
+    self.hierarchies = {}
 
-    dirname = os.path.dirname(__file__)
-    top_level_file = dirname + '/top-level.json'
-    with open(top_level_file, 'r') as f:
-      json_dict = f.read()
-    self.top_level = json.loads(json_dict)
-
-    self.demonyms = {}
-    demonyms_file = dirname + '/demonyms.csv'
-    with open(demonyms_file, 'r') as f:
-      reader = csv.reader(f, delimiter='\t')
-      for row in reader:
-        toponym = row[0]
-        demos = row[1].split(',')
-        for demonym in demos:
-          self.demonyms[demonym] = toponym
-
-  def resolve(self, doc):
+  def resolve(self):
     logging.info('resolving ...')
 
-    all_toponyms = doc.toponyms()
-    all_sets = []
-    ambiguous_sets = []
-    for name in all_toponyms:
-      rs = self._create_resolution_set(name, doc)
-      if rs == None:
-        continue
-      all_sets.append(rs)
-      if len(rs.candidates) == 1:
-        continue
-      ambiguous_sets.append(rs)
-      all_sets += self._scan_for_ancestors(rs, doc, all_toponyms)
+    # fetch candidates for toponyms not ing gazetteer
+    for toponym in self.recognized:
+      if toponym not in self.defaults:
+        self._fetch_candidates(toponym)
 
-    # some annotations may have been overwritten by ancestors
-    all_toponyms = doc.toponyms()
-    ambiguous_sets = [rs for rs in ambiguous_sets if rs.name in all_toponyms]
+    # fetch hierarchies for selected geonames
+    for geoname in self._currently_selected().values():
+        self._fetch_hierarchy(geoname)
 
+    # assess defaults
+    undefaulted = []
+    for toponym in self.defaults:
+      if self._should_consider_non_defaults(toponym):
+        undefaulted.append(toponym)
+        first = self._fetch_candidates(toponym)
+        self._fetch_hierarchy(first)
+
+    for toponym in undefaulted:
+      del self.defaults[toponym]
+
+    # choose best non-defaults
     changed = True
     rounds = 0
     while changed and rounds < 3:
       rounds += 1
-      selected = {}
-      for res_set in all_sets:
-        selected[res_set.name] = res_set.selected().geoname
+      new_selections = {}
       changed = False
-      for res_set in ambiguous_sets:
-        changed = self._select_heuristically(res_set, selected, doc) or changed
+      for toponym in self.non_defaults:
+        new_selection = self._select_heuristically(toponym)
+        if new_selection != self.selections[toponym]:
+          changed = True
+        new_selections[toponym] = new_selection
+      self.selections = new_selections
 
-    return all_sets
+    # commit choices
+    for toponym, geoname in self._currently_selected().items():
+      self.doc.resolve_globally(toponym, geoname)
 
-  def _create_resolution_set(self, name, doc):
-    positions = doc.positions(name)
+  def _fetch_candidates(self, toponym):
+    search_results = self.gns_cache.search(toponym)
+    if len(search_results) == 0:
+      return
 
-    if name in self.top_level:
-      default = self.gns_cache.get(self.top_level[name])
-      geonames = [default]
-    elif name in self.demonyms:
-      toponym = self.demonyms[name]
-      default = self.gns_cache.get(self.top_level[toponym])
-      geonames = [default]
+    first_result = search_results[0]
+    sorted_results = sorted(
+        search_results[1:], key=lambda c: c.population, reverse=True)
+    candidates = sorted_results[:9]
+    if self._similar(first_result.name, toponym):
+      candidates.insert(0, first_result)
     else:
-      search_results = self.gns_cache.search(name)
-      if len(search_results) == 0:
-        return None
-      first_result = search_results[0]
-      sorted_results = sorted(
-          search_results[1:], key=lambda c: c.population, reverse=True)
-      geonames = sorted_results[:9]
-      if self._similar(first_result.name, name):
-        geonames.insert(0, first_result)
-      else:
-        geonames.append(first_result)
+      candidates.append(first_result)
 
-    candidates = []
-    for geoname in geonames:
-      hierarchy = self.gns_cache.get_hierarchy(geoname.id)
-      candidate = Candidate(hierarchy)
-      candidates.append(candidate)
+    self.non_defaults[toponym] = candidates
+    self.selections[toponym] = 0
 
-    return ResolutionSet(name, positions, candidates)
+    return candidates[0]
 
-  def _scan_for_ancestors(self, res_set, doc, known_toponyms):
-    candidates = {}
-    for candidate in res_set.candidates:
-      for a in candidate.ancestors:
-        if a.name in known_toponyms:
-          continue
-        found = False
-        for match in re.finditer(a.name, doc.text):
-          found = doc.add_toponym(a.name, match.start()) or found
-        if found:
-          hierarchy = self.gns_cache.get_hierarchy(a.id)
-          candidate = Candidate(hierarchy)
-          if a.name in candidates:
-            candidates[a.name].append(candidate)
-          else:
-            candidates[a.name] = [candidate]
+  def _fetch_hierarchy(self, geoname):
+    hierarchy = self.gns_cache.get_hierarchy(geoname.id)
+    self.hierarchies[geoname.id] = hierarchy
 
-    new_sets = []
-    for name, geonames in candidates.items():
-      positions = doc.positions(name)
-      rs = ResolutionSet(name, positions, geonames)
-      new_sets.append(rs)
+  def _currently_selected(self):
+    selected = {}
+    for toponym in self.defaults:
+      selected[toponym] = self.defaults[toponym]
+    for toponym in self.non_defaults:
+      selected[toponym] = self.non_defaults[toponym][self.selections[toponym]]
+    return selected
 
-    return new_sets
+  def _should_consider_non_defaults(self, toponym):
+    # TODO: WHAT IF geoname IS ANCESTOR??
+    geoname = self.defaults[toponym]
+    (apos, spos) = self._find_ancestors_and_siblings(geoname)
+    return len(apos) + len(spos) == 0
 
-  def _select_heuristically(self, ambiguous_set, selected, doc):
-    name = ambiguous_set.name
-    present_ids = set()
-    regions = set()
-    for n, g in selected.items():
-      if n == name: continue
-      present_ids.add(g.id)
-      if g.adm1 != '-':
-        regions.add(g.region())
-
-    first_pos = doc.first(name)
-    close_names = set(doc.toponyms_in_window(first_pos - 150, first_pos + 50))
-    close_names.remove(name)
-    close_ids = set(selected[n].id for n in close_names if n in selected)
-
-    sel_candidate = ambiguous_set.selected()
-    sel_idx = ambiguous_set.selected_idx
-    most_evidence = self._evidence(name, sel_candidate,
-                                   close_ids, regions, present_ids)
-
-    treshold = 1.0
-    for idx, candidate in enumerate(ambiguous_set.candidates):
-      if idx == sel_idx:
+  def _find_ancestors_and_siblings(self, geoname):
+    region = geoname.region()
+    hierarchy = self.hierarchies[geoname.id]
+    ancestor_ids = [g.id for g in hierarchy[-1]]
+    ancestors = {}
+    siblings = {}
+    selected = self._currently_selected()
+    for toponym, g in selected.items():
+      if g == geoname:
         continue
-      evidence = self._evidence(name, candidate,
-                             close_ids, regions, present_ids)
+      if g.id in ancestor_ids:
+        ancestors[toponym] = self.recognized[toponym]
+      elif g.region() == region:
+        siblings[toponym] = self.recognized[toponym]
+    return (ancestors, siblings)
+
+  def _select_heuristically(self, toponym):
+    candidates = self.non_defaults[toponym]
+    selection = self.selections[toponym]
+    selected = candidates[selection]
+    
+    most_evidence = self._evidence(toponym, selected)
+
+    new_selection = selection
+    treshold = 1.0
+    for idx, candidate in enumerate(candidates):
+      if idx == selection:
+        continue
+      evidence = self._evidence(toponym, candidate)
       if evidence > most_evidence + treshold:
-        logging.info(f'chose {candidate} over {sel_candidate} for {name}')
-        ambiguous_set.selected_idx = idx
+        logging.info(f'chose {candidate} over {selected} for {toponym}')
+        new_selection = selection
         most_evidence = evidence
 
-  def _evidence(self, name, candidate, close_ids, regions, present_ids):
+    return new_selection
 
-    score = 4 / len(candidate.hierarchy)
+  def _evidence(self, toponym, geoname):
+    first = min(self.recognized[toponym])
+    name = geoname.name
+    acronym = self._acronym(name)
+    hierarchy = self.hierarchies[geoname.id]
+    (apos, spos) = self._find_ancestors_and_siblings(geoname)
 
-    c_name = candidate.geoname.name
-    if c_name not in name and not self._acronym(c_name) == name:
-      dist = pylev.levenshtein(name, c_name)
+    score = 4 / len(hierarchy)
+
+    if name not in toponym and not acronym == toponym:
+      dist = pylev.levenshtein(toponym, name)
       score -= (dist ** 1.5) / 10
 
-    for ancestor in candidate.ancestors:
-      if ancestor.id in close_ids:
-        score += 1.5
-      elif ancestor.region() in regions:
-        score += 1.0
-      elif ancestor.id in present_ids:
-        score += 0.5
+    for positions in apos.values():
+      preceeding = min(positions) < first + 50
+      score += 1.5 if preceeding else 0.5
+    for _ in spos:
+      score += 1.0
 
     return score
 
@@ -176,58 +157,54 @@ class ToponymResolver:
   def _similar(self, name1, name2):
     return pylev.levenshtein(name1, name2) < 2
 
-  def cluster(self, resolution_sets):
+  def make_cluster(self):
     logging.info('clustering toponyms ...')
 
-    seeds = list(sorted(resolution_sets,
-            key=lambda rs: rs.population(), reverse=True))
+    selected = self._currently_selected()
+    resolved = list(selected.keys())
+    seeds = list(sorted(resolved,
+      key=lambda t: selected[t].population, reverse=True))
 
     clusters = []
-    bound_names = set()
+    used = set()
 
-    while len(seeds) > 0:
-      seed = seeds.pop()
-      bound_names.add(seed.name)
+    for toponym in seeds:
+      if toponym in used:
+        continue
 
-      # find all matches in the same ADM1 area
-      connected = [seed]
-      hierarchy_ids = [g.id for g in seed.hierarchy()]
-      g1 = seed.geoname()
-      for rs in resolution_sets:
-        if rs.name in bound_names:
-          continue
-        g2 = rs.geoname()
-        if g1.cc == g2.cc != '-' and g1.adm1 == g2.adm1 != '-':
-          connected.append(rs)
-          if rs in seeds:
-            bound_names.add(rs.name)
-            seeds.remove(rs)
-        elif g2.id in hierarchy_ids:
-          connected.append(rs)
-          if rs in seeds:
-            seeds.remove(rs)
+      (apos, spos) = self._find_ancestors_and_siblings(selected[toponym])
+      ancestors = list(apos.keys())
+      siblings = list(spos.keys())
+      connected = [toponym] + ancestors + siblings
 
-      city_sets = [rs for rs in connected if rs.geoname().is_city]
+      used.add(toponym)
+      for sibling in siblings:
+        used.add(sibling)
 
-      if len(city_sets) > 0:
-        anchor = max(city_sets, key=lambda c: c.population())
-        local_context = [rs.geoname() for rs in city_sets]
+      geonames = [selected[t] for t in connected]
+      cities = [g for g in geonames if g.is_city]
+
+      if len(cities) > 0:
+        anchor = max(cities, key=lambda c: c.population)
+        local_context = cities
       else:
-        anchor = min(connected, key=lambda c: c.population())
-        local_context = self._find_local_context(anchor)
+        anchor = min(geonames, key=lambda c: c.population)
+        local_context = self._drill_down_to_local(anchor)
 
-      cluster = ToponymCluster(connected, anchor, local_context)
+      mentions = sum(len(self.recognized[t]) for t in connected)
+
+      cluster = ToponymCluster(connected, anchor, local_context, mentions)
       clusters.append(cluster)
 
-    return sorted(clusters, key=lambda c: c.mentions(), reverse=True)
+    return sorted(clusters, key=lambda c: c.mentions, reverse=True)
 
-  def _find_local_context(self, res_set):
-    hierarchy = res_set.hierarchy()
-    geoname = res_set.geoname()
-    name = res_set.name
+  def _drill_down_to_local(self, geoname):
+    hierarchy = self.hierarchies[geoname.id]
 
     if len(hierarchy) == 1 or geoname.fcl != 'A':
       return []
+
+    name = geoname.name
 
     while True:
 
@@ -235,7 +212,7 @@ class ToponymResolver:
 
       if len(children) == 0:
         # if there's nothing below, assume we are already local
-        logging.info(f'using {geoname} as local context for {name}')
+        logging.info(f'using {geoname} as local context')
         return [geoname]
 
       else:

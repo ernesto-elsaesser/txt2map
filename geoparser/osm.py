@@ -8,6 +8,7 @@ import sqlite3
 from .model import OSMElement
 from .database import OSMDatabase
 from .geo import GeoUtil
+from .matcher import NameMatcher
 
 
 class OSMLoader:
@@ -15,8 +16,18 @@ class OSMLoader:
   def __init__(self, cache_dir, search_dist):
     self.cache_dir = cache_dir
     self.search_dist = search_dist
+    self.matcher = NameMatcher()
 
-  def load_database(self, geonames):
+  def find_local_matches(self, cluster, doc):
+    db = self._load_database(cluster.local_context)
+    names = self.matcher.find_names(doc, True, lambda p: db.find_names(p))
+    path = cluster.path()
+    for name, positions in names.items():
+      elements = db.get_elements(name)
+      doc.resolve_locally(name, positions, elements, path)
+    return names.keys()
+
+  def _load_database(self, geonames):
     logging.info('loading OSM data ...')
     sorted_ids = sorted(str(g.id) for g in geonames)
     cluster_id = '-'.join(sorted_ids)
@@ -29,12 +40,12 @@ class OSMLoader:
       def bbox(g): return GeoUtil.bounding_box(g.lat, g.lon, self.search_dist)
       boxes = [bbox(g) for g in geonames]
       csv_reader = OverpassAPI.load_names_in_bounding_boxes(boxes)
-      name_count = self.store_data(osm_db, csv_reader, 1, [2, 3, 4, 5])
+      name_count = self._store_data(osm_db, csv_reader, 1, [2, 3, 4, 5])
       logging.info('created database with %d unique names.', name_count)
 
     return osm_db
 
-  def store_data(self, osm_db, csv_reader, type_col, name_cols):
+  def _store_data(self, osm_db, csv_reader, type_col, name_cols):
     osm_db.create_tables()
 
     col_num = len(name_cols) + 2

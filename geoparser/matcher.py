@@ -1,8 +1,7 @@
 import logging
 import re
-from .model import OSMMatch
 
-class OSMNameMatcher:
+class NameMatcher:
 
   abbr = {
     'N': 'North',
@@ -36,28 +35,28 @@ class OSMNameMatcher:
     for s, l in self.abbr_end.items():
       self.abbreviations.append((re.compile(l), s))
 
-  def find_names(self, doc, osm_db):
-    text = doc.text + ' '  # also catch matches in last word
-    text_len = len(text)
+  def find_names(self, doc, with_nums, lookup_prefix):
+    text_len = len(doc.text)
     names = {}
     prev_match_end = 0
     suffixes_for_prefixes = {}
 
-    for start, prefix in doc.anchors.items():
+    anchors = doc.get_anchors(with_nums)
+    for start, prefix in anchors.items():
       if start < prev_match_end:
         continue
 
       if prefix in suffixes_for_prefixes:
         suffixes = suffixes_for_prefixes[prefix]
       else:
-        suffixes = self.get_suffixes(prefix, osm_db)
+        suffixes = self.get_suffixes(prefix, lookup_prefix)
         suffixes_for_prefixes[prefix] = suffixes
 
       text_pos = start + len(prefix)
       longest_match = None
       one_off = []
       while text_pos < text_len and len(suffixes + one_off) > 0:
-        next_char = text[text_pos]
+        next_char = doc.text[text_pos]
         trimmed_suffixes = []
         trimmed_one_off = []
         for name, suffix in one_off:
@@ -83,16 +82,10 @@ class OSMNameMatcher:
           names[longest_match] = []
         names[longest_match].append(start)
 
-    matches = []
-    for name, positions in names.items():
-      elements = osm_db.get_elements(name)
-      match = OSMMatch(name, positions, elements)
-      matches.append(match)
+    return names
 
-    return matches
-
-  def get_suffixes(self, prefix, osm_db):
-    found_names = osm_db.find_names(prefix)
+  def get_suffixes(self, prefix, lookup_prefix):
+    found_names = lookup_prefix(prefix)
     suffixes = []
     for name in found_names:
       if name.isdigit(): continue
@@ -103,7 +96,7 @@ class OSMNameMatcher:
         suffixes.append((name, short_version))
     if prefix in self.abbr:
       long_prefix = self.abbr[prefix]
-      found_names = osm_db.find_names(long_prefix)
+      found_names = lookup_prefix(long_prefix)
       for name in found_names:
         suffix = name[len(long_prefix):]
         suffixes.append((name, suffix))

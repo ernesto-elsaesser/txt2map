@@ -1,11 +1,8 @@
 import os
 import csv
 import json
+from geoparser import GeoNamesCache, GeoNamesAPI
 
-# data can be loaded from http://download.geonames.org/export/dump/
-all_countries_path = '../allCountries.txt'
-data_file = open(all_countries_path, encoding='utf-8')
-reader = csv.reader(data_file, delimiter='\t')
 
 defaults = {}
 top_pops = {}
@@ -18,6 +15,29 @@ def insert(name, id, pop):
       return
   defaults[name] = id
   top_pops[name] = pop
+
+
+# make sure we have all countries and their alt names
+cache = GeoNamesCache()
+continents = cache.get_children(6295630)  # Earth
+for continent in continents:
+  print('loading countires in', continent.name)
+  countries = cache.get_children(continent.id)
+  for country in countries:
+    # use API directly to get all names
+    detailed = GeoNamesAPI.get_geoname(country.id)
+    pop = detailed.population
+    insert(detailed.name, country.id, pop)
+    insert(detailed.asciiname, country.id, pop)
+    for entry in detailed.altnames:
+      if 'lang' in entry and entry['lang'] == 'en' and entry['name'] != country.name:
+        insert(entry['name'], country.id, pop)
+
+
+# data can be loaded from http://download.geonames.org/export/dump/
+all_countries_path = '../allCountries.txt'
+data_file = open(all_countries_path, encoding='utf-8')
+reader = csv.reader(data_file, delimiter='\t')
 
 def grams(name):
   parts = name.split(' ')
@@ -49,26 +69,37 @@ for row in reader:
   if not len(name) > 3:
     continue
 
+  id = row[0]
+  insert(name, id, pop)
+
   if ' ' in name:
     parts = grams(name)
     alt_names = row[3].split(',')
     for alt_name in alt_names:
       if alt_name in parts and len(alt_name) < len(name):
-        name = alt_name
-        if ' ' not in name:
-          break
-
-  id = row[0]
-  insert(name, id, pop)
+        insert(alt_name, id, pop)
 
   if reader.line_num > next_log:
     print('at row', next_log)
     next_log += 500_000
 
-stop_words = ['North','South','East','West']
-for word in stop_words:
-  if word in defaults:
-    del defaults[word]
+
+# common abbreviations
+defaults['U.S.'] = 6252001
+defaults['US'] = 6252001
+defaults['USA'] = 6252001
+defaults['UAE'] = 290557
+defaults['USSR'] = 8354411
+
+# oceans
+defaults['Atlantic'] = 3373405
+defaults['Atlantic Ocean'] = 3373405
+defaults['Pacific'] = 2363254
+defaults['Pacific Ocean'] = 2363254
+defaults['Indian Ocean'] = 1545739
+defaults['Arctic Ocean'] = 2960860
+defaults['Southern Ocean'] = 4036776
+
 
 defaults_str = json.dumps(defaults)
 defaults_file = 'geoparser/defaults.json'

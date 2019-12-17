@@ -4,7 +4,6 @@ from .recognizer import ToponymRecognizer
 from .resolver import ToponymResolver
 from .geonames import GeoNamesCache
 from .osm import OSMLoader
-from .matcher import OSMNameMatcher
 
 
 class Geoparser:
@@ -13,8 +12,7 @@ class Geoparser:
     if not os.path.exists(cache_dir):
       os.mkdir(cache_dir)
     self.recognizer = ToponymRecognizer(use_large_model)
-    self.resolver = ToponymResolver(cache_dir)
-    self.matcher = OSMNameMatcher()
+    self.gns_cache = GeoNamesCache(cache_dir)
     self.search_local = local_search_dist_km > 0
     if self.search_local:
       self.osm_loader = OSMLoader(cache_dir, local_search_dist_km)
@@ -25,8 +23,9 @@ class Geoparser:
     toponym_str = ', '.join(doc.toponyms())
     logging.info('global entities: %s', toponym_str)
 
-    resolved = self.resolver.resolve(doc)
-    clusters = self.resolver.cluster(resolved)
+    resolver = ToponymResolver(self.gns_cache, doc)
+    resolver.resolve()
+    clusters = resolver.make_cluster()
 
     if self.search_local:
       for cluster in clusters:
@@ -34,10 +33,9 @@ class Geoparser:
           continue
 
         logging.info('selected cluster: %s', cluster)
-        osm_db = self.osm_loader.load_database(cluster.local_context)
-        cluster.local_matches = self.matcher.find_names(doc, osm_db)
+        match_names = self.osm_loader.find_local_matches(cluster, doc)
 
-        matches_str = ', '.join(m.name for m in cluster.local_matches)
+        matches_str = ', '.join(match_names)
         logging.info('matches: %s', matches_str)
 
     self.assign_confidences(clusters)
