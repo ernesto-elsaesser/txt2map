@@ -8,10 +8,12 @@ from .evaluator import Annotation, CorpusEvaluator
 
 class GeoWebNewsEvaluator:
 
-  excluded_types = ["Non_Toponym", "Non_Lit_Expression", "Literal_Expression", "Demonym",
-                    "Homonym", "Language"]
+  non_topo_types = ["Non_Toponym", "Non_Lit_Expression", "Literal_Expression"]
+  rec_only_types = ["Demonym", "Homonym", "Language"]
 
-  def __init__(self):
+  def __init__(self, include_rec=False):
+    self.include_rec = include_rec
+
     dirname = os.path.dirname(__file__)
     self.corpus_dir = dirname + '/corpora/GeoWebNews/'
     paths = os.listdir(self.corpus_dir)
@@ -59,10 +61,17 @@ class GeoWebNewsEvaluator:
 
         if tag_id.startswith('T'):  # BRAT toke
           annotation_type = data[0]
-          if annotation_type not in self.excluded_types:
-            position = int(data[1])
-            name = row[2]
-            annotations[tag_id] = Annotation(position, name, 0, 0, None)
+          if annotation_type in self.non_topo_types:
+            continue
+          rec_type = annotation_type in self.rec_only_types
+          if not self.include_rec and rec_type:
+            continue
+          position = int(data[1])
+          name = row[2]
+          a = Annotation(position, name, 0, 0, None)
+          if rec_type:
+            a.comment = 'reconly'
+          annotations[tag_id] = a
 
         elif tag_id.startswith('#'):  # BRAT annotator note
           tag_id = data[1]
@@ -74,8 +83,8 @@ class GeoWebNewsEvaluator:
             coords = row[2].split(',')
             a.lat = float(coords[0].strip())
             a.lon = float(coords[1].strip())
-            a.comment = 'hard'
-          else:
+            a.comment += 'hard'
+          elif row[2] != 'N/A':
             geoname_id = int(row[2])
             geoname = self.parser.gns_cache.get(geoname_id)
             a.geoname_id = geoname_id
