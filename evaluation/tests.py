@@ -22,6 +22,7 @@ class TestEvaluator:
     self.test_local_way()
     self.test_local_relation()
     self.test_local_abbrevs()
+    self.test_local_abbrevs_2()
     self.test_local_special_chars()
     self.test_local_fuzzy()
 
@@ -105,6 +106,11 @@ class TestEvaluator:
     text = 'He painted St. Peter\'s Basilica in Rome.'
     anns = [('St. Peter\'s Basilica', 41.90216, 12.4536, None)]
     self._test(True, 'Abbreviations', text, anns)
+
+  def test_local_abbrevs_2(self):
+    text = 'On N. Bedford Drive in Beverly Hills.'
+    anns = [('N. Bedford Drive', 34.0678280, -118.4049976, None)]
+    self._test(True, 'Abbreviations 2', text, anns)
 
   def test_local_special_chars(self):
     text = 'The Mall of Asia in Paranaque City.'

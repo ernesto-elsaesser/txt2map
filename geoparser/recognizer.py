@@ -49,15 +49,16 @@ class ToponymRecognizer:
     spacy_doc = self.nlp_sm(text)
     self._add_anchors(spacy_doc, doc)
 
-    names = self.matcher.find_names(doc, self._lookup_prefix)
-    for name, positions in names.items():
-      doc.recognize(name, positions)
-      toponym = name
+    results = self.matcher.find_names(doc, self._lookup_prefix)
+    for match, completions in results.items():
+      positions = [c.start for c in completions]
+      doc.recognize(match, positions)
+      toponym = completions[0].db_name
       if toponym in self.demonyms:
         toponym = self.demonyms[toponym]
       geoname_id = self.defaults[toponym]
       geoname = self.gns_cache.get(geoname_id)
-      doc.resolve(name, geoname)
+      doc.resolve(match, geoname)
 
     ents = spacy_doc.ents
     if self.use_large_model:

@@ -1,18 +1,75 @@
 import logging
 import re
 
+
+class Completion:
+
+  def __init__(self, name_form, prefix, db_name, start):
+    self.match = prefix
+    self.suffix = name_form[len(prefix):]
+    self.db_name = db_name
+    self.start = start
+    self.end = None
+    self.is_fuzzy = False
+    self.was_fuzzy = False
+    self.active = True
+
+  def trim(self, char, fuzzy):
+
+    if self.suffix == '':
+      self.active = False
+      self.end = self.start + len(self.match)
+      return True
+
+    if self.suffix[0].lower() == char.lower():
+      self.suffix = self.suffix[1:]
+      self.match += char
+      if self.is_fuzzy:
+        self.is_fuzzy = False
+        self.was_fuzzy = True
+      return False
+
+    if self.is_fuzzy and self.suffix[1].lower() == char.lower():
+      self.suffix = self.suffix[2:]
+      self.match += char
+      self.is_fuzzy = False
+      self.was_fuzzy = True
+      return False
+
+    can_fuzzy = fuzzy and not self.was_fuzzy and not self.is_fuzzy and len(self.suffix) > 1
+    if can_fuzzy and char != ' ':
+      self.match += char
+      self.is_fuzzy = True
+      return False
+
+    else:
+      self.active = False
+      return False
+      
+
+
 class NameMatcher:
 
   abbr = {
     'N': 'North',
+    'N.': 'North',
     'E': 'East',
+    'E.': 'East',
     'S': 'South',
+    'S.': 'South',
     'W': 'West',
+    'W.': 'West',
     'NE': 'Northeast',
     'SE': 'Southeast',
     'SW': 'Southwest',
     'NW': 'Northwest',
+    'N.E.': 'Northeast',
+    'S.E.': 'Southeast',
+    'S.W.': 'Southwest',
+    'N.W.': 'Northwest',
+    'Mt': 'Mount',
     'Mt.': 'Mount',
+    'St': 'Saint',
     'St.': 'Saint'
   }
 
@@ -41,74 +98,60 @@ class NameMatcher:
 
   def find_names(self, doc, lookup_prefix):
     text_len = len(doc.text)
-    names = {}
+    completed = {}
     prev_match_end = 0
-    suffixes_for_prefixes = {}
+    completion_cache = {}
 
     for start, (prefix, is_num, is_stop) in doc.anchors.items():
       if is_num and not self.use_nums: continue
       if is_stop and not self.use_stops: continue
       if start < prev_match_end: continue
 
-      if prefix in suffixes_for_prefixes:
-        suffixes = suffixes_for_prefixes[prefix]
+      if prefix in completion_cache:
+        completions = completion_cache[prefix]
       else:
-        suffixes = self.get_suffixes(prefix, lookup_prefix)
-        suffixes_for_prefixes[prefix] = suffixes
+        completions = self._get_completions(prefix, lookup_prefix, start)
+        completion_cache[prefix] = completions
 
       text_pos = start + len(prefix)
-      longest_match = None
-      one_off = []
-      while text_pos < text_len and len(suffixes + one_off) > 0:
+      longest_completion = None
+      while text_pos < text_len and len(completions) > 0:
         next_char = doc.text[text_pos]
-        trimmed_suffixes = []
-        trimmed_one_off = []
-        for name, suffix in one_off:
-          if suffix == '':
-            longest_match = name
-          elif suffix[0].lower() == next_char.lower():
-            trimmed_one_off.append((name, suffix[1:]))
-        for name, suffix in suffixes:
-          if suffix == '':
-            longest_match = name
-          elif suffix[0].lower() == next_char.lower():
-            trimmed_suffixes.append((name, suffix[1:]))
-          elif self.fuzzy and next_char != ' ' and len(suffix) > 1:
-            trimmed_one_off.append((name, suffix))
-            trimmed_one_off.append((name, suffix[1:]))
-        suffixes = trimmed_suffixes
-        one_off = trimmed_one_off
+        for c in completions:
+          complete = c.trim(next_char, self.fuzzy)
+          if complete:
+            longest_completion = c
+        completions = [c for c in completions if c.active]
         text_pos += 1
 
-      if longest_match != None:
-        prev_match_end = start + len(longest_match)
-        if longest_match not in names:
-          names[longest_match] = []
-        names[longest_match].append(start)
+      if longest_completion != None:
+        compl = longest_completion
+        prev_match_end = compl.end
+        if compl.match not in completed:
+          completed[compl.match] = []
+        completed[compl.match].append(compl)
 
-    return names
+    return completed
 
-  def get_suffixes(self, prefix, lookup_prefix):
+  def _get_completions(self, prefix, lookup_prefix, start):
     found_names = lookup_prefix(prefix)
-    suffixes = []
-    for name in found_names:
-      if len(name) < self.min_len:
+    completions = []
+    for db_name in found_names:
+      if len(db_name) < self.min_len:
         continue
-      suffix = name[len(prefix):]
-      suffixes.append((name, suffix))
-      short_version = self.abbreviated(suffix)
-      if short_version != suffix:
-        suffixes.append((name, short_version))
+      compl = Completion(db_name, prefix, db_name, start)
+      completions.append(compl)
+      for regex, repl in self.abbreviations:
+        phrase = regex.sub(repl, db_name)
+        if phrase != db_name and phrase.startswith(prefix):
+          short_compl = Completion(phrase, prefix, db_name, start)
+          completions.append(short_compl)
     if prefix in self.abbr:
       long_prefix = self.abbr[prefix]
       found_names = lookup_prefix(long_prefix)
-      for name in found_names:
-        suffix = name[len(long_prefix):]
-        suffixes.append((name, suffix))
-    return suffixes
+      for db_name in found_names:
+        phrase = db_name.replace(long_prefix, prefix)
+        long_compl = Completion(phrase, prefix, db_name, start)
+        completions.append(long_compl)
+    return completions
 
-  def abbreviated(self, name):
-    short_version = name
-    for regex, repl in self.abbreviations:
-      short_version = regex.sub(repl, short_version)
-    return short_version

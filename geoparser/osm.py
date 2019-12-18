@@ -20,12 +20,16 @@ class OSMLoader:
 
   def find_local_matches(self, cluster, doc):
     db = self._load_database(cluster.local_context)
-    names = self.matcher.find_names(doc, lambda p: db.find_names(p))
+    results = self.matcher.find_names(doc, lambda p: db.find_names(p))
 
     context = LocalContext(cluster)
-    for name, positions in names.items():
-      elements = db.get_elements(name)
-      context.resolve(name, positions, elements)
+    for phrase, completions in results.items():
+      positions = [c.start for c in completions]
+      elements = {}
+      for c in completions:
+        for e in db.get_elements(c.db_name): 
+          elements[e.short_ref()] = e
+      context.resolve(phrase, positions, list(elements.values()))
     doc.add_local_context(context)
 
     return context
