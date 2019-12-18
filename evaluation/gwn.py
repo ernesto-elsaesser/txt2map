@@ -8,7 +8,8 @@ from .evaluator import Annotation, CorpusEvaluator
 
 class GeoWebNewsEvaluator:
 
-  used_annotation_types = ['Literal']
+  excluded_types = ["Non_Toponym", "Non_Lit_Expression", "Literal_Expression", "Demonym",
+                    "Homonym", "Language"]
 
   def __init__(self):
     dirname = os.path.dirname(__file__)
@@ -58,7 +59,7 @@ class GeoWebNewsEvaluator:
 
         if tag_id.startswith('T'):  # BRAT toke
           annotation_type = data[0]
-          if annotation_type in self.used_annotation_types:
+          if annotation_type not in self.excluded_types:
             position = int(data[1])
             name = row[2]
             annotations[tag_id] = Annotation(position, name, 0, 0, None)

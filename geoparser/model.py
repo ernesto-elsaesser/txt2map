@@ -12,7 +12,7 @@ class GeoName:
       self.lon = float(data['lng'])
       self.cc = '-' if 'countryCode' not in data else data['countryCode']
       self.adm1 = '-' if 'adminCode1' not in data else data['adminCode1']
-      self.fcl = data['fcl']
+      self.fcl = '-' if 'fcl' not in data else data['fcl']
       self.fcode = '-' if 'fcode' not in data else data['fcode']
       # not cached:
       if 'asciiName' in data:
@@ -33,6 +33,7 @@ class GeoName:
     self.is_city = self.fcl == 'P'
     self.is_country = self.fcode.startswith('PCL')
     self.is_continent = self.fcode == 'CONT'
+    self.is_ocean = self.fcode == 'OCN'
   
   def region(self):
     return f'{self.cc}-{self.adm1}'

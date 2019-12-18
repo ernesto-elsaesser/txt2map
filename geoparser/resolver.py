@@ -46,8 +46,8 @@ class ToponymResolver:
     for toponym in unstables:
       if toponym not in self.defaults:
         continue
-      geoname = self.defaults[toponym]
-      if not geoname.is_continent and not geoname.is_country:
+      g = self.defaults[toponym]
+      if not g.is_continent and not g.is_country and not g.is_ocean:
         logging.info(f'Considering non-default senses for {toponym}')
         del self.defaults[toponym]
         self._fetch_candidates(toponym)

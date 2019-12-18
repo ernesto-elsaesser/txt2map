@@ -80,11 +80,11 @@ for continent in continents:
     # use API directly to get all names
     detailed = GeoNamesAPI.get_geoname(country.id)
     pop = detailed.population
-    insert(detailed.name, country.id, pop)
-    insert(detailed.asciiname, country.id, pop)
+    defaults[detailed.name] = country.id
+    defaults[detailed.asciiname] = country.id
     for entry in detailed.altnames:
       if 'lang' in entry and entry['lang'] == 'en' and entry['name'] != country.name:
-        insert(entry['name'], country.id, pop)
+        defaults[entry['name']] = country.id
 
 
 # common abbreviations
@@ -97,8 +97,8 @@ defaults['USSR'] = 8354411
 # oceans
 defaults['Atlantic'] = 3373405
 defaults['Atlantic Ocean'] = 3373405
-defaults['Pacific'] = 2363254
-defaults['Pacific Ocean'] = 2363254
+defaults['Pacific'] = 4030875 # 2363254
+defaults['Pacific Ocean'] = 4030875 # 2363254
 defaults['Indian Ocean'] = 1545739
 defaults['Arctic Ocean'] = 2960860
 defaults['Southern Ocean'] = 4036776
@@ -106,7 +106,9 @@ defaults['Southern Ocean'] = 4036776
 stop_words = ['West', 'South', 'East', 'North',
               'North-West', 'South-West', 'North-East', 'South-East', 
               'Northwest', 'Southwest', 'Northeast', 'Southeast', 
+              'North West', 'South West', 'North East', 'South East', 
               'Western', 'Southern', 'Eastern', 'Northern',
+              'West Coast', 'South Coast', 'East Coast', 'North Coast',
               'Ocean', 'Island', 'Delta', 'Bay']
 
 for word in stop_words:
