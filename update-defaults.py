@@ -104,8 +104,10 @@ defaults['Arctic Ocean'] = 2960860
 defaults['Southern Ocean'] = 4036776
 
 stop_words = ['West', 'South', 'East', 'North',
-              'North-West', 'South-West', 'North-East', 
-              'South-East', 'Ocean', 'Island', 'Delta', 'Bay']
+              'North-West', 'South-West', 'North-East', 'South-East', 
+              'Northwest', 'Southwest', 'Northeast', 'Southeast', 
+              'Western', 'Southern', 'Eastern', 'Northern',
+              'Ocean', 'Island', 'Delta', 'Bay']
 
 for word in stop_words:
   if word in defaults:

@@ -105,7 +105,7 @@ class CorpusEvaluator:
             for e in json_elements:
               distance = GeoUtil.osm_element_distance(a.lat, a.lon, e)
               if distance < a.osm_element_dist:
-                a.local = OSMElement(e['id'], e['type'])
+                a.osm_element = OSMElement(e['id'], e['type'])
                 a.osm_element_dist = distance
 
     result.annotations.append(a)
@@ -119,7 +119,7 @@ class CorpusEvaluator:
     return self._summary(all_annotations, accuracy_km)
 
   def results_csv(self):
-    lines = 'doc\tpos\tphrase\trec\tres\tres_loc\tmin_dist\tgeoname\tgn_dist\tosm\tosm_dist\tcomment\n'
+    lines = 'document\tpos\tphrase\trec\tres\tres_loc\tmin_dist\tgeoname\tgn_dist\tosm\tosm_dist\tcomment\n'
     for d in self.results:
       for a in self.results[d].annotations:
         rec = 1 if a.recognized else 0

@@ -87,7 +87,7 @@ class ToponymResolver:
     if self._similar(first_result.name, toponym):
       candidates.insert(0, first_result)
     else:
-      candidates.append(first_result)
+      candidates.insert(1, first_result)
 
     self.non_defaults[toponym] = candidates
     self.selections[toponym] = 0

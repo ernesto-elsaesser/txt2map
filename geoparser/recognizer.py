@@ -11,8 +11,7 @@ class ToponymRecognizer:
   def __init__(self, gns_cache, use_large_model):
     self.gns_cache = gns_cache
 
-    # TODO: check if large model makes difference
-    self.use_large_model = False #use_large_model
+    self.use_large_model = use_large_model
     self.nlp_sm = spacy.load('en_core_web_sm', disable=['parser'])
     if self.use_large_model:
       self.nlp_lg = spacy.load('en_core_web_lg', disable=['parser'])
@@ -84,16 +83,10 @@ class ToponymRecognizer:
         doc.add_anchor(token.idx, token.text, is_num, is_stop)
 
   def _add_ner_toponyms(self, ents, doc):
-
     known_toponyms = doc.toponyms()
     new_toponyms = {}
 
     for ent in ents:
-      if ent.label_ == 'PERSON':
-        names = ent.text.split(' ')
-        for name in names:
-          doc.clear(name)
-
       if ent.label_ not in ['GPE', 'LOC']:
         continue
 
@@ -118,7 +111,9 @@ class ToponymRecognizer:
 
       if name not in new_toponyms:
         new_toponyms[name] = []
-      new_toponyms[name].append(start)
+
+      for match in re.finditer(re.escape(name), doc.text):
+        new_toponyms[name].append(match.start())
 
     for toponym, positions in new_toponyms.items():
-      doc.recognize(toponym, positions)
+      doc.recognize(toponym, list(set(positions)))

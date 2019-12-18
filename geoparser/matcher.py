@@ -4,15 +4,24 @@ import re
 
 class Completion:
 
-  def __init__(self, name_form, prefix, db_name, start):
-    self.match = prefix
-    self.suffix = name_form[len(prefix):]
+  def __init__(self, phrase, prefix, db_name, start):
+    self.phrase = phrase
+    self.prefix = prefix
     self.db_name = db_name
     self.start = start
+    
+    self.suffix = phrase[len(prefix):]
+    self.match = prefix
     self.end = None
     self.is_fuzzy = False
     self.was_fuzzy = False
     self.active = True
+
+  def __repr__(self):
+    return self.suffix if self.active else self.match
+
+  def clone(self, start):
+    return Completion(self.phrase, self.prefix, self.db_name, start)
 
   def trim(self, char, fuzzy):
 
@@ -100,18 +109,18 @@ class NameMatcher:
     text_len = len(doc.text)
     completed = {}
     prev_match_end = 0
-    completion_cache = {}
+    saved = {}
 
     for start, (prefix, is_num, is_stop) in doc.anchors.items():
       if is_num and not self.use_nums: continue
       if is_stop and not self.use_stops: continue
       if start < prev_match_end: continue
 
-      if prefix in completion_cache:
-        completions = completion_cache[prefix]
+      if prefix in saved:
+        completions = [c.clone(start) for c in saved[prefix]]
       else:
         completions = self._get_completions(prefix, lookup_prefix, start)
-        completion_cache[prefix] = completions
+        saved[prefix] = completions
 
       text_pos = start + len(prefix)
       longest_completion = None
@@ -151,6 +160,8 @@ class NameMatcher:
       found_names = lookup_prefix(long_prefix)
       for db_name in found_names:
         phrase = db_name.replace(long_prefix, prefix)
+        if ' ' not in phrase:
+          continue
         long_compl = Completion(phrase, prefix, db_name, start)
         completions.append(long_compl)
     return completions
