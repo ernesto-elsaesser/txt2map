@@ -13,30 +13,20 @@ class Geoparser:
       os.mkdir(cache_dir)
     self.gns_cache = GeoNamesCache(cache_dir)
     self.recognizer = ToponymRecognizer(self.gns_cache, use_large_model)
-    self.search_local = local_search_dist_km > 0
-    if self.search_local:
-      self.osm_loader = OSMLoader(cache_dir, local_search_dist_km)
+    self.osm_loader = OSMLoader(cache_dir, local_search_dist_km)
 
   def parse(self, text):
     doc = self.recognizer.parse(text)
 
-    toponym_str = ', '.join(doc.toponyms())
-    logging.info('global toponyms: %s', toponym_str)
-
     resolver = ToponymResolver(self.gns_cache, doc)
     resolver.resolve()
-    clusters = resolver.make_clusters()
+    resolver.make_local_layers()
 
-    if self.search_local:
-      for cluster in clusters:
-        if len(cluster.local_context) == 0:
-          continue
+    for context in doc.local_contexts:
+      self.osm_loader.find_local_matches(context, doc)
 
-        logging.info('selected context: %s', cluster)
-        context = self.osm_loader.find_local_matches(cluster, doc)
-
-        toponym_str = ', '.join(context.toponyms())
-        logging.info('local toponyms: %s', toponym_str)
+      toponym_str = ', '.join(context.toponyms())
+      logging.info('local toponyms: %s', toponym_str)
 
     self.assign_confidences(doc)
     logging.info('finished.')

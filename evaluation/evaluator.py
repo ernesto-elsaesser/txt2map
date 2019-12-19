@@ -12,9 +12,7 @@ class Annotation:
     self.lat = lat
     self.lon = lon
     self.geoname_id = geoname_id
-    self.recognized = False
-    self.resolved = False
-    self.resolved_local = False
+    self.annotated_phrase = None
     self.geoname = None
     self.geoname_dist = None
     self.osm_element = None
@@ -39,9 +37,10 @@ class Annotation:
 
 class Result:
 
-  def __init__(self, doc, matches):
+  def __init__(self, doc, global_positions, local_positions):
     self.doc = doc
-    self.matches = matches
+    self.global_positions = global_positions
+    self.local_positions = local_positions
     self.annotations = []
 
 
@@ -54,32 +53,31 @@ class CorpusEvaluator:
   def start_document(self, document, text):
     logging.info('--- %s ---', document)
     self.document = document
-    matches = {}
+    global_positions = {}
+    local_positions = {}
 
     doc = self.parser.parse(text)
     for toponym, positions in doc.positions.items():
       for position in positions:
-        matches[position] = [(False, toponym)]
+        global_positions[position] = toponym
 
-    for context in doc.local_contexts.values():
+    for key, context in doc.local_contexts.items():
       for toponym, positions in context.positions.items():
         for position in positions:
-          if position in matches:
-            matches[position].append((True, toponym))
+          if position in local_positions:
+            local_positions[position].append((key, toponym))
           else:
-            matches[position] = [(True, toponym)]
+            local_positions[position] = [(key, toponym)]
 
-    self.results[document] = Result(doc, matches)
+    self.results[document] = Result(doc, global_positions, local_positions)
 
   def verify_annotation(self, annotation):
     result = self.results[self.document]
     a = annotation
 
-    if a.position in result.matches:
-      for is_local, toponym in result.matches[a.position]:
-        if toponym != a.phrase:
-          continue
-        a.recognized = True
+    if a.position in result.global_positions:
+      a.annotated_phrase = result.global_positions[a.position]
+      a.recognized = True
 
         if not is_local and toponym in result.doc.geonames:
           a.resolved = True
@@ -90,6 +88,7 @@ class CorpusEvaluator:
           else:
             a.geoname_dist = GeoUtil.distance(a.lat, a.lon, g.lat, g.lon)
 
+    if a.position in result.local_positions:
         if is_local:
           for c in result.doc.local_contexts.values():
             if toponym not in c.osm_elements:

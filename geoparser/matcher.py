@@ -111,7 +111,7 @@ class NameMatcher:
     prev_match_end = 0
     saved = {}
 
-    for start, (prefix, is_num, is_stop) in doc.anchors.items():
+    for start, prefix, is_num, is_stop in doc.name_tokens:
       if is_num and not self.use_nums: continue
       if is_stop and not self.use_stops: continue
       if start < prev_match_end: continue

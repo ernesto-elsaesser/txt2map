@@ -11,8 +11,7 @@ class GeoWebNewsEvaluator:
   non_topo_types = ["Non_Toponym", "Non_Lit_Expression", "Literal_Expression"]
   rec_only_types = ["Demonym", "Homonym", "Language"]
 
-  def __init__(self, include_rec=False):
-    self.include_rec = include_rec
+  def __init__(self, use_heuristics=True):
 
     dirname = os.path.dirname(__file__)
     self.corpus_dir = dirname + '/corpora/GeoWebNews/'
@@ -20,7 +19,7 @@ class GeoWebNewsEvaluator:
     docs = [p.replace('.txt', '') for p in paths if p.endswith('.txt')]
     self.docs = list(sorted(docs, key=lambda s: int(s)))
 
-    self.parser = Geoparser()
+    self.parser = Geoparser(use_heuristics=use_heuristics)
     self.eval = CorpusEvaluator(self.parser)
 
   def test_all(self, save_report=True, doc_range=range(200)):

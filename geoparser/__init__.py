@@ -1,4 +1,4 @@
-from .model import GeoName, ToponymCluster, OSMElement, LocalContext, Document
+from .model import GeoName, OSMElement, GlobalLayer, LocalLayer, Document
 from .geonames import GeoNamesCache, GeoNamesAPI
 from .osm import OSMLoader, OverpassAPI
 from .geo import GeoUtil

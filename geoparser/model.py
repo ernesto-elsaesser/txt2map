@@ -90,53 +90,46 @@ class OSMElement:
     return self.type_names.index(self.element_type)
 
 
-class LocalContext:
+class Cluster:
 
-  def __init__(self, cluster):
-    self.hierarchy = cluster.hierarchy
-    self.global_toponyms = cluster.toponyms
-    self.positions = {}
-    self.osm_elements = {}
+  def __init__(self, key):
+    self.key = key
+    self.demonyms = []
+    self.gaz_toponyms = []
+    self.ner_toponyms = []
+    self.anc_toponyms = []
+
+
+class LocalLayer:
+
+  def __init__(self, base, adm1, anchor_points, all_geonames):
+    self.base = base
+    self.adm1 = adm1
+    self.anchor_points = anchor_points
+    self.all_geonames = all_geonames
     self.confidence = 0
 
-  def resolve(self, toponym, positions, osm_elements):
-    self.positions[toponym] = positions
-    self.osm_elements[toponym] = osm_elements
+    # recognition: name -> positions
+    self.toponyms = {}
 
-  def toponyms(self):
-    return list(self.positions.keys())
+    # resolution: name -> osm elements
+    self.osm_elements = {}
 
 
 class Document:
 
   def __init__(self, text):
     self.text = text + ' ' # allow matching of last word
-    self.anchors = {}
-    self.positions = {}
-    self.geonames = {}
-    self.local_contexts = {}
+    self.name_tokens = []
+    self.local_layers = []
 
-  def add_anchor(self, start, text, is_num, is_stop):
-    self.anchors[start] = (text, is_num, is_stop)
+    # recognition: name -> positions
+    self.demonyms = {}
+    self.gaz_toponyms = {}
+    self.ner_toponyms = {}
+    self.anc_toponyms = {}
 
-  def recognize(self, toponym, positions):
-    self.positions[toponym] = positions
-
-  def resolve(self, toponym, geoname):
-    self.geonames[toponym] = geoname
-
-  def clear(self, non_toponym):
-    if non_toponym in self.positions:
-      del self.positions[non_toponym]
-      if non_toponym in self.geonames:
-        del self.geonames[non_toponym]
-
-  def add_local_context(self, context):
-    key = '/'.join(reversed([g.name for g in context.hierarchy]))
-    self.local_contexts[key] = context
-
-  def toponyms(self):
-    return list(self.positions.keys())
-
-  def mention_count(self, toponym):
-    return len(self.positions[toponym])
+    # global resolution: name -> geoname
+    self.default_senses = {}
+    self.all_senses = {}
+    self.selected_senses = {}

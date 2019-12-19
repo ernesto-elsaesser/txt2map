@@ -46,18 +46,20 @@ class ToponymRecognizer:
     doc = Document(text)
 
     spacy_doc = self.nlp_sm(text)
-    self._add_anchors(spacy_doc, doc)
+    self._add_name_tokens(spacy_doc, doc)
 
     results = self.matcher.find_names(doc, self._lookup_prefix)
-    for match, completions in results.items():
-      positions = [c.start for c in completions]
-      doc.recognize(match, positions)
+    for phrase, completions in results.items():
       toponym = completions[0].db_name
       if toponym in self.demonyms:
         toponym = self.demonyms[toponym]
+        doc.demonyms[phrase] = positions
+      else:
+        doc.gaz_toponyms[phrase] = positions
       geoname_id = self.defaults[toponym]
       geoname = self.gns_cache.get(geoname_id)
-      doc.resolve(match, geoname)
+      positions = [c.start for c in completions]
+      doc.default_senses[phrase] = geoname
 
     ents = spacy_doc.ents
     if self.use_large_model:
@@ -73,19 +75,18 @@ class ToponymRecognizer:
     toponyms = self.lookup_tree[key]
     return [t for t in toponyms if t.startswith(prefix)]
 
-  def _add_anchors(self, tokens, doc):
+  def _add_name_tokens(self, tokens, doc):
     for token in tokens:
       first = token.text[0]
       is_num = first.isdigit()
       is_title = first.isupper()
       if is_title or is_num:
+        # "US" is considered a stopword ...
         is_stop = token.is_stop and not token.text == 'US'
-        doc.add_anchor(token.idx, token.text, is_num, is_stop)
+        tupel = (token.idx, token.text, is_num, is_stop)
+        doc.name_tokens.append(tupel)
 
   def _add_ner_toponyms(self, ents, doc):
-    known_toponyms = doc.toponyms()
-    new_toponyms = {}
-
     for ent in ents:
       if ent.label_ not in ['GPE', 'LOC']:
         continue
@@ -100,20 +101,8 @@ class ToponymRecognizer:
       elif name.endswith('\''):
         name = name[:-1]
 
-      is_known = False
-      for known in known_toponyms:
-        if name in known:
-          is_known = True
-          break
-
-      if is_known:
-        continue
-
-      if name not in new_toponyms:
-        new_toponyms[name] = []
+      if name not in doc.ner.toponyms:
+        doc.ner_toponyms[name] = []
 
       for match in re.finditer(re.escape(name), doc.text):
-        new_toponyms[name].append(match.start())
-
-    for toponym, positions in new_toponyms.items():
-      doc.recognize(toponym, list(set(positions)))
+        doc.ner_toponyms[name].append(match.start())

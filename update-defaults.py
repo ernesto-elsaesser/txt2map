@@ -45,7 +45,7 @@ for row in reader:
     continue
 
   pop = int(row[14])
-  if pop < 50000:
+  if pop < 100000:
     continue
 
   name = row[1]
@@ -70,27 +70,31 @@ for row in reader:
     next_log += 500_000
 
 
-# make sure we have all countries and their alt names
+def insert_top_level(geoname):
+  # use API directly to get all names
+  detailed = GeoNamesAPI.get_geoname(country.id)
+  defaults[detailed.name] = country.id
+  defaults[detailed.asciiname] = country.id
+  for entry in detailed.altnames:
+    if 'lang' in entry and entry['lang'] == 'en' and entry['name'] != country.name:
+      defaults[entry['name']] = country.id
+
+
+# make sure we have all top levels and their alt names
 cache = GeoNamesCache()
 continents = cache.get_children(6295630)  # Earth
 for continent in continents:
   print('loading countries in', continent.name)
+  insert_top_level(continent)
   countries = cache.get_children(continent.id)
   for country in countries:
-    # use API directly to get all names
-    detailed = GeoNamesAPI.get_geoname(country.id)
-    pop = detailed.population
-    defaults[detailed.name] = country.id
-    defaults[detailed.asciiname] = country.id
-    for entry in detailed.altnames:
-      if 'lang' in entry and entry['lang'] == 'en' and entry['name'] != country.name:
-        defaults[entry['name']] = country.id
-
+    insert_top_level(country)
 
 # common abbreviations
-defaults['U.S.'] = 6252001
+defaults['U.S'] = 6252001
 defaults['US'] = 6252001
 defaults['USA'] = 6252001
+defaults['EU'] = 6255148
 defaults['UAE'] = 290557
 defaults['USSR'] = 8354411
 
