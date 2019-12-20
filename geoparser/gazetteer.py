@@ -1,0 +1,157 @@
+import os
+import csv
+import json
+from .geonames import GeoNamesCache, GeoNamesAPI
+
+
+class Gazetteer:
+
+  def __init__(self):
+    self.dirname = os.path.dirname(__file__)
+
+  def load_top_level(self):
+    continents = {}
+    countries = {}
+    continent_map = {}
+
+    cache = GeoNamesCache()
+    for continent in cache.get_children(6295630):  # Earth
+      continents[continent.name] = continent.id
+      print('loading countries in', continent.name)
+      for country in cache.get_children(continent.id):
+        continent_map[country.cc] = continent.name
+        full = GeoNamesAPI.get_geoname(country.id)  # names are not cached
+        countries[full.name] = country.id
+        countries[full.asciiname] = country.id
+        for entry in full.altnames:
+          if 'lang' in entry and entry['lang'] == 'en':
+            countries[entry['name']] = country.id
+
+    # common abbreviations
+    countries['U.S'] = 6252001
+    countries['US'] = 6252001
+    countries['USA'] = 6252001
+    countries['EU'] = 6255148
+    countries['UAE'] = 290557
+
+    self._save('continents', continents)
+    self._save('countries', countries)
+    self._save('continent_map', continent_map)
+
+  def load_large_entries(self, data_path, pop_limit=100_000):
+
+    top_names = {}
+    top_pops = {}
+
+    data_file = open(data_path, encoding='utf-8')
+    reader = csv.reader(data_file, delimiter='\t')
+
+    stop_words = ['West', 'South', 'East', 'North',
+                  'North-West', 'South-West', 'North-East', 'South-East',
+                  'Northwest', 'Southwest', 'Northeast', 'Southeast',
+                  'North West', 'South West', 'North East', 'South East',
+                  'Western', 'Southern', 'Eastern', 'Northern',
+                  'West Coast', 'South Coast', 'East Coast', 'North Coast',
+                  'Ocean', 'Island', 'Delta', 'Bay']
+
+    last_log = 0
+    for row in reader:
+      pop = int(row[14])
+      if pop < 100000:
+        continue
+
+      name = row[1]
+      if not len(name) > 3:
+        continue
+
+      names = [name]
+      if ' ' in name:
+        parts = self._grams(name)
+        alt_names = row[3].split(',')
+        for alt_name in alt_names:
+          if alt_name in parts:
+            names.append(alt_name)
+
+      id = row[0]
+      fcl = row[6]
+
+      if fcl not in top_pops:
+        top_names[fcl] = {}
+        top_pops[fcl] = {}
+
+      for name in names:
+        if name in stop_words:
+          continue
+        if name in top_names[fcl]:
+          if top_pops[fcl][name] >= pop:
+            continue
+          else:
+            top_pops[fcl][name] = pop
+        top_names[fcl][name] = id
+
+      if reader.line_num > last_log + 500_000:
+        print('at row', reader.line_num)
+        last_log = reader.line_num
+
+    for fcl in top_names:
+      self._save(fcl, top_names[fcl])
+
+  def generate_defaults(self, class_order=['P', 'A', 'L', 'H']):
+
+    defaults = {}
+
+    demonyms = self._load('demonyms')
+
+    continents = self._load('continents')
+    for toponym in continents:
+      defaults[toponym] = continents[toponym]
+      for demonym in demonyms[toponym]:
+        defaults[demonym] = continents[toponym]
+
+    oceans = self._load('oceans')
+    for toponym in oceans:
+      defaults[toponym] = oceans[toponym]
+
+    countries = self._load('countries')
+    for toponym in countries:
+      defaults[toponym] = countries[toponym]
+      for demonym in demonyms[toponym]:
+        defaults[demonym] = countries[toponym]
+
+    for fcl in class_order:
+      entries = self._load(fcl)
+      for toponym in entries:
+        if toponym not in defaults:
+          defaults[toponym] = entries[toponym]
+
+    self._save('defaults', defaults)
+
+  def _load(self, file_name):
+    file_path = f'{self.dirname}/data/{file_name}.json'
+    with open(file_path, 'r') as f:
+      json_str = f.read()
+    return json.loads(json_str)
+
+  def _save(self, file_name, obj):
+    file_path = f'{self.dirname}/data/{file_name}.json'
+    json_str = json.dumps(obj)
+    with open(file_path, 'w') as f:
+      f.write(json_str)
+
+  def _grams(self, name):
+    parts = name.split(' ')
+    grams = []
+    l = len(parts)
+    for i in range(l):
+      p = parts[i]
+      if not len(p) < 3:
+        grams.append(p)
+      if i < l-1:
+        p += ' ' + parts[i+1]
+        grams.append(p)
+        if i < l-2:
+          p += ' ' + parts[i+2]
+          grams.append(p)
+    if name in parts:
+      parts.remove(name)
+    return grams

@@ -77,7 +77,6 @@ class CorpusEvaluator:
 
     if a.position in result.global_positions:
       a.annotated_phrase = result.global_positions[a.position]
-      a.recognized = True
 
         if not is_local and toponym in result.doc.geonames:
           a.resolved = True

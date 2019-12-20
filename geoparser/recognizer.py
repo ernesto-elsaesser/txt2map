@@ -101,7 +101,10 @@ class ToponymRecognizer:
       elif name.endswith('\''):
         name = name[:-1]
 
-      if name not in doc.ner.toponyms:
+      if name in doc.gaz_toponyms:
+        continue
+
+      if name not in doc.ner_toponyms:
         doc.ner_toponyms[name] = []
 
       for match in re.finditer(re.escape(name), doc.text):

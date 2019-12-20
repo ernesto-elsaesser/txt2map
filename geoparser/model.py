@@ -92,8 +92,9 @@ class OSMElement:
 
 class LocalLayer:
 
-  def __init__(self, base, global_toponyms, anchor_points, text_mentions):
+  def __init__(self, base, base_hierarchy, global_toponyms, anchor_points, text_mentions):
     self.base = base
+    self.base_hierarchy = base_hierarchy
     self.global_toponyms = global_toponyms
     self.anchor_points = anchor_points
     self.text_mentions = text_mentions
@@ -124,6 +125,17 @@ class Document:
     self.default_senses = {}
     self.selected_senses = {}
     self.api_selected_senses = {}
+
+  def positions(self, toponym):
+    if toponym in self.gaz_toponyms:
+      return self.gaz_toponyms[toponym]
+    if toponym in self.ner_toponyms:
+      return self.ner_toponyms[toponym]
+    if toponym in self.demonyms:
+      return self.demonyms[toponym]
+    if toponym in self.anc_toponyms:
+      return self.anc_toponyms[toponym]
+    return []
 
 
 class TreeNode:

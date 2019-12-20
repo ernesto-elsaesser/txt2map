@@ -29,8 +29,6 @@ class ToponymResolver:
     options = {}
 
     for t in doc.ner_toponyms:
-      if t in doc.gaz_toponyms:
-        continue
       candidates = self._load_candidates(t, doc)
       if len(candidates) > 0:
         options[t] = candidates
@@ -123,10 +121,7 @@ class ToponymResolver:
         if g.adm1 != '-':
           key_path.append(g.adm1)
       node = root.get(key_path, True)
-      if t in doc.ner_toponyms:
-        positions = doc.ner_toponyms[t]
-      else:
-        positions = doc.gaz_toponyms[t]
+      positions = doc.positions(t)
       node.add(t, g, positions)
       if len(key_path) == 3 and node not in leafs:
         leafs.append(node)
@@ -170,6 +165,7 @@ class ToponymResolver:
       hierarchy = self._hierarchy(g, doc)
       depth = len(hierarchy)
       if depth <= max_depth:
+        logging.info(f'Chose {g} over {selected} for {toponym}')
         return g
 
     return None
@@ -186,28 +182,33 @@ class ToponymResolver:
     for node in leafs:
       geonames = list(node.toponyms.values())
       cities = [g for g in geonames if g.is_city]
+      anchor_points = cities
 
       if len(cities) > 0:
         base = max(cities, key=lambda c: c.population)
-        anchor_points = cities
       else:
         base = min(geonames, key=lambda c: c.population)
-        anchor_points = self._drill_down(base, doc)
-        if len(anchor_points) == 0:
-          logging.info(f'no local anchor point for {base}')
+      
+      base_hierarchy = self._hierarchy(base, doc)
+
+      if len(anchor_points) == 0:
+        anchor = self._drill_down(base, base_hierarchy)
+        if anchor == None:
+          logging.info(f'no anchor point available for {base}')
           continue
+        logging.info(f'using {anchor} as anchor point for {base}')
+        anchor_points.append(anchor)
 
       mentions = node.branch_mentions()
-      layer = LocalLayer(base, node.toponyms, anchor_points, mentions)
+      layer = LocalLayer(base, base_hierarchy, node.toponyms, anchor_points, mentions)
       layers.append(layer)
 
     return layers
 
-  def _drill_down(self, geoname, doc):
-    hierarchy = self._hierarchy(geoname, doc)
+  def _drill_down(self, geoname, hierarchy):
 
     if len(hierarchy) == 1 or geoname.fcl != 'A':
-      return []
+      return None
 
     name = geoname.name
 
@@ -217,8 +218,7 @@ class ToponymResolver:
 
       if len(children) == 0:
         # if there's nothing below, assume we are already local
-        logging.info(f'using {geoname} as local context')
-        return [geoname]
+        return geoname
 
       else:
         children = sorted(children, key=lambda g: g.population, reverse=True)
@@ -226,8 +226,7 @@ class ToponymResolver:
         for child in children:
           if child.name in name or name in child.name:
             if child.is_city:
-              logging.info(f'using {child} as local context for {name}')
-              return [child]
+              return child
             similar_child = child
             break
 
