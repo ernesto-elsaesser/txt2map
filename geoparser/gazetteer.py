@@ -2,23 +2,24 @@ import os
 import csv
 import json
 from .geonames import GeoNamesCache, GeoNamesAPI
+from .geo import GeoUtil
 
 
 class Gazetteer:
 
-  def __init__(self):
+  def __init__(self, gns_cache):
     self.dirname = os.path.dirname(__file__)
+    self.cache = gns_cache
 
   def load_top_level(self):
     continents = {}
     countries = {}
     continent_map = {}
 
-    cache = GeoNamesCache()
-    for continent in cache.get_children(6295630):  # Earth
+    for continent in self.cache.get_children(6295630):  # Earth
       continents[continent.name] = continent.id
       print('loading countries in', continent.name)
-      for country in cache.get_children(continent.id):
+      for country in self.cache.get_children(continent.id):
         continent_map[country.cc] = continent.name
         full = GeoNamesAPI.get_geoname(country.id)  # names are not cached
         countries[full.name] = country.id
@@ -56,8 +57,12 @@ class Gazetteer:
 
     last_log = 0
     for row in reader:
+      fcl = row[6]
+      if fcl in ['S', 'R']:
+        continue
+
       pop = int(row[14])
-      if pop < 100000:
+      if pop < pop_limit:
         continue
 
       name = row[1]
@@ -82,12 +87,10 @@ class Gazetteer:
       for name in names:
         if name in stop_words:
           continue
-        if name in top_names[fcl]:
-          if top_pops[fcl][name] >= pop:
-            continue
-          else:
-            top_pops[fcl][name] = pop
+        if name in top_names[fcl] and top_pops[fcl][name] >= pop:
+          continue
         top_names[fcl][name] = id
+        top_pops[fcl][name] = pop
 
       if reader.line_num > last_log + 500_000:
         print('at row', reader.line_num)
@@ -96,7 +99,7 @@ class Gazetteer:
     for fcl in top_names:
       self._save(fcl, top_names[fcl])
 
-  def generate_defaults(self, class_order=['P', 'A', 'L', 'H']):
+  def generate_defaults(self, class_order=['P', 'A', 'L', 'T']):
 
     defaults = {}
 
@@ -115,8 +118,9 @@ class Gazetteer:
     countries = self._load('countries')
     for toponym in countries:
       defaults[toponym] = countries[toponym]
-      for demonym in demonyms[toponym]:
-        defaults[demonym] = countries[toponym]
+      if toponym in demonyms:
+        for demonym in demonyms[toponym]:
+          defaults[demonym] = countries[toponym]
 
     for fcl in class_order:
       entries = self._load(fcl)
@@ -125,6 +129,27 @@ class Gazetteer:
           defaults[toponym] = entries[toponym]
 
     self._save('defaults', defaults)
+
+  def continent_name(self, geoname):
+
+    if geoname.is_continent:
+      return geoname.name
+
+    if geoname.cc != "-":
+      continent_map = self._load('continent_map')
+      return continent_map[geoname.cc]
+
+    continents = self._load('continents')
+    min_dist = float('inf')
+    closest_name = None
+    for geoname_id in continents.values():
+      c = self.cache.get(geoname_id)
+      dist = GeoUtil.distance(geoname.lat, geoname.lon, c.lat, c.lon)
+      if dist < min_dist:
+        min_dist = dist
+        closest_name = c.name
+    return closest_name
+    
 
   def _load(self, file_name):
     file_path = f'{self.dirname}/data/{file_name}.json'
@@ -152,6 +177,6 @@ class Gazetteer:
         if i < l-2:
           p += ' ' + parts[i+2]
           grams.append(p)
-    if name in parts:
-      parts.remove(name)
+    if name in grams:
+      grams.remove(name)
     return grams

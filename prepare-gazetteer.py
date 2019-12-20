@@ -1,10 +1,11 @@
-from geoparser import Gazetteer
+from geoparser import Gazetteer, GeoNamesCache
 
-gaz = Gazetteer()
-gaz.load_top_level()
+cache = GeoNamesCache()
+gaz = Gazetteer(cache)
+#gaz.load_top_level()
 
 # data can be loaded from http://download.geonames.org/export/dump/
-data_path = '../allCountries.txt'
+#data_path = '../allCountries.txt'
 #gaz.load_large_entries(data_path)
 
-#gaz.generate_defaults()
+gaz.generate_defaults()

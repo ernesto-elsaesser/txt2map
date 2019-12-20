@@ -4,13 +4,15 @@ import re
 import json
 import pylev
 from .model import TreeNode, LocalLayer
-from .geonames import GeoNamesCache
+from .geonames import GeoNamesCache, GeoNamesAPI
+from .gazetteer import Gazetteer
 
 
 class ToponymResolver:
 
   def __init__(self, gns_cache):
     self.gns_cache = gns_cache
+    self.gaz = Gazetteer(gns_cache)
     
     dirname = os.path.dirname(__file__)
     continents_file = dirname + '/continents.json'
@@ -112,14 +114,12 @@ class ToponymResolver:
     root = TreeNode('', None)
     leafs = []
     for t, g in doc.selected_senses.items():
-      key_path = []
-      if g.is_continent:
-        key_path = [g.name]
-      else:
-        cont_name = self.continent_map[g.cc]
-        key_path = [cont_name, g.cc]
-        if g.adm1 != '-':
-          key_path.append(g.adm1)
+      cont_name = self.gaz.continent_name(g)
+      key_path = [cont_name]
+      if g.cc != "-":
+        key_path.append(g.cc)
+      if g.adm1 != "-" and g.adm1 != "00":
+        key_path.append(g.adm1)
       node = root.get(key_path, True)
       positions = doc.positions(t)
       node.add(t, g, positions)
