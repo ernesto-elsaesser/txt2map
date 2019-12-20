@@ -81,6 +81,7 @@ def insert_top_level(geoname):
 
 
 # make sure we have all top levels and their alt names
+continent_map = {}
 cache = GeoNamesCache()
 continents = cache.get_children(6295630)  # Earth
 for continent in continents:
@@ -88,6 +89,7 @@ for continent in continents:
   insert_top_level(continent)
   countries = cache.get_children(continent.id)
   for country in countries:
+    continent_map[country.cc] = continent.name
     insert_top_level(country)
 
 # common abbreviations
@@ -123,5 +125,10 @@ defaults_str = json.dumps(defaults)
 defaults_file = 'geoparser/defaults.json'
 with open(defaults_file, 'w') as f:
   f.write(defaults_str)
+
+continent_str = json.dumps(continent_map)
+continent_file = 'geoparser/continents.json'
+with open(continent_file, 'w') as f:
+  f.write(continent_str)
 
 print(f'inserted {len(defaults)} entries.')

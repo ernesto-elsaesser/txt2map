@@ -18,11 +18,11 @@ class OSMLoader:
     self.search_dist = search_dist
     self.matcher = NameMatcher(True, True, 4, True)
 
-  def find_local_matches(self, context, doc):
+  def find_local_matches(self, layer, doc):
     if self.search_dist == 0:
       return
 
-    db = self._load_database(cluster.local_context)
+    db = self._load_database(layer.anchor_points)
     results = self.matcher.find_names(doc, lambda p: db.find_names(p))
 
     for phrase, completions in results.items():
@@ -31,12 +31,10 @@ class OSMLoader:
       for c in completions:
         for e in db.get_elements(c.db_name): 
           elements.append(e.reference())
-      context.matches[phrase] = positions
-      context.osm_elements[phrase] = elements
-
+      layer.toponyms[phrase] = positions
+      layer.osm_elements[phrase] = elements
 
   def _load_database(self, geonames):
-    logging.info('loading OSM data ...')
     sorted_ids = sorted(str(g.id) for g in geonames)
     cluster_id = '-'.join(sorted_ids)
     file_path = f'{self.cache_dir}/{cluster_id}-{self.search_dist}km.db'
@@ -45,6 +43,7 @@ class OSMLoader:
     osm_db = OSMDatabase(db)
 
     if not is_cached:
+      logging.info('requesting OSM data for %s ...', str(geonames))
       def bbox(g): return GeoUtil.bounding_box(g.lat, g.lon, self.search_dist)
       boxes = [bbox(g) for g in geonames]
       csv_reader = OverpassAPI.load_names_in_bounding_boxes(boxes)

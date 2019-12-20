@@ -90,23 +90,13 @@ class OSMElement:
     return self.type_names.index(self.element_type)
 
 
-class Cluster:
-
-  def __init__(self, key):
-    self.key = key
-    self.demonyms = []
-    self.gaz_toponyms = []
-    self.ner_toponyms = []
-    self.anc_toponyms = []
-
-
 class LocalLayer:
 
-  def __init__(self, base, adm1, anchor_points, all_geonames):
+  def __init__(self, base, global_toponyms, anchor_points, text_mentions):
     self.base = base
-    self.adm1 = adm1
+    self.global_toponyms = global_toponyms
     self.anchor_points = anchor_points
-    self.all_geonames = all_geonames
+    self.text_mentions = text_mentions
     self.confidence = 0
 
     # recognition: name -> positions
@@ -121,6 +111,7 @@ class Document:
   def __init__(self, text):
     self.text = text + ' ' # allow matching of last word
     self.name_tokens = []
+    self.hierarchies = {}
     self.local_layers = []
 
     # recognition: name -> positions
@@ -131,5 +122,54 @@ class Document:
 
     # global resolution: name -> geoname
     self.default_senses = {}
-    self.all_senses = {}
     self.selected_senses = {}
+    self.api_selected_senses = {}
+
+
+class TreeNode:
+
+  toponyms = {}  # toponym: GeoName
+  children = {}  # key: TreeNode
+  mentions = 0
+
+  def __init__(self, key, parent):
+    self.key = key
+    self.parent = parent
+
+  def __repr__(self):
+    return self.key
+
+  def get(self, key_path, create):
+    if len(key_path) == 0:
+      return self
+    key = key_path[0]
+    if key not in self.children:
+      if create:
+        child = TreeNode(key, self)
+        self.children[key] = child
+      else:
+        return None
+    else:
+      child = self.children[key]
+    return child.get(key_path[1:], create)
+
+  def add(self, toponym, geoname, positions):
+    self.toponyms[toponym] = geoname
+    self.mentions += len(positions)
+
+  def topo_counts(self):
+    counts = []
+    node = self
+    while node != None:
+      counts.append(len(node.toponyms))
+      node = node.parent
+    return counts
+
+  def branch_mentions(self):
+    mentions = 0
+    node = self
+    while node != None:
+      mentions += node.mentions
+      node = node.parent
+    return mentions
+
