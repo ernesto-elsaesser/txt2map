@@ -4,27 +4,22 @@
     <style>
       .container { margin: 20px auto; text-align: center; }
       .textbox { width: 80%; height: 300px; margin: 0 auto 20px; }
-      a { color: blue; font-weight: bold; cursor: pointer; }
-      label { margin: 0 20px 0 5px; }
+      a { cursor: pointer;  font-weight: bold; }
+      span { background-color: lightgreen; }
     </style>
   </head>
   <body>
     <div class="container">
       <h1>Input</h1>
       <textarea class="textbox" id="input"></textarea><br/>
-      <input type="radio" id="accept-text" name="accept" checked>
-      <label for="accept-text">short text output</label>
-      <input type="radio" id="accept-json" name="accept">
-      <label for="accept-json">full JSON output</label><br /><br />
-      <a onclick="post()" id="button">PARSE</a><br />
+      <a onclick="post()" id="button" style="font-size: 18px; color: blue;">PARSE</a><br />
       <h1>Output</h1>
-      <textarea class="textbox" id="output"></textarea>
+      <div class="textbox" id="output"></div>
       <p>Source: <a href="https://github.com/ernesto-elsaesser/txt2map" target="_blank">https://github.com/ernesto-elsaesser/txt2map</a></p>
     </div>
 
     <script>
     var input = document.getElementById('input');
-    var accept = document.getElementById('accept-text');
     var button = document.getElementById('button');
     var output = document.getElementById('output');
 
@@ -32,17 +27,8 @@
 
       output.value = '';
 
-      var params = {
-        method: 'POST',
-        body: input.value
-      }
-
-      if (accept.checked) {
-        params.headers = { 'Accept': 'text/plain' }
-      }
-
       toggle(true);
-      fetch('/', params)
+      fetch('/', {method: 'POST', body: input.value})
       .then(function (res) {
         res.text().then(finish);
       }).catch(function (err) {
@@ -50,17 +36,13 @@
       });
     }
 
-    function finish(text, failed) {
+    function finish(html, failed) {
       if (failed) {
         output.style.color = 'red';
       } else {
         output.style.color = 'black';
       }
-      
-      if (text == '') {
-        text = 'Nothing found.'
-      }
-      output.value = text;
+      output.innerHTML = html;
       toggle(false);
     }
 

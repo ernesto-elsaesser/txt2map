@@ -105,8 +105,6 @@ class NameMatcher:
       self.abbreviations.append((re.compile(l), s))
 
   def recognize_names(self, doc, group, lookup_prefix):
-    known_names = [a.phrase for a in doc.get('res')]
-
     text_len = len(doc.text)
     prev_match_end = 0
     saved = {}
@@ -134,8 +132,7 @@ class NameMatcher:
       if longest_completion != None:
         c = longest_completion
         prev_match_end = c.end
-        if c.match not in known_names:
-          doc.annotate('rec', a.pos, c.match, group, c.db_name)
+        doc.annotate('rec', a.pos, c.match, group, c.db_name)
 
   def _get_completions(self, prefix, lookup_prefix, pos):
     found_names = lookup_prefix(prefix)

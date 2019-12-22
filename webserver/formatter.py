@@ -2,26 +2,43 @@
 
 class ResponseFormatter:
 
-  def doc_to_json(self, doc):
-    return [self._layer_to_dict(l, doc) for l in doc.local_layers]
+  def doc_to_html(self, doc):
+
+    html = doc.text
+    seen = []
+    for a in doc.get('rec'):
+      if a.phrase in seen:
+        continue
+      seen.append(a.phrase)
+
+      urls = []
+
+      for a in doc.get('res', 'sel', pos=a.pos):
+        urls.append(f'<a title="GeoNames" href="{self._gns_url(a)}">G</a>')
+        
+      for a in doc.get('res', pos=a.pos, exclude_groups=['api', 'def', 'sel']):
+        idx = a.group[2]
+        els = self._rank_osm_elements(a.data)
+        for e in els:
+          urls.append(f'<a title="OpenStreetMap ({e[0]})" href="{self._osm_url(e)}">{idx}</a>')
+
+      repl = f'<span title="{a.group}">{a.phrase}</span>'
+      if len(urls) > 0:
+        shown = urls[:3]
+        ell = ''
+        if len(urls) > 3:
+          ell = ' ...'
+        repl += ' [' + (' '.join(shown)) + ell + ']'
+      html = html.replace(a.phrase, repl)
+
+    return html
     
-  def _layer_to_dict(self, layer, doc):
-    global_matches = [self._global_to_dict(t, doc) for t in layer.global_toponyms]
-    local_matches = [self._local_to_dict(t, layer) for t in layer.toponyms]
-    return {'global_matches': global_matches,
-            'local_matches': local_matches,
-            'path': layer.path(),
-            'confidence': layer.confidence}
+  def _rank_osm_elements(self, els):
+    # first relation then node then way
+    return sorted(els, key=lambda e: -len(e[0]))
 
-  def _global_to_dict(self, toponym, doc):
-    return {'name': toponym,
-            'positions': doc.positions(toponym),
-            'geoname_id': doc.selected_senses(toponym).id}
+  def _gns_url(self, ann):
+    return f'https://www.geonames.org/{ann.data}'
 
-  def _local_to_dict(self, toponym, layer):
-    elements = layer.osm_elements[toponym]
-    urls = [e.url() for e in elements]
-    return {'name': toponym,
-            'positions': layer.toponyms[toponym],
-            'osm_elements': urls}
-
+  def _osm_url(self, e):
+    return f'https://www.openstreetmap.org/{e[0]}/{e[1]}'

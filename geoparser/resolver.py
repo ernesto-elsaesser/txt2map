@@ -195,7 +195,7 @@ class ToponymResolver:
         if anchor != None:
           anchors.append(anchor)
 
-      cluster_key = f'cl{idx}'
+      cluster_key = f'cl{idx+1}'
       geoname_ids = [g.id for _, g in tupels]
       for node in leaf.iter():
         for phrase, positions in node.positions.items():
