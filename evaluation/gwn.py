@@ -47,7 +47,8 @@ class GeoWebNewsEvaluator:
       text = f.read()
 
     if self.persist:
-      result_path = f'{self.results_dir}/{doc_id}.json'
+      pre = 'def-' if self.keep_defaults else ''
+      result_path = f'{self.results_dir}/{pre}{doc_id}.json'
       if os.path.exists(result_path):
         doc = Document(text)
         doc.load_annotations(result_path)
