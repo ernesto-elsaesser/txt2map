@@ -156,5 +156,12 @@ class NameMatcher:
           continue
         long_compl = Completion(phrase, prefix, db_name, pos)
         completions.append(long_compl)
+    elif prefix.isupper() and len(prefix) > 2:
+      prefix_title = prefix[0] + prefix[1:].lower()
+      found_names = lookup_prefix(prefix_title)
+      for db_name in found_names:
+        phrase = db_name.upper()
+        upper_compl = Completion(phrase, prefix, db_name, pos)
+        completions.append(upper_compl)
     return completions
 

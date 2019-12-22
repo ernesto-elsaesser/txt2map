@@ -11,7 +11,8 @@ class GeoWebNewsEvaluator:
   non_topo_types = ["Non_Toponym", "Non_Lit_Expression", "Literal_Expression"]
   rec_only_types = ["Demonym", "Homonym", "Language"]
 
-  def __init__(self, incl_rec_only=False, incl_hard=False, keep_defaults=False, count_inexact=True):
+  def __init__(self, persist=False, incl_rec_only=False, incl_hard=False, keep_defaults=False, count_inexact=True):
+    self.persist = persist
     self.no_rec = not incl_rec_only
     self.no_hard = not incl_hard
     self.keep_defaults = keep_defaults
@@ -19,6 +20,10 @@ class GeoWebNewsEvaluator:
     dirname = os.path.dirname(__file__)
     self.corpus_dir = dirname + '/corpora/GeoWebNews/'
     self.results_dir = dirname + '/results/GeoWebNews'
+
+    if not os.path.exists(self.results_dir):
+      os.mkdir(self.results_dir)
+
     paths = os.listdir(self.corpus_dir)
     docs = [p.replace('.txt', '') for p in paths if p.endswith('.txt')]
     self.docs = list(sorted(docs, key=lambda s: int(s)))
@@ -41,15 +46,18 @@ class GeoWebNewsEvaluator:
     with open(text_path, encoding='utf-8') as f:
       text = f.read()
 
-    result_path = f'{self.results_dir}/{doc_id}.json'
-    if os.path.exists(result_path):
-      doc = Document(text)
-      doc.load_annotations(result_path)
+    if self.persist:
+      result_path = f'{self.results_dir}/{doc_id}.json'
+      if os.path.exists(result_path):
+        doc = Document(text)
+        doc.load_annotations(result_path)
+      else:
+        doc = self.parser.parse(text, self.keep_defaults)
+        doc.save_annotations(result_path)
     else:
       doc = self.parser.parse(text, self.keep_defaults)
-      doc.save_annotations(result_path)
 
-    self.eval.start_document(doc, self.parser)
+      self.eval.start_document(doc, self.parser)
 
     annotation_path = self.corpus_dir + doc_id + '.ann'
     with open(annotation_path, encoding='utf-8') as f:

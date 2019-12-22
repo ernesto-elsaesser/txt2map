@@ -84,6 +84,11 @@ class TestEvaluator:
     anns = [('Santa Clara', 0, 0, 3537906)]
     self._test('Global - Demonyms', text, anns)
 
+  def test_global_demonyms_hard(self):
+    text = 'The Kurdish fighters keep up the resistance.'
+    anns = [('Kurdish', 0, 0, 298795)]
+    self._test('Global - Demonyms Hard', text, anns)
+
   def test_global_two(self):
     text = 'Paris in in France and Los Angeles in California.'
     anns = [('Paris', 0, 0, 2988507), ('France', 0, 0, 3017382),

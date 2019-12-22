@@ -215,6 +215,8 @@ class GeoName:
         self.asciiname = data['asciiName']
       if 'alternateNames' in data:
         self.altnames = data['alternateNames']
+      if 'timezone' in data:
+        self.timezone = data['timezone']['timeZoneId']
     else:
       self.id = row[0]
       self.name = row[1]

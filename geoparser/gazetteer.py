@@ -15,6 +15,7 @@ class Gazetteer:
     self.defaults = self._load('defaults')
     self.continents = self._load('continents')
     self.continent_map = self._load('continent_map')
+    self.country_boxes = self._load('country_boxes')
 
   def update_top_level(self):
     continents = {}
@@ -148,15 +149,12 @@ class Gazetteer:
     if geoname.cc != "-":
       return self.continent_map[geoname.cc]
 
-    min_dist = float('inf')
-    closest_name = None
-    for geoname_id in self.continents.values():
-      c = self.cache.get(geoname_id)
-      dist = GeoUtil.distance(geoname.lat, geoname.lon, c.lat, c.lon)
-      if dist < min_dist:
-        min_dist = dist
-        closest_name = c.name
-    return closest_name
+    lat = geoname.lat
+    lon = geoname.lon
+    for name, box in self.country_boxes.items():
+      if box[1] < lat < box[3] and box[0] < lon < box[2]:  # [w, s, e, n]
+        return self.continent_map[name]
+    return 'Nowhere'
     
   def _load(self, file_name):
     file_path = f'{self.dirname}/data/{file_name}.json'
