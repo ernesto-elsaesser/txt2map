@@ -93,7 +93,7 @@ class Gazetteer:
         continue
 
       pop = int(row[14])
-      if pop < Gazetteer.pop_limit:
+      if pop < self.pop_limit:
         continue
 
       name = row[1]

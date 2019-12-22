@@ -79,6 +79,13 @@ class TestEvaluator:
             ('Washington, D.C.', 0, 0, 4140963)]
     self._test('Global - Washington, D.C.', text, anns)
 
+  def test_global_person(self):
+    text = 'Peter King is not a toponym.'
+    doc = self._test('Global - Persons', text, [])
+    recs = doc.get('rec')
+    if len(recs) > 0:
+      print('Persons test failed!')
+
   def test_global_demonyms(self):
     text = 'Che Guevara is burried in the Cuban city of Santa Clara.'
     anns = [('Santa Clara', 0, 0, 3537906)]
@@ -145,4 +152,5 @@ class TestEvaluator:
       pos = text.find(name)
       a = GoldAnnotation(pos, name, lat, lon, geoname_id)
       self.eval.evaluate(a)
+    return doc
 

@@ -21,19 +21,20 @@ class ToponymRecognizer:
     doc = Document(text)
 
     spacy_doc = self.nlp_sm(text)
-    self._add_name_tokens(spacy_doc, doc)
-
-    self.matcher.recognize_names(doc, 'gaz', self.gaz.lookup_prefix)
-
     ents = spacy_doc.ents
     if self.use_large_model:
       ents += self.nlp_lg(text).ents
 
-    self._add_ner_toponyms(ents, doc)
+    person_pos = self._add_ner_toponyms(ents, doc)
+    self._add_name_tokens(spacy_doc, doc, person_pos)
+    self.matcher.recognize_names(doc, 'gaz', self.gaz.lookup_prefix)
+
     return doc
 
-  def _add_name_tokens(self, tokens, doc):
+  def _add_name_tokens(self, tokens, doc, person_pos):
     for token in tokens:
+      if token.idx in person_pos:
+        continue
       first = token.text[0]
       is_num = first.isdigit()
       is_title = first.isupper()
@@ -46,9 +47,15 @@ class ToponymRecognizer:
         doc.annotate('tok', token.idx, token.text, group, '')
 
   def _add_ner_toponyms(self, ents, doc):
-    blocked = doc.annotated_positions('rec')
+    seen = []
+    person_pos = []
 
     for ent in ents:
+      if ent.label_ == 'PERSON':
+        for token in ent:
+          person_pos.append(token.idx)
+        continue
+
       if ent.label_ not in ['GPE', 'LOC']:
         continue
 
@@ -60,7 +67,11 @@ class ToponymRecognizer:
       elif name.endswith('\''):
         name = name[:-1]
 
+      if name in seen:
+        continue
+      seen.append(name)
+
       for match in re.finditer(re.escape(name), doc.text):
-        pos = match.start()
-        if pos not in blocked:
-          doc.annotate('rec', pos, name, 'ner', name)
+        doc.annotate('rec', match.start(), name, 'ner', name)
+
+    return person_pos

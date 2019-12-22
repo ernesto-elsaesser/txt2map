@@ -26,8 +26,11 @@ class Completion:
 
     if self.suffix == '':
       self.active = False
-      self.end = self.pos + len(self.match)
-      return True
+      if char.isupper() or char.islower():
+        return False # end in middle of token
+      else:
+        self.end = self.pos + len(self.match)
+        return True
 
     accepted = [char, char.lower()]
     if self.suffix[0] in accepted:

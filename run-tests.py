@@ -1,5 +1,5 @@
 from evaluation import TestEvaluator
 
 evaluator = TestEvaluator()
-evaluator.test_all()
-#evaluator.test_global_demonyms_hard()
+#evaluator.test_all()
+evaluator.test_global_person()

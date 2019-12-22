@@ -16,8 +16,12 @@ class ToponymResolver:
   def resolve(self, doc, keep_defaults, max_disam_rounds=5):
     self.candidates = {}
 
+    annotated = []
     for a in doc.get('rec'):
-      if a.group == 'gaz':
+      if a.pos in annotated:
+        continue
+      annotated.append(a.pos)
+      if a.data in self.gaz.defaults:
         default_id = self.gaz.defaults[a.data]
       else:
         candidates = self._select_candidates(a.phrase)
