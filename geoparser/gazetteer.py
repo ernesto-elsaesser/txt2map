@@ -131,12 +131,12 @@ class Gazetteer:
           defaults[toponym] = entries[toponym]
 
     # common abbreviations
-    countries['U.S.'] = 6252001
-    countries['US'] = 6252001
-    countries['USA'] = 6252001
-    countries['EU'] = 6255148
-    countries['UAE'] = 290557
-    countries['D.C.'] = 4140963
+    defaults['U.S.'] = 6252001
+    defaults['US'] = 6252001
+    defaults['USA'] = 6252001
+    defaults['EU'] = 6255148
+    defaults['UAE'] = 290557
+    defaults['D.C.'] = 4140963
 
     self._save('defaults', defaults)
     self.defaults = defaults

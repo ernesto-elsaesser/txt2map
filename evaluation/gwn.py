@@ -58,7 +58,7 @@ class GeoWebNewsEvaluator:
     else:
       doc = self.parser.parse(text, self.keep_defaults)
 
-      self.eval.start_document(doc, self.parser)
+    self.eval.start_document(doc, self.parser)
 
     annotation_path = self.corpus_dir + doc_id + '.ann'
     with open(annotation_path, encoding='utf-8') as f:
