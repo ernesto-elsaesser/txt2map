@@ -3,18 +3,20 @@
     <title>txt2map</title>
     <style>
       .container { margin: 20px auto; text-align: center; }
-      .textbox { width: 80%; height: 300px; margin: 0 auto 20px; }
-      a { cursor: pointer;  font-weight: bold; }
+      #input { width: 80%; height: 300px; margin: 0 auto 20px; }
+      #button { font-size: 18px; color: blue; }
+      #output { width: 80%; min-height: 100px; margin: 0 auto 20px; }
+      a { cursor: pointer; font-weight: bold; }
       span { background-color: lightgreen; }
     </style>
   </head>
   <body>
     <div class="container">
       <h1>Input</h1>
-      <textarea class="textbox" id="input"></textarea><br/>
-      <a onclick="post()" id="button" style="font-size: 18px; color: blue;">PARSE</a><br />
+      <textarea id="input"></textarea><br/>
+      <a onclick="post()" id="button">PARSE</a><br />
       <h1>Output</h1>
-      <div class="textbox" id="output"></div>
+      <div id="output"></div>
       <p>Source: <a href="https://github.com/ernesto-elsaesser/txt2map" target="_blank">https://github.com/ernesto-elsaesser/txt2map</a></p>
     </div>
 

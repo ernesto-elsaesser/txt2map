@@ -111,12 +111,12 @@ class ToponymResolver:
 
     unsupported = []
     for node in adm1s:
-      mentions = node.branch_mentions()
-      if sum(mentions) > 2 or mentions[0] > 1:
+      support = [len(n.geonames) for n in node.iter()]
+      if sum(support) > 2 or support[0] > 1:
         continue # multiple support or siblings
-      if mentions[2] == 1 and len(node.parent.parent.children) == 1:
+      if support[2] == 1 and len(node.parent.parent.children) == 1:
         continue # exclusive continent
-      if mentions[1] == 1 and len(node.parent.children) == 1:
+      if support[1] == 1 and len(node.parent.children) == 1:
         continue # exclusive country
       unsupported.append(node)
 
@@ -278,9 +278,3 @@ class TreeNode:
     while node.key != None:
       yield node
       node = node.parent
-
-  def mentions(self):
-    return sum(len(ps) for ps in self.positions.values())
-
-  def branch_mentions(self):
-    return [n.mentions() for n in self.iter()]
