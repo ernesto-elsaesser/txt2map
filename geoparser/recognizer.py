@@ -22,12 +22,22 @@ class ToponymRecognizer:
 
     spacy_doc = self.nlp_sm(text)
     ents = spacy_doc.ents
+    person_ents = ents
     if self.use_large_model:
-      ents += self.nlp_lg(text).ents
+      lg_ents = self.nlp_lg(text).ents
+      ents += lg_ents
+      person_ents = lg_ents # lg is far better in recognizing persons
 
-    person_pos = self._add_ner_toponyms(ents, doc)
+    person_pos = []
+    for ent in person_ents:
+      if ent.label_ == 'PERSON':
+        for token in ent:
+          person_pos.append(token.idx)
+
+    self._add_ner_toponyms(ents, doc)
     self._add_name_tokens(spacy_doc, doc, person_pos)
     self.matcher.recognize_names(doc, 'gaz', self.gaz.lookup_prefix)
+    doc.merge_overlaps('rec', 'gaz', ['ner'])
 
     return doc
 
@@ -48,14 +58,7 @@ class ToponymRecognizer:
 
   def _add_ner_toponyms(self, ents, doc):
     seen = []
-    person_pos = []
-
     for ent in ents:
-      if ent.label_ == 'PERSON':
-        for token in ent:
-          person_pos.append(token.idx)
-        continue
-
       if ent.label_ not in ['GPE', 'LOC']:
         continue
 
@@ -73,5 +76,3 @@ class ToponymRecognizer:
 
       for match in re.finditer(re.escape(name), doc.text):
         doc.annotate('rec', match.start(), name, 'ner', name)
-
-    return person_pos

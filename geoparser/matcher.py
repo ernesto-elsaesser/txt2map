@@ -1,4 +1,5 @@
 import re
+from unidecode import unidecode
 
 
 class Completion:
@@ -32,26 +33,17 @@ class Completion:
         self.end = self.pos + len(self.match)
         return True
 
-    accepted = [char, char.lower()]
-    if self.suffix[0] in accepted:
+    n = self.suffix[0]
+    nu = n.upper()
+    accepted = [n, nu]
+    asc = unidecode(n)
+    if len(asc) == 1:
+      accepted.append(asc)
+      accepted.append(asc.upper())
+
+    if char in accepted:
       self.suffix = self.suffix[1:]
       self.match += char
-      if self.is_fuzzy:
-        self.is_fuzzy = False
-        self.was_fuzzy = True
-      return False
-
-    if self.is_fuzzy and self.suffix[1] in accepted:
-      self.suffix = self.suffix[2:]
-      self.match += char
-      self.is_fuzzy = False
-      self.was_fuzzy = True
-      return False
-
-    if fuzzy and not self.was_fuzzy and not self.is_fuzzy and char != ' ' \
-      and len(self.suffix) > 1 and len(self.match + self.suffix) > 8:
-      self.match += char
-      self.is_fuzzy = True
       return False
 
     else:

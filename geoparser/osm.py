@@ -27,6 +27,9 @@ class OSMLoader:
       osm_refs = db.get_elements(a.data)
       doc.annotate('res', a.pos, a.phrase, group, osm_refs)
 
+    doc.merge_overlaps('rec', group, ['ner', 'gaz', 'anc'])
+    doc.merge_overlaps('res', group, ['sel'])
+
   def _load_database(self, geonames):
     sorted_ids = sorted(str(g.id) for g in geonames)
     id_str = '-'.join(sorted_ids)

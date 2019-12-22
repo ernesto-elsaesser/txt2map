@@ -16,6 +16,16 @@ class ToponymResolver:
   def resolve(self, doc, keep_defaults, max_disam_rounds=5):
     self.candidates = {}
 
+    # TODO: remove whole ancestor thing?
+    for a in doc.get('rec', 'ner'):
+      if a.data in self.gaz.defaults:
+        continue
+      candidates = self._select_candidates(a.phrase)
+      if len(candidates) > 0:
+        self._resolve_new_ancestors(candidates[0], doc)
+
+    doc.merge_overlaps('rec', 'anc', ['ner', 'gaz'])
+
     annotated = []
     for a in doc.get('rec'):
       if a.pos in annotated:
@@ -26,10 +36,8 @@ class ToponymResolver:
       else:
         candidates = self._select_candidates(a.phrase)
         if len(candidates) == 0:
-          continue
-        default = candidates[0]
-        self._resolve_new_ancestors(default, doc)
-        default_id = default.id
+          default = candidates[0]
+          default_id = default.id
 
       doc.annotate('res', a.pos, a.phrase, 'def', default_id)
       doc.annotate('res', a.pos, a.phrase, 'sel', default_id)
@@ -66,12 +74,13 @@ class ToponymResolver:
     else:
       results = self.gns_cache.search(toponym)
       cs = [g for g in results if toponym in g.name]
+      if len(cs) == 0:
+        cs = results
     cs = sorted(cs, key=lambda g: -g.population)
     self.candidates[toponym] = cs
     return cs
 
   def _resolve_new_ancestors(self, geoname, doc):
-    blocked = doc.annotated_positions('rec')
     hierarchy = self.gns_cache.get_hierarchy(geoname.id)
     not_gaz = [g for g in hierarchy[:-1] if g.population <= Gazetteer.pop_limit]
     for ancestor in not_gaz:
@@ -80,8 +89,6 @@ class ToponymResolver:
         pos = match.start()
         if pos not in blocked:
           doc.annotate('rec', pos, name, 'ancestor', name)
-          doc.annotate('res', pos, name, 'def', ancestor.id)
-          doc.annotate('res', pos, name, 'sel', ancestor.id)
 
   def _make_tree(self, doc):
     root = TreeNode(None, None)
