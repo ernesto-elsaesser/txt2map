@@ -10,21 +10,11 @@ from .gazetteer import Gazetteer
 class ToponymRecognizer:
 
   def __init__(self, gns_cache, use_large_model):
-
     self.use_large_model = use_large_model
     self.nlp_sm = spacy.load('en_core_web_sm', disable=['parser'])
     if self.use_large_model:
       self.nlp_lg = spacy.load('en_core_web_lg', disable=['parser'])
-
     self.gaz = Gazetteer(gns_cache)
-
-    self.lookup_tree = {}
-    for toponym in self.gaz.defaults:
-      key = toponym[:2]
-      if key not in self.lookup_tree:
-        self.lookup_tree[key] = []
-      self.lookup_tree[key].append(toponym)
-
     self.matcher = NameMatcher(['num','stp'], 2, False)
 
   def parse(self, text):
@@ -33,7 +23,7 @@ class ToponymRecognizer:
     spacy_doc = self.nlp_sm(text)
     self._add_name_tokens(spacy_doc, doc)
 
-    self.matcher.recognize_names(doc, 'gaz', self._lookup_prefix)
+    self.matcher.recognize_names(doc, 'gaz', self.gaz.lookup_prefix)
 
     ents = spacy_doc.ents
     if self.use_large_model:
@@ -41,13 +31,6 @@ class ToponymRecognizer:
 
     self._add_ner_toponyms(ents, doc)
     return doc
-
-  def _lookup_prefix(self, prefix):
-    key = prefix[:2]
-    if key not in self.lookup_tree:
-      return []
-    toponyms = self.lookup_tree[key]
-    return [t for t in toponyms if t.startswith(prefix)]
 
   def _add_name_tokens(self, tokens, doc):
     for token in tokens:

@@ -14,20 +14,17 @@ class ToponymResolver:
     self.gaz = Gazetteer(gns_cache)
 
   def resolve(self, doc, keep_defaults, max_disam_rounds=5):
-
-    heur_mapping = {}
+    self.candidates = {}
 
     for a in doc.get('rec'):
       if a.group == 'gaz':
         default_id = self.gaz.defaults[a.data]
       else:
-        results = self.gns_cache.search(a.phrase)
-        if len(results) == 0:
+        candidates = self._select_candidates(a.phrase)
+        if len(candidates) == 0:
           continue
-        default = self._select_candidates(a.phrase, results)[0]
-        anc_ids = self._resolve_new_ancestors(default, doc)
-        for anc_id in anc_ids: 
-          heur_mapping[anc_id] = anc_id
+        default = candidates[0]
+        self._resolve_new_ancestors(default, doc)
         default_id = default.id
 
       doc.annotate('res', a.pos, a.phrase, 'def', default_id)
@@ -54,55 +51,33 @@ class ToponymResolver:
         if a.data in id_map:
           a.data = id_map[a.data]
 
-
-  def _is_acro(self, abbrev, full):
-
-    if '.' not in abbrev:
-      return False
-
-    parts = abbrev.split('.')
-    words = full.split(' ')
-
-    widx = 0
-    for part in parts:
-      trimmed = part.strip()
-      if trimmed == '':
-        continue
-      if widx == len(words):
-        return False
-      if not words[widx].startswith(part):
-        return False
-      widx += 1
-
-    return widx == len(words)
-
-  def _select_candidates(self, toponym, geonames):
-    cs = geonames
+  def _select_candidates(self, toponym):
+    if toponym in self.candidates:
+      return self.candidates[toponym]
     if '.' in toponym:
       prefix = toponym.split('.')[0]
-      cs = [g for g in cs if g.name.startswith(prefix)]
+      toponyms = self.gaz.lookup_prefix(prefix)
+      geoname_ids = [self.gaz.defaults[t] for t in toponyms]
+      cs = [self.gns_cache.get(gid) for gid in geoname_ids]
     else:
-      cs = [g for g in cs if toponym in g.name]
-    first = geonames[0]
-    if geonames[0] not in cs:
-      print(f'ignoring API choice {first} for {toponym}')
-    return sorted(cs, key=lambda g: -g.population)
+      results = self.gns_cache.search(toponym)
+      cs = [g for g in results if toponym in g.name]
+    cs = sorted(cs, key=lambda g: -g.population)
+    self.candidates[toponym] = cs
+    return cs
 
   def _resolve_new_ancestors(self, geoname, doc):
     blocked = doc.annotated_positions('rec')
     hierarchy = self.gns_cache.get_hierarchy(geoname.id)
     not_gaz = [g for g in hierarchy[:-1] if g.population <= Gazetteer.pop_limit]
-    found_ids = set()
     for ancestor in not_gaz:
       name = ancestor.name
       for match in re.finditer(name, doc.text):
         pos = match.start()
         if pos not in blocked:
-          found_ids.add(ancestor.id)
           doc.annotate('rec', pos, name, 'ancestor', name)
           doc.annotate('res', pos, name, 'def', ancestor.id)
           doc.annotate('res', pos, name, 'sel', ancestor.id)
-    return found_ids
 
   def _make_tree(self, doc):
     root = TreeNode(None, None)
@@ -144,13 +119,11 @@ class ToponymResolver:
 
   def _select_heuristically(self, toponym, current, root):
 
-    results = self.gns_cache.search(toponym)
+    candidates = self._select_candidates(toponym)
 
-    if len(results) == 1:
-      assert current.id == results[0].id
+    if len(candidates) == 1 and current.id == candidates[0].id:
       return None
 
-    candidates = self._select_candidates(toponym, results)
     cur_hierarchy = self.gns_cache.get_hierarchy(current.id)
     max_depth = len(cur_hierarchy) + 2
 
@@ -160,6 +133,9 @@ class ToponymResolver:
       node = root.get(key_path, False)
 
       if node == None or toponym in node.geonames:
+        continue
+
+      if len(g.name) > len(toponym) and g.population == 0:
         continue
 
       hierarchy = self.gns_cache.get_hierarchy(g.id)

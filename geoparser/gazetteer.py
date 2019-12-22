@@ -17,6 +17,35 @@ class Gazetteer:
     self.continent_map = self._load('continent_map')
     self.country_boxes = self._load('country_boxes')
 
+    self.lookup_tree = {}
+    for toponym in self.defaults:
+      key = toponym[:2]
+      if key not in self.lookup_tree:
+        self.lookup_tree[key] = []
+      self.lookup_tree[key].append(toponym)
+
+  def lookup_prefix(self, prefix):
+    key = prefix[:2]
+    if key not in self.lookup_tree:
+      return []
+    toponyms = self.lookup_tree[key]
+    return [t for t in toponyms if t.startswith(prefix)]
+
+  def continent_name(self, geoname):
+
+    if geoname.is_continent:
+      return geoname.name
+
+    if geoname.cc in self.continent_map:
+      return self.continent_map[geoname.cc]
+
+    lat = geoname.lat
+    lon = geoname.lon
+    for name, box in self.country_boxes.items():
+      if box[1] < lat < box[3] and box[0] < lon < box[2]:  # [w, s, e, n]
+        return self.continent_map[name]
+    return 'Nowhere'
+
   def update_top_level(self):
     continents = {}
     countries = {}
@@ -143,21 +172,6 @@ class Gazetteer:
 
     self._save('defaults', defaults)
     self.defaults = defaults
-
-  def continent_name(self, geoname):
-
-    if geoname.is_continent:
-      return geoname.name
-
-    if geoname.cc in self.continent_map:
-      return self.continent_map[geoname.cc]
-
-    lat = geoname.lat
-    lon = geoname.lon
-    for name, box in self.country_boxes.items():
-      if box[1] < lat < box[3] and box[0] < lon < box[2]:  # [w, s, e, n]
-        return self.continent_map[name]
-    return 'Nowhere'
     
   def _load(self, file_name):
     file_path = f'{self.dirname}/data/{file_name}.json'
