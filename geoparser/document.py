@@ -26,8 +26,8 @@ class Document:
   def load_annotations(self, file_path):
     with open(file_path, 'r') as f:
       data = json.load(f)
-    for layer in data:
-      for arr in layer:
+    for layer, arrarr in data.items():
+      for arr in arrarr:
         a = Annotation(layer, arr[0], arr[1], arr[2], arr[3])
         self._anns.append(a)
 

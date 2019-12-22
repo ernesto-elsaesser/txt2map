@@ -16,7 +16,6 @@ class ToponymResolver:
   def resolve(self, doc, keep_defaults, max_disam_rounds=5):
     self.candidates = {}
 
-    # TODO: remove whole ancestor thing?
     for a in doc.get('rec', 'ner'):
       if a.data in self.gaz.defaults:
         continue
