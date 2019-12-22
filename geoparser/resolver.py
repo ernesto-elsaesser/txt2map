@@ -24,9 +24,7 @@ class ToponymResolver:
         results = self.gns_cache.search(a.phrase)
         if len(results) == 0:
           continue
-        first = results[0]
-        doc.annotate('res', a.pos, a.phrase, 'api', first.id)
-        default = max(results, key=lambda g: self._sim_pop(a.phrase, g))
+        default = self._select_candidates(a.phrase, results)[0]
         anc_ids = self._resolve_new_ancestors(default, doc)
         for anc_id in anc_ids: 
           heur_mapping[anc_id] = anc_id
@@ -56,17 +54,39 @@ class ToponymResolver:
         if a.data in id_map:
           a.data = id_map[a.data]
 
-  def _sim_pop(self, toponym, geoname):
-    target = toponym.lower()
-    name = geoname.name.lower()
-    if name == target:
-      factor = 1.0
-    elif self._is_acro(target, name):
-      factor = 1.0
+
+  def _is_acro(self, abbrev, full):
+
+    if '.' not in abbrev:
+      return False
+
+    parts = abbrev.split('.')
+    words = full.split(' ')
+
+    widx = 0
+    for part in parts:
+      trimmed = part.strip()
+      if trimmed == '':
+        continue
+      if widx == len(words):
+        return False
+      if not words[widx].startswith(part):
+        return False
+      widx += 1
+
+    return widx == len(words)
+
+  def _select_candidates(self, toponym, geonames):
+    cs = geonames
+    if '.' in toponym:
+      prefix = toponym.split('.')[0]
+      cs = [g for g in cs if g.name.startswith(prefix)]
     else:
-      dist = pylev.levenshtein(target, name)
-      factor = 0.8 ** dist
-    return geoname.population * factor
+      cs = [g for g in cs if toponym in g.name]
+    first = geonames[0]
+    if geonames[0] not in cs:
+      print(f'ignoring API choice {first} for {toponym}')
+    return sorted(cs, key=lambda g: -g.population)
 
   def _resolve_new_ancestors(self, geoname, doc):
     blocked = doc.annotated_positions('rec')
@@ -124,17 +144,17 @@ class ToponymResolver:
 
   def _select_heuristically(self, toponym, current, root):
 
-    options = self.gns_cache.search(toponym)
+    results = self.gns_cache.search(toponym)
 
-    if len(options) == 1:
-      assert current.id == options[0].id
+    if len(results) == 1:
+      assert current.id == results[0].id
       return None
 
-    sorted_options = sorted(options, key=lambda g: -self._sim_pop(toponym, g))
+    candidates = self._select_candidates(toponym, results)
     cur_hierarchy = self.gns_cache.get_hierarchy(current.id)
     max_depth = len(cur_hierarchy) + 2
 
-    for g in sorted_options[:10]:
+    for g in candidates[:10]:
 
       key_path = self._key_path(g)
       node = root.get(key_path, False)
@@ -149,27 +169,6 @@ class ToponymResolver:
         return g
 
     return None
-
-  def _is_acro(self, abbrev, full):
-
-    if '.' not in abbrev:
-      return False
-
-    parts = abbrev.split('.')
-    words = full.split(' ')
-
-    widx = 0
-    for part in parts:
-      trimmed = part.strip()
-      if trimmed == '':
-        continue
-      if widx == len(words):
-        return False
-      if not words[widx].startswith(part):
-        return False
-      widx += 1
-
-    return widx == len(words)
 
   def annotate_clusters(self, doc):
     (root, _) = self._make_tree(doc)

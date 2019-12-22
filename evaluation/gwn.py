@@ -10,8 +10,8 @@ class GeoWebNewsEvaluator:
   non_topo_types = ["Non_Toponym", "Non_Lit_Expression", "Literal_Expression"]
   rec_only_types = ["Demonym", "Homonym", "Language"]
 
-  def __init__(self, persist=False, incl_rec_only=False, incl_hard=False, keep_defaults=False, count_inexact=True):
-    self.persist = persist
+  def __init__(self, load_previous=False, incl_rec_only=False, incl_hard=False, keep_defaults=False, count_inexact=True):
+    self.load_previous = load_previous
     self.no_rec = not incl_rec_only
     self.no_hard = not incl_hard
     self.keep_defaults = keep_defaults
@@ -45,17 +45,14 @@ class GeoWebNewsEvaluator:
     with open(text_path, encoding='utf-8') as f:
       text = f.read()
 
-    if self.persist:
-      pre = 'def-' if self.keep_defaults else ''
-      result_path = f'{self.results_dir}/{pre}{doc_id}.json'
-      if os.path.exists(result_path):
-        doc = Document(text)
-        doc.load_annotations(result_path)
-      else:
-        doc = self.parser.parse(text, self.keep_defaults)
-        doc.save_annotations(result_path)
+    pre = 'def-' if self.keep_defaults else ''
+    result_path = f'{self.results_dir}/{pre}{doc_id}.json'
+    if self.load_previous and os.path.exists(result_path):
+      doc = Document(text)
+      doc.load_annotations(result_path)
     else:
       doc = self.parser.parse(text, self.keep_defaults)
+      doc.save_annotations(result_path)
 
     self.eval.start_document(doc, self.parser)
 

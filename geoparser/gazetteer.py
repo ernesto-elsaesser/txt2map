@@ -129,6 +129,9 @@ class Gazetteer:
       for toponym in entries:
         if toponym not in defaults:
           defaults[toponym] = entries[toponym]
+          if toponym in demonyms:
+            for demonym in demonyms[toponym]:
+              defaults[demonym] = entries[toponym]
 
     # common abbreviations
     defaults['U.S.'] = 6252001
