@@ -19,12 +19,9 @@ class GoldAnnotation:
 
 class CorpusEvaluator:
 
-  def __init__(self, geoparser, count_inexact, measure_defaults, tolerance_km, save_dir):
-    self.parser = geoparser
+  def __init__(self, count_inexact, tolerance_km):
     self.inexact = count_inexact
-    self.res_global_group = 'def' if measure_defaults else 'heur'
     self.tolerance = tolerance_km
-    self.save_dir = save_dir
 
     self.true_pos = 0
     self.false_neg = 0
@@ -32,22 +29,10 @@ class CorpusEvaluator:
     self.ann_count = 0
     self.accurate = 0
 
-  def start_document(self, document_id, text):
-    
-    if self.save_dir != None:
-      file_path = f'{self.save_dir}/{document_id}.json'
-      if os.path.exists(file_path):
-        with open(file_path, 'r') as f:
-          annotations = json.load(f)
-        self.doc = Document(text, annotations)
-      else:
-        self.doc = self.parser.parse(text)
-        with open(file_path, 'w') as f:
-          json.dump(self.doc.annotations, f)
-    else:
-        self.doc = self.parser.parse(text)
-
-    recognized = self.doc.annotated_positions('rec')
+  def start_document(self, doc, parser):
+    self.doc = doc
+    self.parser = parser
+    recognized = doc.annotated_positions('rec')
     self.false_pos += len(set(recognized))
 
   def evaluate(self, gold):
@@ -56,8 +41,8 @@ class CorpusEvaluator:
 
     recognized = False
 
-    for phrase, _, _ in self.doc.iter_pos(pos, 'rec'):
-      if self.inexact or phrase == gold.phrase:
+    for a in self.doc.get('rec', pos=pos):
+      if self.inexact or a.phrase == gold.phrase:
         self.false_pos -= 1
         self.true_pos += 1
         recognized = True
@@ -70,21 +55,21 @@ class CorpusEvaluator:
 
     resolved_within = False
 
-    for phrase, group, data in self.doc.iter_pos(pos, 'res'):
+    for a in self.doc.get('res', pos=pos):
       
-      if group == self.res_global_group:  # global
-        if gold.geoname_id == data:
+      if a.group == 'sel':  # global
+        if gold.geoname_id == a.data:
           resolved_within = True
           break
         else:
-          geoname = self.parser.gns_cache.get(data)
+          geoname = self.parser.gns_cache.get(a.data)
           dist = GeoUtil.distance(gold.lat, gold.lon, geoname.lat, geoname.lon)
           if dist < self.tolerance:
             resolved_within = True
             break
 
-      elif group.startswith('loc'): # local
-        elements = self.parser.osm_loader.load_geometries(data)
+      elif a.group.startswith('cl'): # local
+        elements = self.parser.osm_loader.load_geometries(a.data)
         dist = GeoUtil.osm_element_distance(gold.lat, gold.lon, elements[0])
         if dist < self.tolerance:
           resolved_within = True

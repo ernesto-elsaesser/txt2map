@@ -3,6 +3,7 @@ from .recognizer import ToponymRecognizer
 from .resolver import ToponymResolver
 from .geonames import GeoNamesCache
 from .osm import OSMLoader
+from .gazetteer import Gazetteer
 
 
 class Geoparser:
@@ -15,53 +16,37 @@ class Geoparser:
     self.resolver = ToponymResolver(self.gns_cache)
     self.osm_loader = OSMLoader(cache_dir, local_search_dist_km)
 
-  def parse(self, text):
+  def parse(self, text, keep_defaults=False):
     doc = self.recognizer.parse(text)
-    self.resolver.resolve(doc)
-    self.resolve_locally(doc, 'def')
-    self.resolve_locally(doc, 'heur')
+    self.resolver.resolve(doc, keep_defaults)
+
+    clusters = self.resolver.annotate_clusters(doc)
+    for cluster_key, geonames in clusters.items():
+      self.osm_loader.annotate_local_names(geonames, doc, cluster_key)
+
+    self._annotate_confidences(doc, clusters)
     return doc
 
-  def resolve_locally(self, doc, group):
-    anchors = self.resolver.annotate_clusters(doc, group)
-    for geoname_id in anchors:
-      geoname = self.gns_cache.get(geoname_id)
-      self.osm_loader.annotate_local_names(geoname, doc, group)
+  def _annotate_confidences(self, doc, clusters):
+    clust_count = len(clusters)
 
-    #self.assign_confidences(doc)
-
-'''
-
-  def assign_confidences(self, doc):
-    layers = doc.local_layers
-
-    if len(layers) == 0:
+    if clust_count == 0:
       return
 
-    if len(layers) == 1:
-      layers[0].confidence = 1.0
-      return
+    confidences = {}
+    for cluster_key, anchors in clusters.items():
+      clust_anns = doc.get('clu', cluster_key)
+      match_anns = doc.get('res', cluster_key)
+      confidence = 'high'
 
-      all_toponyms = node.branch_toponyms()
-      all_positions = node.branch_positions()
-      context = LocalContext(base_hierarchy, all_toponyms,
-                             anchor_points, all_positions)
+      if clust_count > 1 and len(clust_anns) == 1 and len(anchors) > 0:
+        if anchors[0].population < Gazetteer.pop_limit and ' ' not in clust_anns[0].phrase:
+          if len(match_anns) == 0:
+            confidence = 'low'
 
-    for layer in layers:
-      if len(layer.global_toponyms) > 1:
-        layer.confidence += 0.2
-      if layer.mentions > 1:
-        layer.confidence += 0.2
+      for a in clust_anns + match_anns:
+        confidences[a.phrase] = confidence
 
-    most_global_mentions = max(layers, key=lambda l: l.mentions)
-    if most_global_mentions.mentions > 1:
-      most_global_mentions.confidence += 0.3
-
-    most_local_matches = max(layers, key=lambda l: len(l.toponyms))
-    if len(most_local_matches.toponyms) > 1:
-      most_local_matches.confidence += 0.2
-
-    biggest_population = max(layers, key=lambda l: l.base.population)
-    biggest_population.confidence += 0.1
-
-'''
+    for a in doc.get('res'):
+      confidence = confidences[a.phrase]
+      doc.annotate('con', a.pos, a.phrase, confidence, '')

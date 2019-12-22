@@ -2,8 +2,7 @@ import os
 import requests
 import json
 import sqlite3
-from .model import GeoName
-from .database import GeoNamesDatabase
+from .database import Database
 
 
 class GeoNamesCache:
@@ -105,3 +104,135 @@ class GeoNamesAPI:
     res = requests.get(url=url)
     res.encoding = 'utf-8'
     return res.json()
+
+
+class GeoNamesDatabase(Database):
+
+  def create_tables(self):
+    self.cursor.execute(
+        '''CREATE TABLE geonames (
+          geoname_id INT UNIQUE, 
+          name TEXT,
+          population INT,
+          lat REAL,
+          lng REAL,
+          fcl CHAR(1),
+          fcode VARCHAR(10),
+          cc CHAR(2),
+          adm1 TEXT)''')
+    self.cursor.execute(
+        'CREATE TABLE search (name TEXT UNIQUE, result_ids TEXT)')
+    self.cursor.execute(
+        'CREATE TABLE hierarchy (geoname_id INT UNIQUE, ancestor_ids TEXT)')
+    self.cursor.execute(
+        'CREATE TABLE children (geoname_id INT UNIQUE, child_ids TEXT)')
+    self.commit_changes()
+
+  def get_search(self, name):
+    self.cursor.execute('SELECT result_ids FROM search WHERE name = ?',
+                        (name, ))
+    row = self.cursor.fetchone()
+    return self._resolve_ids(row)
+
+  def store_search(self, name, geonames):
+    result_ids = ','.join(str(g.id) for g in geonames)
+    self.cursor.execute('INSERT INTO search VALUES (?, ?)',
+                        (name, result_ids))
+    for geoname in geonames:
+      self.store_geoname(geoname)
+    self.commit_changes()
+
+  def get_hierarchy(self, geoname_id):
+    self.cursor.execute('SELECT ancestor_ids FROM hierarchy WHERE geoname_id = ?',
+                        (geoname_id, ))
+    row = self.cursor.fetchone()
+    return self._resolve_ids(row)
+
+  def store_hierarchy(self, geonames):
+    geoname_id = geonames[-1].id
+    ancestor_ids = ','.join(str(g.id) for g in geonames)
+    self.cursor.execute('INSERT INTO hierarchy VALUES (?, ?)',
+                        (geoname_id, ancestor_ids))
+    for geoname in geonames:
+      self.store_geoname(geoname)
+    self.commit_changes()
+
+  def get_children(self, geoname_id):
+    self.cursor.execute('SELECT child_ids FROM children WHERE geoname_id = ?',
+                        (geoname_id, ))
+    row = self.cursor.fetchone()
+    return self._resolve_ids(row)
+
+  def store_children(self, geoname_id, geonames):
+    child_ids = ','.join(str(g.id) for g in geonames)
+    self.cursor.execute('INSERT INTO children VALUES (?, ?)',
+                        (geoname_id, child_ids))
+    for geoname in geonames:
+      self.store_geoname(geoname)
+    self.commit_changes()
+
+  def _resolve_ids(self, row):
+    if row == None:
+      return None
+    if row[0] == '':
+      return []
+    return [self.get_geoname(int(s)) for s in row[0].split(',')]
+
+  def get_geoname(self, geoname_id):
+    self.cursor.execute('SELECT * FROM geonames WHERE geoname_id = ?',
+                        (geoname_id, ))
+    row = self.cursor.fetchone()
+    return None if row == None else GeoName(row=row)
+
+  def store_geoname(self, geoname):
+    g = geoname
+    try:
+      self.cursor.execute('INSERT INTO geonames VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                          (g.id, g.name, g.population, g.lat, g.lon,
+                           g.fcl, g.fcode, g.cc, g.adm1))
+      self.commit_changes()
+    except sqlite3.Error:
+      pass
+
+
+class GeoName:
+
+  # data: dict
+  # row: tupel
+  def __init__(self, data=None, row=None):
+    if data != None:
+      self.id = data['geonameId']
+      self.name = data['name']
+      self.population = data['population']
+      self.lat = float(data['lat'])
+      self.lon = float(data['lng'])
+      self.cc = '-' if 'countryCode' not in data else data['countryCode']
+      self.adm1 = '-' if 'adminCode1' not in data else data['adminCode1']
+      self.fcl = '-' if 'fcl' not in data else data['fcl']
+      self.fcode = '-' if 'fcode' not in data else data['fcode']
+      # not cached:
+      if 'asciiName' in data:
+        self.asciiname = data['asciiName']
+      if 'alternateNames' in data:
+        self.altnames = data['alternateNames']
+    else:
+      self.id = row[0]
+      self.name = row[1]
+      self.population = row[2]
+      self.lat = row[3]
+      self.lon = row[4]
+      self.fcl = row[5]
+      self.fcode = row[6]
+      self.cc = row[7]
+      self.adm1 = row[8]
+
+    self.is_city = self.fcl == 'P'
+    self.is_country = self.fcode.startswith('PCL')
+    self.is_continent = self.fcode == 'CONT'
+    self.is_ocean = self.fcode == 'OCN'
+
+  def region(self):
+    return f'{self.cc}-{self.adm1}'
+
+  def __repr__(self):
+    return f'{self.name}, {self.adm1}, {self.cc} [{self.fcode}]'

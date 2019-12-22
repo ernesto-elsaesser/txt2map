@@ -29,7 +29,8 @@ class Completion:
       self.end = self.pos + len(self.match)
       return True
 
-    if self.suffix[0].lower() == char.lower():
+    accepted = [char, char.lower()]
+    if self.suffix[0] in accepted:
       self.suffix = self.suffix[1:]
       self.match += char
       if self.is_fuzzy:
@@ -37,7 +38,7 @@ class Completion:
         self.was_fuzzy = True
       return False
 
-    if self.is_fuzzy and self.suffix[1].lower() == char.lower():
+    if self.is_fuzzy and self.suffix[1] in accepted:
       self.suffix = self.suffix[2:]
       self.match += char
       self.is_fuzzy = False
@@ -104,20 +105,22 @@ class NameMatcher:
       self.abbreviations.append((re.compile(l), s))
 
   def recognize_names(self, doc, group, lookup_prefix):
+    known_names = [a.phrase for a in doc.get('res')]
+
     text_len = len(doc.text)
     prev_match_end = 0
     saved = {}
 
-    for pos, phrase, _, _ in doc.iter('names', exclude=self.ignore):
-      if pos < prev_match_end: continue
+    for a in doc.get('tok', exclude_groups=self.ignore):
+      if a.pos < prev_match_end: continue
 
-      if phrase in saved:
-        completions = [c.clone(pos) for c in saved[phrase]]
+      if a.phrase in saved:
+        completions = [c.clone(a.pos) for c in saved[a.phrase]]
       else:
-        completions = self._get_completions(phrase, lookup_prefix, pos)
-        saved[phrase] = completions
+        completions = self._get_completions(a.phrase, lookup_prefix, a.pos)
+        saved[a.phrase] = completions
 
-      text_pos = pos + len(phrase)
+      text_pos = a.pos + len(a.phrase)
       longest_completion = None
       while text_pos < text_len and len(completions) > 0:
         next_char = doc.text[text_pos]
@@ -131,7 +134,8 @@ class NameMatcher:
       if longest_completion != None:
         c = longest_completion
         prev_match_end = c.end
-        doc.annotate('rec', pos, c.match, group, c.db_name)
+        if c.match not in known_names:
+          doc.annotate('rec', a.pos, c.match, group, c.db_name)
 
   def _get_completions(self, prefix, lookup_prefix, pos):
     found_names = lookup_prefix(prefix)

@@ -7,6 +7,8 @@ from .geo import GeoUtil
 
 class Gazetteer:
 
+  pop_limit = 100_000
+
   def __init__(self, gns_cache):
     self.dirname = os.path.dirname(__file__)
     self.cache = gns_cache
@@ -31,13 +33,6 @@ class Gazetteer:
           if 'lang' in entry and entry['lang'] == 'en':
             countries[entry['name']] = country.id
 
-    # common abbreviations
-    countries['U.S.'] = 6252001
-    countries['US'] = 6252001
-    countries['USA'] = 6252001
-    countries['EU'] = 6255148
-    countries['UAE'] = 290557
-
     self._save('continents', continents)
     self._save('countries', countries)
     self._save('continent_map', continent_map)
@@ -45,7 +40,7 @@ class Gazetteer:
     self.continents = continents
     self.continent_map = continent_map
 
-  def extract_large_entries(self, data_path, pop_limit=100_000):
+  def extract_large_entries(self, data_path):
 
     top_names = {}
     top_pops = {}
@@ -68,7 +63,7 @@ class Gazetteer:
         continue
 
       pop = int(row[14])
-      if pop < pop_limit:
+      if pop < Gazetteer.pop_limit:
         continue
 
       name = row[1]
@@ -83,7 +78,7 @@ class Gazetteer:
           if alt_name in parts:
             names.append(alt_name)
 
-      id = row[0]
+      id = int(row[0])
       fcl = row[6]
 
       if fcl not in top_pops:
@@ -133,6 +128,14 @@ class Gazetteer:
       for toponym in entries:
         if toponym not in defaults:
           defaults[toponym] = entries[toponym]
+
+    # common abbreviations
+    countries['U.S.'] = 6252001
+    countries['US'] = 6252001
+    countries['USA'] = 6252001
+    countries['EU'] = 6255148
+    countries['UAE'] = 290557
+    countries['D.C.'] = 4140963
 
     self._save('defaults', defaults)
     self.defaults = defaults

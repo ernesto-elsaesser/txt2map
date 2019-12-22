@@ -3,7 +3,7 @@ import logging
 import csv
 import json
 import datetime
-from geoparser import Geoparser
+from geoparser import Geoparser, Document
 from .evaluator import GoldAnnotation, CorpusEvaluator
 
 class GeoWebNewsEvaluator:
@@ -11,19 +11,20 @@ class GeoWebNewsEvaluator:
   non_topo_types = ["Non_Toponym", "Non_Lit_Expression", "Literal_Expression"]
   rec_only_types = ["Demonym", "Homonym", "Language"]
 
-  def __init__(self, incl_rec_only=False, incl_hard=False, measure_defaults=False, count_inexact=True):
+  def __init__(self, incl_rec_only=False, incl_hard=False, keep_defaults=False, count_inexact=True):
     self.no_rec = not incl_rec_only
     self.no_hard = not incl_hard
+    self.keep_defaults = keep_defaults
 
     dirname = os.path.dirname(__file__)
     self.corpus_dir = dirname + '/corpora/GeoWebNews/'
+    self.results_dir = dirname + '/results/GeoWebNews'
     paths = os.listdir(self.corpus_dir)
     docs = [p.replace('.txt', '') for p in paths if p.endswith('.txt')]
     self.docs = list(sorted(docs, key=lambda s: int(s)))
 
     self.parser = Geoparser()
-    save_dir = dirname + '/results/GeoWebNews'
-    self.eval = CorpusEvaluator(self.parser, count_inexact, measure_defaults, 161, save_dir)
+    self.eval = CorpusEvaluator(count_inexact, 161)
 
   def test_all(self, doc_range=range(200)):
     for i in doc_range:
@@ -40,7 +41,15 @@ class GeoWebNewsEvaluator:
     with open(text_path, encoding='utf-8') as f:
       text = f.read()
 
-    self.eval.start_document(doc_id, text)
+    result_path = f'{self.results_dir}/{doc_id}.json'
+    if os.path.exists(result_path):
+      doc = Document(text)
+      doc.load_annotations(result_path)
+    else:
+      doc = self.parser.parse(text, self.keep_defaults)
+      doc.save_annotations(result_path)
+
+    self.eval.start_document(doc, self.parser)
 
     annotation_path = self.corpus_dir + doc_id + '.ann'
     with open(annotation_path, encoding='utf-8') as f:

@@ -3,7 +3,7 @@ import json
 import csv
 import re
 import spacy
-from .model import Document
+from .document import Document
 from .matcher import NameMatcher
 from .gazetteer import Gazetteer
 
@@ -25,7 +25,7 @@ class ToponymRecognizer:
         self.lookup_tree[key] = []
       self.lookup_tree[key].append(toponym)
 
-    self.matcher = NameMatcher(['num','stop'], 2, False)
+    self.matcher = NameMatcher(['num','stp'], 2, False)
 
   def parse(self, text):
     doc = Document(text)
@@ -33,7 +33,7 @@ class ToponymRecognizer:
     spacy_doc = self.nlp_sm(text)
     self._add_name_tokens(spacy_doc, doc)
 
-    self.matcher.recognize_names(doc, 'gazetteer', self._lookup_prefix)
+    self.matcher.recognize_names(doc, 'gaz', self._lookup_prefix)
 
     ents = spacy_doc.ents
     if self.use_large_model:
@@ -55,12 +55,12 @@ class ToponymRecognizer:
       is_num = first.isdigit()
       is_title = first.isupper()
       if is_title or is_num:
-        group = ''
+        group = 'tit'
         if is_num:
           group = 'num'
         elif token.is_stop and not token.text == 'US':
-          group = 'stop'  # "US" is considered a stopword ...
-        doc.annotate('names', token.idx, token.text, group)
+          group = 'stp'  # "US" is considered a stopword ...
+        doc.annotate('tok', token.idx, token.text, group, '')
 
   def _add_ner_toponyms(self, ents, doc):
     blocked = doc.annotated_positions('rec')
