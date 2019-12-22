@@ -27,7 +27,7 @@
 
     function post() {
 
-      output.value = '';
+      output.innerHTML = '';
 
       toggle(true);
       fetch('/', {method: 'POST', body: input.value})

@@ -35,9 +35,10 @@ class ToponymResolver:
         default_id = self.gaz.defaults[a.data]
       else:
         candidates = self._select_candidates(a.phrase)
-        if len(candidates) > 0:
-          default = candidates[0]
-          default_id = default.id
+        if len(candidates) == 0:
+          continue
+        default = candidates[0]
+        default_id = default.id
 
       doc.annotate('res', a.pos, a.phrase, 'def', default_id)
       doc.annotate('res', a.pos, a.phrase, 'sel', default_id)
@@ -85,10 +86,10 @@ class ToponymResolver:
     not_gaz = [g for g in hierarchy[:-1] if g.population <= Gazetteer.pop_limit]
     for ancestor in not_gaz:
       name = ancestor.name
+      if name in geoname.name:
+        continue
       for match in re.finditer(name, doc.text):
-        pos = match.start()
-        if pos not in blocked:
-          doc.annotate('rec', pos, name, 'ancestor', name)
+        doc.annotate('rec', match.start(), name, 'ancestor', name)
 
   def _make_tree(self, doc):
     root = TreeNode(None, None)
