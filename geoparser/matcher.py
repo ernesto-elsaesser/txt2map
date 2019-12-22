@@ -45,8 +45,8 @@ class Completion:
       self.was_fuzzy = True
       return False
 
-    can_fuzzy = fuzzy and not self.was_fuzzy and not self.is_fuzzy and len(self.suffix) > 1
-    if can_fuzzy and char != ' ':
+    if fuzzy and not self.was_fuzzy and not self.is_fuzzy and char != ' ' \
+      and len(self.suffix) > 1 and len(self.match + self.suffix) > 8:
       self.match += char
       self.is_fuzzy = True
       return False

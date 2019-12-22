@@ -13,12 +13,12 @@ class ResponseFormatter:
 
       urls = []
 
-      for a in doc.get('res', 'sel', pos=a.pos):
-        urls.append(f'<a title="GeoNames" href="{self._gns_url(a)}">G</a>')
-        
-      for a in doc.get('res', pos=a.pos, exclude_groups=['api', 'def', 'sel']):
-        idx = a.group[2]
-        els = self._rank_osm_elements(a.data)
+      for ag in doc.get('res', 'sel', pos=a.pos):
+        urls.append(f'<a title="GeoNames" href="{self._gns_url(ag)}">G</a>')
+
+      for al in doc.get('res', pos=a.pos, exclude_groups=['api', 'def', 'sel']):
+        idx = al.group[2]
+        els = self._rank_osm_elements(al.data)
         for e in els:
           urls.append(f'<a title="OpenStreetMap ({e[0]})" href="{self._osm_url(e)}">{idx}</a>')
 

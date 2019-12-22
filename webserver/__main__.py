@@ -12,7 +12,7 @@ logging.info('Loading geoparser ...')
 app = Flask(__name__)
 app.config['JSONIFY_PRETTYPRINT_REGULAR'] = True
 
-parser = Geoparser(use_large_model=False)
+parser = Geoparser(use_large_model=True)
 formatter = ResponseFormatter()
 dirname = os.path.dirname(__file__)
 with open(dirname + '/index.html', 'rb') as f:

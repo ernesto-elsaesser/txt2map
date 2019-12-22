@@ -14,7 +14,7 @@ class OSMLoader:
   def __init__(self, cache_dir, search_dist):
     self.cache_dir = cache_dir
     self.search_dist = search_dist
-    self.matcher = NameMatcher(['stop'], 5, True)
+    self.matcher = NameMatcher(['stop'], 4, True)
 
   def annotate_local_names(self, geonames, doc, group):
     if self.search_dist == 0:
