@@ -9,6 +9,10 @@ from .database import GeoNamesDatabase
 class GeoNamesCache:
 
   def __init__(self, cache_dir='cache'):
+    self.geonames = {}
+    self.hierarchies = {}
+    self.search_results = {}
+
     self.db_path = cache_dir + '/geonames.db'
     if not os.path.exists(self.db_path):
       self.get_db().create_tables()
@@ -18,28 +22,37 @@ class GeoNamesCache:
     return GeoNamesDatabase(db)
 
   def get(self, geoname_id):
+    if geoname_id in self.geonames:
+      return self.geonames[geoname_id]
     db = self.get_db()
     geoname = db.get_geoname(geoname_id)
     if geoname == None:
       geoname = GeoNamesAPI.get_geoname(geoname_id)
       db.store_geoname(geoname)
+    self.geonames[geoname_id] = geoname
     return geoname
 
   def search(self, name):
+    if name in self.search_results:
+      return self.search_results[name]
     db = self.get_db()
     results = db.get_search(name)
     if results == None:
       results = GeoNamesAPI.search(name)
       results = [g for g in results if g.id != 6295630] # remove Earth
       db.store_search(name, results)
+    self.search_results[name] = results
     return results
 
   def get_hierarchy(self, geoname_id):
+    if geoname_id in self.hierarchies:
+      return self.hierarchies[geoname_id]
     db = self.get_db()
     hierarchy = db.get_hierarchy(geoname_id)
     if hierarchy == None:
       hierarchy = GeoNamesAPI.get_hierarchy(geoname_id)[1:]  # skip Earth
       db.store_hierarchy(hierarchy)
+    self.hierarchies[geoname_id] = hierarchy
     return hierarchy
 
   def get_children(self, geoname_id):

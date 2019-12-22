@@ -1,14 +1,13 @@
-import logging
 import re
 
 
 class Completion:
 
-  def __init__(self, phrase, prefix, db_name, start):
+  def __init__(self, phrase, prefix, db_name, pos):
     self.phrase = phrase
     self.prefix = prefix
     self.db_name = db_name
-    self.start = start
+    self.pos = pos
     
     self.suffix = phrase[len(prefix):]
     self.match = prefix
@@ -20,14 +19,14 @@ class Completion:
   def __repr__(self):
     return self.suffix if self.active else self.match
 
-  def clone(self, start):
-    return Completion(self.phrase, self.prefix, self.db_name, start)
+  def clone(self, pos):
+    return Completion(self.phrase, self.prefix, self.db_name, pos)
 
   def trim(self, char, fuzzy):
 
     if self.suffix == '':
       self.active = False
-      self.end = self.start + len(self.match)
+      self.end = self.pos + len(self.match)
       return True
 
     if self.suffix[0].lower() == char.lower():
@@ -94,9 +93,8 @@ class NameMatcher:
     'Sq': 'Square'
   }
 
-  def __init__(self, use_nums, use_stops, min_len, fuzzy):
-    self.use_nums = use_nums
-    self.use_stops = use_stops
+  def __init__(self, ignore, min_len, fuzzy):
+    self.ignore = ignore
     self.min_len = min_len
     self.fuzzy = fuzzy
     self.abbreviations = []
@@ -105,24 +103,21 @@ class NameMatcher:
     for s, l in self.abbr_end.items():
       self.abbreviations.append((re.compile(l), s))
 
-  def find_names(self, doc, lookup_prefix):
+  def recognize_names(self, doc, group, lookup_prefix):
     text_len = len(doc.text)
-    completed = {}
     prev_match_end = 0
     saved = {}
 
-    for start, prefix, is_num, is_stop in doc.name_tokens:
-      if is_num and not self.use_nums: continue
-      if is_stop and not self.use_stops: continue
-      if start < prev_match_end: continue
+    for pos, phrase, _, _ in doc.iter('names', exclude=self.ignore):
+      if pos < prev_match_end: continue
 
-      if prefix in saved:
-        completions = [c.clone(start) for c in saved[prefix]]
+      if phrase in saved:
+        completions = [c.clone(pos) for c in saved[phrase]]
       else:
-        completions = self._get_completions(prefix, lookup_prefix, start)
-        saved[prefix] = completions
+        completions = self._get_completions(phrase, lookup_prefix, pos)
+        saved[phrase] = completions
 
-      text_pos = start + len(prefix)
+      text_pos = pos + len(phrase)
       longest_completion = None
       while text_pos < text_len and len(completions) > 0:
         next_char = doc.text[text_pos]
@@ -134,26 +129,22 @@ class NameMatcher:
         text_pos += 1
 
       if longest_completion != None:
-        compl = longest_completion
-        prev_match_end = compl.end
-        if compl.match not in completed:
-          completed[compl.match] = []
-        completed[compl.match].append(compl)
+        c = longest_completion
+        prev_match_end = c.end
+        doc.annotate('rec', pos, c.match, group, c.db_name)
 
-    return completed
-
-  def _get_completions(self, prefix, lookup_prefix, start):
+  def _get_completions(self, prefix, lookup_prefix, pos):
     found_names = lookup_prefix(prefix)
     completions = []
     for db_name in found_names:
       if len(db_name) < self.min_len:
         continue
-      compl = Completion(db_name, prefix, db_name, start)
+      compl = Completion(db_name, prefix, db_name, pos)
       completions.append(compl)
       for regex, repl in self.abbreviations:
         phrase = regex.sub(repl, db_name)
         if phrase != db_name and phrase.startswith(prefix):
-          short_compl = Completion(phrase, prefix, db_name, start)
+          short_compl = Completion(phrase, prefix, db_name, pos)
           completions.append(short_compl)
     if prefix in self.abbr:
       long_prefix = self.abbr[prefix]
@@ -162,7 +153,7 @@ class NameMatcher:
         phrase = db_name.replace(long_prefix, prefix)
         if ' ' not in phrase:
           continue
-        long_compl = Completion(phrase, prefix, db_name, start)
+        long_compl = Completion(phrase, prefix, db_name, pos)
         completions.append(long_compl)
     return completions
 

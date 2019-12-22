@@ -1,5 +1,5 @@
 import sqlite3
-from .model import GeoName, OSMElement
+from .model import GeoName
 
 class Database:
 
@@ -105,6 +105,8 @@ class GeoNamesDatabase(Database):
 
 class OSMDatabase(Database):
 
+  type_names = ['node', 'way', 'relation']
+
   def create_tables(self):
     self.cursor.execute(
         'CREATE TABLE names (name VARCHAR(100) NOT NULL UNIQUE)')
@@ -114,7 +116,7 @@ class OSMDatabase(Database):
     self.cursor.execute('CREATE INDEX osm_index ON osm(names_rowid)')
     self.commit_changes()
 
-  def insert_element(self, name, element):
+  def insert_element(self, name, type_name, element_id):
     if len(name) < 2:
       return 0
     first = name[0]
@@ -127,9 +129,9 @@ class OSMDatabase(Database):
       inserted = 1
     except sqlite3.Error:
       rowid = self.get_rowid(name)
-    type_code = element.type_code()
+    type_code = self.type_names.index(type_name)
     self.cursor.execute('INSERT INTO osm VALUES(?, ?, ?)',
-                        (element.id, rowid, type_code))
+                        (element_id, rowid, type_code))
     return inserted
 
   def find_names(self, prefix):
@@ -147,7 +149,6 @@ class OSMDatabase(Database):
         'SELECT ref,type_code FROM osm WHERE names_rowid = ?', (rowid, ))
     elements = []
     for row in self.cursor.fetchall():
-      element_type = OSMElement.type_names[row[1]]
-      element = OSMElement(row[0], element_type)
-      elements.append(element)
+      type_name = self.type_names[row[1]]
+      elements.append([type_name, row[0]])
     return elements

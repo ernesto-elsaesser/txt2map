@@ -1,10 +1,10 @@
 import os
+import json
 import logging
-import csv
-from geoparser import Geoparser, GeoNamesCache, OverpassAPI, GeoUtil, OSMElement
+from geoparser import Geoparser, GeoNamesCache, OverpassAPI, GeoUtil, Document
 
 
-class Annotation:
+class GoldAnnotation:
 
   def __init__(self, position, phrase, lat, lon, geoname_id):
     self.position = position
@@ -12,137 +12,106 @@ class Annotation:
     self.lat = lat
     self.lon = lon
     self.geoname_id = geoname_id
-    self.annotated_phrase = None
-    self.geoname = None
-    self.geoname_dist = None
-    self.osm_element = None
-    self.osm_element_dist = None
-    self.comment = ''
 
-  def min_dist(self):
-    min_dist = None
-    if self.geoname_dist != None:
-      min_dist = self.geoname_dist
-    if self.osm_element_dist != None:
-      if min_dist == None or min_dist > self.osm_element_dist:
-        min_dist = self.osm_element_dist
-    return min_dist
-
-  def within(self, accuracy_km):
-    dist = self.min_dist()
-    if dist == None:
-      return False
-    return dist < accuracy_km
-
-
-class Result:
-
-  def __init__(self, doc, global_positions, local_positions):
-    self.doc = doc
-    self.global_positions = global_positions
-    self.local_positions = local_positions
-    self.annotations = []
+  def __repr__(self):
+    return f'{self.phrase} @ {self.position} [{self.geoname_id}]'
 
 
 class CorpusEvaluator:
 
-  def __init__(self, geoparser):
+  def __init__(self, geoparser, count_inexact, measure_defaults, tolerance_km, save_dir):
     self.parser = geoparser
-    self.results = {}
+    self.inexact = count_inexact
+    self.res_global_group = 'def' if measure_defaults else 'heur'
+    self.tolerance = tolerance_km
+    self.save_dir = save_dir
 
-  def start_document(self, document, text):
-    logging.info('--- %s ---', document)
-    self.document = document
-    global_positions = {}
-    local_positions = {}
+    self.true_pos = 0
+    self.false_neg = 0
+    self.false_pos = 0
+    self.ann_count = 0
+    self.accurate = 0
 
-    doc = self.parser.parse(text)
-    for toponym, positions in doc.positions.items():
-      for position in positions:
-        global_positions[position] = toponym
+  def start_document(self, document_id, text):
+    
+    if self.save_dir != None:
+      file_path = f'{self.save_dir}/{document_id}.json'
+      if os.path.exists(file_path):
+        with open(file_path, 'r') as f:
+          annotations = json.load(f)
+        self.doc = Document(text, annotations)
+      else:
+        self.doc = self.parser.parse(text)
+        with open(file_path, 'w') as f:
+          json.dump(self.doc.annotations, f)
+    else:
+        self.doc = self.parser.parse(text)
 
-    for key, context in doc.local_contexts.items():
-      for toponym, positions in context.positions.items():
-        for position in positions:
-          if position in local_positions:
-            local_positions[position].append((key, toponym))
-          else:
-            local_positions[position] = [(key, toponym)]
+    recognized = self.doc.annotated_positions('rec')
+    self.false_pos += len(set(recognized))
 
-    self.results[document] = Result(doc, global_positions, local_positions)
+  def evaluate(self, gold):
+    self.ann_count += 1
+    pos = gold.position
 
-  def verify_annotation(self, annotation):
-    result = self.results[self.document]
-    a = annotation
+    recognized = False
 
-    if a.position in result.global_positions:
-      a.annotated_phrase = result.global_positions[a.position]
+    for phrase, _, _ in self.doc.iter_pos(pos, 'rec'):
+      if self.inexact or phrase == gold.phrase:
+        self.false_pos -= 1
+        self.true_pos += 1
+        recognized = True
+        break
 
-        if not is_local and toponym in result.doc.geonames:
-          a.resolved = True
-          g = result.doc.geonames[toponym]
-          a.geoname = g
-          if a.geoname_id == g.id:
-            a.geoname_dist = 0.0
-          else:
-            a.geoname_dist = GeoUtil.distance(a.lat, a.lon, g.lat, g.lon)
+    if not recognized:
+      self.false_neg += 1
+      print(f'NOT RECOGNIZED: {gold}')
+      return
 
-    if a.position in result.local_positions:
-        if is_local:
-          for c in result.doc.local_contexts.values():
-            if toponym not in c.osm_elements:
-              continue
+    resolved_within = False
 
-            a.resolved = True
-            a.resolved_local = True
+    for phrase, group, data in self.doc.iter_pos(pos, 'res'):
+      
+      if group == self.res_global_group:  # global
+        if gold.geoname_id == data:
+          resolved_within = True
+          break
+        else:
+          geoname = self.parser.gns_cache.get(data)
+          dist = GeoUtil.distance(gold.lat, gold.lon, geoname.lat, geoname.lon)
+          if dist < self.tolerance:
+            resolved_within = True
+            break
 
-            elements = c.osm_elements[toponym]
-            json_elements = self.parser.osm_loader.load_geometries(elements)
+      elif group.startswith('loc'): # local
+        elements = self.parser.osm_loader.load_geometries(data)
+        dist = GeoUtil.osm_element_distance(gold.lat, gold.lon, elements[0])
+        if dist < self.tolerance:
+          resolved_within = True
+          break
+        elif dist < self.tolerance + 30.0: # max dist between two elements
+          for e in elements[1:]:
+            d = GeoUtil.osm_element_distance(gold.lat, gold.lon, e)
+            if d < dist:
+              resolved_within = True
+              break
+          if resolved_within: break
+        
+    if resolved_within:
+      self.accurate += 1
+    else:
+      print(f'NOT RESOLVED: {gold}')
 
-            a.osm_element_dist = float('inf')
-            for e in json_elements:
-              distance = GeoUtil.osm_element_distance(a.lat, a.lon, e)
-              if distance < a.osm_element_dist:
-                a.osm_element = OSMElement(e['id'], e['type'])
-                a.osm_element_dist = distance
+  def metrics_str(self):
+    if self.ann_count == 0:
+      return (1.0, 1.0, 1.0, 1.0)
 
-    result.annotations.append(a)
+    p = self.true_pos / (self.true_pos + self.false_pos)
+    r = self.true_pos / (self.true_pos + self.false_neg)
+    f1 = (2 * p * r) / (p + r)
+    acc = self.accurate / self.ann_count
+    acc_r = self.accurate / self.true_pos
 
-  def document_summary(self, accuracy_km, document=None):
-    d = document or self.document
-    return self._summary(self.results[d].annotations, accuracy_km)
+    am = f'Acc@{self.tolerance:.1f}km'
+    return f'P: {p:.3f} R: {r:.3f} F1: {f1:.3f} {am}: {acc:.3f} ({acc_r:.3f} for resol only)'
 
-  def corpus_summary(self, accuracy_km):
-    all_annotations = sum([r.annotations for r in self.results.values()], [])
-    return self._summary(all_annotations, accuracy_km)
-
-  def results_csv(self):
-    lines = 'document\tpos\tphrase\trec\tres\tres_loc\tmin_dist\tgeoname\tgn_dist\tosm\tosm_dist\tcomment\n'
-    for d in self.results:
-      for a in self.results[d].annotations:
-        rec = 1 if a.recognized else 0
-        res = 1 if a.resolved else 0
-        resloc = 1 if a.resolved_local else 0
-        lines += f'{d}\t{a.position}\t{a.phrase}\t{rec}\t{res}\t{resloc}\t'
-        md = self._format_dist(a.min_dist())
-        g = '' if a.geoname == None else str(a.geoname.id)
-        gd = self._format_dist(a.geoname_dist)
-        o = '' if a.osm_element == None else str(a.osm_element.reference())
-        od = self._format_dist(a.osm_element_dist)
-        lines += f'{md}\t{g}\t{gd}\t{o}\t{od}\t{a.comment}\n'
-    return lines
-
-  def _format_dist(self, dist):
-    if dist == None:
-      return ''
-    return f'{dist:.2f}'
-
-  def _summary(self, annotations, accuracy_km):
-    total = len(annotations)
-    if total == 0:
-      return 'no annotations'
-    recognized = [a for a in annotations if a.recognized]
-    resolved = [a for a in annotations if a.within(accuracy_km)]
-    p_recognized = int((len(recognized)/total) * 100)
-    p_resolved = int((len(resolved)/total) * 100)
-    return f'{total} annotations, {p_recognized}% recognized, {p_resolved}% resolved'

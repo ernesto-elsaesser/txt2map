@@ -1,12 +1,12 @@
 from geoparser import Geoparser
-from .evaluator import Annotation, CorpusEvaluator
+from .evaluator import GoldAnnotation, CorpusEvaluator
 
 
 class TestEvaluator:
 
   def __init__(self):
     parser = Geoparser(use_large_model=False)
-    self.eval = CorpusEvaluator(parser)
+    self.eval = CorpusEvaluator(parser, False, False, 1, None)
 
   def test_all(self):
     self.test_global_default_sense()
@@ -14,6 +14,8 @@ class TestEvaluator:
     self.test_global_onto_sim_hard()
     self.test_global_top_defaults()
     self.test_global_name_sim()
+    self.test_global_abbrevs()
+    self.test_global_d_c()
     self.test_global_demonyms()
     self.test_global_two()
     self.test_embedded()
@@ -23,11 +25,10 @@ class TestEvaluator:
     self.test_local_relation()
     self.test_local_abbrevs()
     self.test_local_abbrevs_2()
-    self.test_local_special_chars()
     self.test_local_fuzzy()
 
-    summary = self.eval.corpus_summary(1)
-    print('Total:', summary)
+    print(f'--- FINISHED ---')
+    print(self.eval.metrics_str())
 
   def test_global_default_sense(self):
     text = 'I love Paris.'
@@ -61,9 +62,22 @@ class TestEvaluator:
     self._test(False, 'Fixed Top-Level Senses', text, anns)
 
   def test_global_name_sim(self):
-    text = 'Where is Fire Island?'
-    anns = [('Fire Island', 0, 0, 5117145)]
-    self._test(False, 'Prefer Similar Names', text, anns)
+    # there is a big one spelled with ñ and a small one without
+    text = 'The Mall of Asia in Paranaque City.'
+    anns = [('Paranaque City', 0, 0, 1694782),
+            ('Mall of Asia', 14.5349995, 120.9832017, None)]
+    self._test(True, 'Special Characters', text, anns)
+
+  def test_global_abbrevs(self):
+    text = 'It\'s nice in Calif.'
+    anns = [('Calif.', 0, 0, 5332921)]
+    self._test(False, 'Abbreviations', text, anns)
+
+  def test_global_d_c(self):
+    text = 'The capital of the U.S. is Washington, D.C. (not the state).'
+    anns = [('U.S.', 0, 0, 6252001),
+            ('Washington, D.C.', 0, 0, 4140963)]
+    self._test(False, 'Washington, D.C.', text, anns)
 
   def test_global_demonyms(self):
     text = 'Che Guevara is burried in the Cuban city of Santa Clara.'
@@ -112,11 +126,6 @@ class TestEvaluator:
     anns = [('N. Bedford Drive', 34.0678280, -118.4049976, None)]
     self._test(True, 'Abbreviations 2', text, anns)
 
-  def test_local_special_chars(self):
-    text = 'The Mall of Asia in Paranaque City.'
-    anns = [('Mall of Asia', 14.5349995, 120.9832017, None)]
-    self._test(True, 'Special Characters', text, anns)
-
   def test_local_fuzzy(self):
     # in the OSM data Caesars is written without apostrophe
     text = 'She sang at Caesar\'s Palace in Las Vegas.'
@@ -125,12 +134,10 @@ class TestEvaluator:
 
   def _test(self, is_local, title, text, annotations):
     prefix = 'Local' if is_local else 'Global'
-    document = prefix + ' - ' + title
-    self.eval.start_document(document, text)
+    print(f'--- {prefix} - {title} ---')
+    self.eval.start_document('', text)
     for name, lat, lon, geoname_id in annotations:
       pos = text.find(name)
-      annotation = Annotation(pos, name, lat, lon, geoname_id)
-      self.eval.verify_annotation(annotation)
-    summary = self.eval.document_summary(1)
-    print(summary)
+      a = GoldAnnotation(pos, name, lat, lon, geoname_id)
+      self.eval.evaluate(a)
 

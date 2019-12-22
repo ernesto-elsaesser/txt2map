@@ -1,9 +1,8 @@
 import os
-import logging
 import re
 import json
 import pylev
-from .model import TreeNode, LocalLayer
+from .model import TreeNode
 from .geonames import GeoNamesCache, GeoNamesAPI
 from .gazetteer import Gazetteer
 
@@ -13,119 +12,98 @@ class ToponymResolver:
   def __init__(self, gns_cache):
     self.gns_cache = gns_cache
     self.gaz = Gazetteer(gns_cache)
-    
-    dirname = os.path.dirname(__file__)
-    continents_file = dirname + '/continents.json'
-    with open(continents_file, 'r') as f:
-      json_dict = f.read()
-    self.continent_map = json.loads(json_dict)
 
   def resolve(self, doc, max_disam_rounds=5):
 
-    for d in doc.demonyms:
-      doc.selected_senses[d] = doc.default_senses[d]
+    heur_mapping = {}
 
-    for t in doc.gaz_toponyms:
-      doc.selected_senses[t] = doc.default_senses[t]
+    for pos, phrase, note, toponym in doc.iter('rec'):
+      if note == 'gazetteer':
+        default_id = int(self.gaz.defaults[toponym])
+      else:
+        results = self.gns_cache.search(toponym)
+        if len(results) == 0:
+          continue
+        first = results[0]
+        doc.annotate('res', pos, phrase, 'api', first.id)
+        default = max(results, key=lambda g: self._sim_pop(toponym, g))
+        anc_ids = self._resolve_new_ancestors(default, doc)
+        for anc_id in anc_ids: 
+          heur_mapping[anc_id] = anc_id
+        default_id = default.id
 
-    options = {}
+      doc.annotate('res', pos, phrase, 'def', default_id)
+      heur_mapping[default_id] = default_id
 
-    for t in doc.ner_toponyms:
-      candidates = self._load_candidates(t, doc)
-      if len(candidates) > 0:
-        options[t] = candidates
-
-    (root, leafs) = self._make_tree(doc)
+    (root, leafs) = self._make_tree(doc, 'def')
     unsupported = self._find_unsupported_leafs(leafs)
-    for t in unsupported:
-      if t in doc.gaz_toponyms:
-        candidates = self._load_candidates(t, doc)
-        if len(candidates) > 0:
-          options[t] = candidates
 
     changed = True
     rounds = 0
     while changed and rounds < max_disam_rounds:
       rounds += 1
       changed = False
-      for t in unsupported:
-        selection = self._select_heuristically(t, doc, root, options[t])
-        if selection != doc.selected_senses[t]:
+
+      doc.clear_group('res', 'heur')
+      for pos, phrase, _, geoname_id in doc.iter('res', exclude=['api']):
+        doc.annotate('res', pos, phrase, 'heur', heur_mapping[geoname_id])
+      (root, leafs) = self._make_tree(doc, 'heur')
+      unsupported = self._find_unsupported_leafs(leafs)
+
+      for adm1 in unsupported:
+        (toponym, old_geoname) = list(adm1.geonames.items())[0]
+        new_geoname = self._select_heuristically(toponym, old_geoname, root)
+        if new_geoname != None:
           changed = True
-        doc.selected_senses[t] = selection
-      (root, leafs) = self._make_tree(doc)
+          heur_mapping[old_geoname.id] = new_geoname.id
 
-    doc.local_layers = self._extract_local_layers(leafs, doc)
-
-  def _load_candidates(self, toponym, doc):
-    candidates = self.gns_cache.search(toponym)
-
-    if len(candidates) == 0:
-      return None
-
-    first = candidates[0]
-    if toponym in doc.default_senses:
-      assert doc.default_senses[toponym].id == first.id
-
-    if len(candidates) == 1:
-      if toponym in doc.default_senses:
-        assert doc.default_senses[toponym].id == first.id
-      else:
-        doc.default_senses[toponym] = first
-        doc.selected_senses[toponym] = first
-      return None
-
-    sorted_by_pos = sorted(candidates, key=lambda g: -g.population)
-    largest = sorted_by_pos[0]
-
-    if toponym in doc.default_senses:
-      assert doc.default_senses[toponym].id == largest.id
+  def _sim_pop(self, toponym, geoname):
+    target = toponym.lower()
+    name = geoname.name.lower()
+    if name == target:
+      factor = 1.0
+    elif self._is_acro(target, name):
+      factor = 1.0
     else:
-      self._resolve_new_ancestors(largest, doc)
-
-    doc.default_senses[toponym] = largest
-    doc.selected_senses[toponym] = largest
-    if first.id != largest.id:
-      doc.api_selected_senses[toponym] = first
-
-    return sorted_by_pos[1:]
+      dist = pylev.levenshtein(target, name)
+      factor = 0.8 ** dist
+    return geoname.population * factor
 
   def _resolve_new_ancestors(self, geoname, doc):
-    known_toponyms = list(doc.gaz_toponyms)
-    known_toponyms += list(doc.ner_toponyms)
-    known_toponyms += list(doc.anc_toponyms)
-    hierarchy = self._hierarchy(geoname, doc)
-    small = [g for g in hierarchy[:-1] if g.population >= 100000]
+    blocked = doc.annotated_positions('rec')
+    hierarchy = self.gns_cache.get_hierarchy(geoname.id)
+    small = [g for g in hierarchy[:-1] if g.population <= 100000]
+    found_ids = set()
     for ancestor in small:
-      toponym = ancestor.name
-      overlaps = [t for t in known_toponyms if toponym in t]
-      if len(overlaps) > 0:
-        continue
-      positions = []
-      for match in re.finditer(toponym, doc.text):
-        positions.append(match.start())
-      if len(positions) > 0:
-        logging.info(f'Found ancestor {toponym} of {geoname}')
-        doc.anc_toponyms[toponym] = positions
-        doc.default_senses[toponym] = ancestor
-        doc.selected_senses[toponym] = ancestor
+      name = ancestor.name
+      for match in re.finditer(name, doc.text):
+        pos = match.start()
+        if pos not in blocked:
+          found_ids.add(ancestor.id)
+          doc.annotate('rec', pos, name, 'ancestor', name)
+          doc.annotate('res', pos, name, 'def', ancestor.id)
+    return found_ids
 
-  def _make_tree(self, doc):
-    root = TreeNode('', None)
+  def _make_tree(self, doc, select_group):
+    root = TreeNode(None, None)
     leafs = []
-    for t, g in doc.selected_senses.items():
-      cont_name = self.gaz.continent_name(g)
-      key_path = [cont_name]
-      if g.cc != "-":
-        key_path.append(g.cc)
-      if g.adm1 != "-" and g.adm1 != "00":
-        key_path.append(g.adm1)
+    for pos, phrase, _, geoname_id in doc.iter('res', select=select_group):
+      geoname = self.gns_cache.get(geoname_id)
+      key_path = self._key_path(geoname)
       node = root.get(key_path, True)
-      positions = doc.positions(t)
-      node.add(t, g, positions)
+      node.add(phrase, geoname, pos)
       if len(key_path) == 3 and node not in leafs:
         leafs.append(node)
     return (root, leafs)
+
+  def _key_path(self, g):
+    cont_name = self.gaz.continent_name(g)
+    key_path = [cont_name]
+    if g.cc != "-":
+      key_path.append(g.cc)
+      if g.adm1 != "-" and g.adm1 != "00":
+        key_path.append(g.adm1)
+    return key_path
 
   def _find_unsupported_leafs(self, leafs):
     if len(leafs) < 2:
@@ -133,84 +111,109 @@ class ToponymResolver:
 
     unsupported = []
     for node in leafs:
-      counts = node.topo_counts()
-      if sum(counts) > 2 or counts[0] > 1:
+      mentions = node.branch_mentions()
+      if sum(mentions) > 2 or mentions[0] > 1:
         continue # multiple support or siblings
-      if counts[2] == 1 and len(node.parent.parent.children) == 1:
+      if mentions[2] == 1 and len(node.parent.parent.children) == 1:
         continue # exclusive continent
-      if counts[1] == 1 and len(node.parent.children) == 1:
+      if mentions[1] == 1 and len(node.parent.children) == 1:
         continue # exclusive country
-      toponym = next(iter(node.toponyms))
-      unsupported.append(toponym)
+      unsupported.append(node)
 
     return unsupported
 
-  def _select_heuristically(self, toponym, doc, root, options):
+  def _select_heuristically(self, toponym, current, root):
 
-    selected = doc.default_senses[toponym]
-    sel_hierarchy = self._hierarchy(selected, doc)
-    max_depth = len(sel_hierarchy) + 2
+    options = self.gns_cache.search(toponym)
 
-    for g in options[:10]:
-      if g.cc == '-' or g.adm1 == '-':
-        continue
-      
-      cont_name = self.continent_map[g.cc]
-      key_path = [cont_name, g.cc, g.adm1]
+    if len(options) == 1:
+      assert current.id == options[0].id
+      return None
+
+    sorted_options = sorted(options, key=lambda g: -self._sim_pop(toponym, g))
+    cur_hierarchy = self.gns_cache.get_hierarchy(current.id)
+    max_depth = len(cur_hierarchy) + 2
+
+    for g in sorted_options[:10]:
+
+      key_path = self._key_path(g)
       node = root.get(key_path, False)
 
-      if node == None or node.key == selected.adm1:
+      if node == None or toponym in node.geonames:
         continue
 
-      hierarchy = self._hierarchy(g, doc)
+      hierarchy = self.gns_cache.get_hierarchy(g.id)
       depth = len(hierarchy)
       if depth <= max_depth:
-        logging.info(f'Chose {g} over {selected} for {toponym}')
+        print(f'Chose {g} over {current} for {toponym}')
         return g
 
     return None
-      
-  def _hierarchy(self, geoname, doc):
-    if geoname.id in doc.hierarchies:
-      return doc.hierarchies[geoname.id]
+
+  def _is_acro(self, abbrev, full):
+
+    if '.' not in abbrev:
+      return False
+
+    parts = abbrev.split('.')
+    words = full.split(' ')
+
+    widx = 0
+    for part in parts:
+      trimmed = part.strip()
+      if trimmed == '':
+        continue
+      if widx == len(words):
+        return False
+      if not words[widx].startswith(part):
+        return False
+      widx += 1
+
+    return widx == len(words)
+
+  def annotate_clusters(self, doc, group):
+    (root, _) = self._make_tree(doc, group)
+    anchors = []
+
+    for cont in root.children.values():
+      if len(cont.children) == 0:
+        anchors += self._annotate_cluster(cont, doc, group)
+      for country in cont.children.values():
+        if len(country.children) == 0:
+          anchors += self._annotate_cluster(country, doc, group)
+        for admin1 in country.children.values():
+          anchors += self._annotate_cluster(admin1, doc, group)
+
+    return anchors
+
+  def _annotate_cluster(self, leaf, doc, group):
+      keys = []
+      for node in leaf.iter():
+        keys.append(node.key)
+      cluster_key = '/'.join(reversed(keys))
+
+      tupels = list(leaf.geonames.items())
+      anchor_ids = [g.id for _, g in tupels if g.is_city]
+      if len(anchor_ids) == 0:
+        (toponym, geoname) = min(tupels, key=lambda t: t[1].population)
+        anchor = self._find_anchor(toponym, geoname)
+        if anchor != None:
+          anchor_ids.append(anchor.id)
+
+      for node in leaf.iter():
+        for phrase, pos in node.positions.items():
+          doc.annotate('clust', pos, phrase, group, cluster_key)
+
+      return anchor_ids
+
+  def _find_anchor(self, toponym, geoname):
     hierarchy = self.gns_cache.get_hierarchy(geoname.id)
-    doc.hierarchies[geoname.id] = hierarchy
-    return hierarchy
-
-  def _extract_local_layers(self, leafs, doc):
-    layers = []
-    for node in leafs:
-      geonames = list(node.toponyms.values())
-      cities = [g for g in geonames if g.is_city]
-      anchor_points = cities
-
-      if len(cities) > 0:
-        base = max(cities, key=lambda c: c.population)
-      else:
-        base = min(geonames, key=lambda c: c.population)
-      
-      base_hierarchy = self._hierarchy(base, doc)
-
-      if len(anchor_points) == 0:
-        anchor = self._drill_down(base, base_hierarchy)
-        if anchor == None:
-          logging.info(f'no anchor point available for {base}')
-          continue
-        logging.info(f'using {anchor} as anchor point for {base}')
-        anchor_points.append(anchor)
-
-      mentions = node.branch_mentions()
-      layer = LocalLayer(base, base_hierarchy, node.toponyms, anchor_points, mentions)
-      layers.append(layer)
-
-    return layers
-
-  def _drill_down(self, geoname, hierarchy):
 
     if len(hierarchy) == 1 or geoname.fcl != 'A':
       return None
 
-    name = geoname.name
+    search_results = self.gns_cache.search(toponym)
+    search_ids = set(g.id for g in search_results)
 
     while True:
 
@@ -224,7 +227,7 @@ class ToponymResolver:
         children = sorted(children, key=lambda g: g.population, reverse=True)
         similar_child = None
         for child in children:
-          if child.name in name or name in child.name:
+          if child.id in search_ids or child.name in geoname.name or geoname.name in child.name:
             if child.is_city:
               return child
             similar_child = child
@@ -234,4 +237,5 @@ class ToponymResolver:
           geoname = similar_child
           continue
 
-      return []
+      return None
+

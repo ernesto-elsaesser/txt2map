@@ -10,8 +10,11 @@ class Gazetteer:
   def __init__(self, gns_cache):
     self.dirname = os.path.dirname(__file__)
     self.cache = gns_cache
+    self.defaults = self._load('defaults')
+    self.continents = self._load('continents')
+    self.continent_map = self._load('continent_map')
 
-  def load_top_level(self):
+  def update_top_level(self):
     continents = {}
     countries = {}
     continent_map = {}
@@ -29,7 +32,7 @@ class Gazetteer:
             countries[entry['name']] = country.id
 
     # common abbreviations
-    countries['U.S'] = 6252001
+    countries['U.S.'] = 6252001
     countries['US'] = 6252001
     countries['USA'] = 6252001
     countries['EU'] = 6255148
@@ -39,7 +42,10 @@ class Gazetteer:
     self._save('countries', countries)
     self._save('continent_map', continent_map)
 
-  def load_large_entries(self, data_path, pop_limit=100_000):
+    self.continents = continents
+    self.continent_map = continent_map
+
+  def extract_large_entries(self, data_path, pop_limit=100_000):
 
     top_names = {}
     top_pops = {}
@@ -99,7 +105,7 @@ class Gazetteer:
     for fcl in top_names:
       self._save(fcl, top_names[fcl])
 
-  def generate_defaults(self, class_order=['P', 'A', 'L', 'T']):
+  def update_defaults(self, class_order=['P', 'A', 'L', 'T']):
 
     defaults = {}
 
@@ -129,6 +135,7 @@ class Gazetteer:
           defaults[toponym] = entries[toponym]
 
     self._save('defaults', defaults)
+    self.defaults = defaults
 
   def continent_name(self, geoname):
 
@@ -136,13 +143,11 @@ class Gazetteer:
       return geoname.name
 
     if geoname.cc != "-":
-      continent_map = self._load('continent_map')
-      return continent_map[geoname.cc]
+      return self.continent_map[geoname.cc]
 
-    continents = self._load('continents')
     min_dist = float('inf')
     closest_name = None
-    for geoname_id in continents.values():
+    for geoname_id in self.continents.values():
       c = self.cache.get(geoname_id)
       dist = GeoUtil.distance(geoname.lat, geoname.lon, c.lat, c.lon)
       if dist < min_dist:
@@ -150,18 +155,16 @@ class Gazetteer:
         closest_name = c.name
     return closest_name
     
-
   def _load(self, file_name):
     file_path = f'{self.dirname}/data/{file_name}.json'
     with open(file_path, 'r') as f:
-      json_str = f.read()
-    return json.loads(json_str)
+      data = json.load(f)
+    return data
 
   def _save(self, file_name, obj):
     file_path = f'{self.dirname}/data/{file_name}.json'
-    json_str = json.dumps(obj)
     with open(file_path, 'w') as f:
-      f.write(json_str)
+      json.dump(obj, f)
 
   def _grams(self, name):
     parts = name.split(' ')

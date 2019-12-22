@@ -18,10 +18,19 @@ class Geoparser:
   def parse(self, text):
     doc = self.recognizer.parse(text)
     self.resolver.resolve(doc)
-    for layer in doc.local_layers:
-      self.osm_loader.find_local_matches(layer, doc)
-    self.assign_confidences(doc)
+    self.resolve_locally(doc, 'def')
+    self.resolve_locally(doc, 'heur')
     return doc
+
+  def resolve_locally(self, doc, group):
+    anchors = self.resolver.annotate_clusters(doc, group)
+    for geoname_id in anchors:
+      geoname = self.gns_cache.get(geoname_id)
+      self.osm_loader.annotate_local_names(geoname, doc, group)
+
+    #self.assign_confidences(doc)
+
+'''
 
   def assign_confidences(self, doc):
     layers = doc.local_layers
@@ -32,6 +41,11 @@ class Geoparser:
     if len(layers) == 1:
       layers[0].confidence = 1.0
       return
+
+      all_toponyms = node.branch_toponyms()
+      all_positions = node.branch_positions()
+      context = LocalContext(base_hierarchy, all_toponyms,
+                             anchor_points, all_positions)
 
     for layer in layers:
       if len(layer.global_toponyms) > 1:
@@ -49,3 +63,5 @@ class Geoparser:
 
     biggest_population = max(layers, key=lambda l: l.base.population)
     biggest_population.confidence += 0.1
+
+'''

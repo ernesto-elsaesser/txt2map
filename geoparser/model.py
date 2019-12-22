@@ -42,111 +42,54 @@ class GeoName:
     return f'{self.name}, {self.adm1}, {self.cc} [{self.fcode}]'
 
 
-
-class ToponymCluster:
-
-  # toponyms: [str]
-  # hierarchy: [GeoName]
-  # local_context: [GeoName]
-  # size: int
-  def __init__(self, toponyms, hierarchy, local_context):
-    self.toponyms = toponyms
-    self.hierarchy = hierarchy
-    self.local_context = local_context
-    self.anchor = hierarchy[-1]
-    self.size = len(toponyms)
-
-  def __repr__(self):
-    path_str = ' > '.join(g.name for g in self.hierarchy)
-    if self.size == 1:
-      return path_str
-    names = ', '.join(self.toponyms)
-    return f'{path_str} ({names})'
-
-
-class OSMElement:
-
-  type_names = ['node', 'way', 'relation']
-
-  # id: int
-  # element_type: 'node' or 'way' or 'relation'
-  def __init__(self, id, element_type):
-    self.id = id
-    self.element_type = element_type
-
-  def reference(self):
-    return self.element_type + '/' + str(self.id)
-
-  def short_ref(self):
-    return self.element_type[0] + str(self.id)
-
-  def __repr__(self):
-    return self.short_ref()
-
-  def url(self):
-    return 'https://www.openstreetmap.org/' + self.reference()
-
-  def type_code(self):
-    return self.type_names.index(self.element_type)
-
-
-class LocalLayer:
-
-  def __init__(self, base, base_hierarchy, global_toponyms, anchor_points, text_mentions):
-    self.base = base
-    self.base_hierarchy = base_hierarchy
-    self.global_toponyms = global_toponyms
-    self.anchor_points = anchor_points
-    self.text_mentions = text_mentions
-    self.confidence = 0
-
-    # recognition: name -> positions
-    self.toponyms = {}
-
-    # resolution: name -> osm elements
-    self.osm_elements = {}
-
-
 class Document:
 
-  def __init__(self, text):
+  def __init__(self, text, annotations=None):
     self.text = text + ' ' # allow matching of last word
-    self.name_tokens = []
-    self.hierarchies = {}
-    self.local_layers = []
+    self.annotations = annotations or {}
 
-    # recognition: name -> positions
-    self.demonyms = {}
-    self.gaz_toponyms = {}
-    self.ner_toponyms = {}
-    self.anc_toponyms = {}
+  def annotate(self, layer, pos, phrase, group='', data=''):
+    if layer not in self.annotations:
+      self.annotations[layer] = []
+    ann = {'pos': pos, 'phrase': phrase, 'group': group, 'data': data}
+    self.annotations[layer].append(ann)
 
-    # global resolution: name -> geoname
-    self.default_senses = {}
-    self.selected_senses = {}
-    self.api_selected_senses = {}
+  def clear_group(self, layer, group):
+    anns = self.annotations[layer]
+    cleared_anns = [a for a in anns if a['group'] != group]
+    self.annotations[layer] = cleared_anns
 
-  def positions(self, toponym):
-    if toponym in self.gaz_toponyms:
-      return self.gaz_toponyms[toponym]
-    if toponym in self.ner_toponyms:
-      return self.ner_toponyms[toponym]
-    if toponym in self.demonyms:
-      return self.demonyms[toponym]
-    if toponym in self.anc_toponyms:
-      return self.anc_toponyms[toponym]
-    return []
+  def iter(self, layer, select=None, exclude=[]):
+    if layer not in self.annotations:
+      return
+    copy = list(self.annotations[layer])
+    for a in copy:
+      group = a['group']
+      if select != None and group != select:
+        continue 
+      if group in exclude:
+        continue
+      yield (a['pos'], a['phrase'], group, a['data'])
+
+  def annotated_positions(self, layer):
+    return [p for p,_,g,_ in self.iter(layer)]
+
+  def iter_pos(self, pos, layer):
+    if layer not in self.annotations:
+      return
+    for a in self.annotations[layer]:
+      if a['pos'] == pos:
+        yield (a['phrase'], a['group'], a['data'])
 
 
 class TreeNode:
 
-  toponyms = {}  # toponym: GeoName
-  children = {}  # key: TreeNode
-  mentions = 0
-
   def __init__(self, key, parent):
     self.key = key
     self.parent = parent
+    self.children = {}  # key: TreeNode
+    self.geonames = {}  # phrase: GeoName
+    self.positions = {}  # phrase: [pos]
 
   def __repr__(self):
     return self.key
@@ -165,23 +108,23 @@ class TreeNode:
       child = self.children[key]
     return child.get(key_path[1:], create)
 
-  def add(self, toponym, geoname, positions):
-    self.toponyms[toponym] = geoname
-    self.mentions += len(positions)
+  def add(self, phrase, geoname, position):
+    if phrase not in self.geonames:
+      self.geonames[phrase] = geoname
+      self.positions[phrase] = [position]
+    else:
+      self.positions[phrase].append(position)
 
-  def topo_counts(self):
-    counts = []
+  def iter(self):
     node = self
-    while node != None:
-      counts.append(len(node.toponyms))
+    while node.key != None:
+      yield node
       node = node.parent
-    return counts
+
+  def mentions(self):
+    return sum(len(ps) for ps in self.positions.values())
 
   def branch_mentions(self):
-    mentions = 0
-    node = self
-    while node != None:
-      mentions += node.mentions
-      node = node.parent
-    return mentions
+    return [n.mentions() for n in self.iter()]
+
 

@@ -1,6 +1,5 @@
 import geojson_utils
 import math
-from .model import OSMElement
 
 class GeoUtil:
 

@@ -6,7 +6,7 @@ import datetime
 from io import StringIO
 from lxml import etree
 from geoparser import Geoparser
-from .evaluator import Annotation, CorpusEvaluator
+from .evaluator import GoldAnnotation, CorpusEvaluator
 
 class LGLEvaluator:
 

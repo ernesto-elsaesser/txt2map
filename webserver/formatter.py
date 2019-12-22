@@ -8,10 +8,9 @@ class ResponseFormatter:
   def _layer_to_dict(self, layer, doc):
     global_matches = [self._global_to_dict(t, doc) for t in layer.global_toponyms]
     local_matches = [self._local_to_dict(t, layer) for t in layer.toponyms]
-    path = [g.name for g in layer.base_hierarchy]
     return {'global_matches': global_matches,
             'local_matches': local_matches,
-            'path': path,
+            'path': layer.path(),
             'confidence': layer.confidence}
 
   def _global_to_dict(self, toponym, doc):
@@ -31,7 +30,7 @@ class ResponseFormatter:
 
     text = ''
     for l in layers:
-      path = ' > '.join(g.name for g in l.base_hierarchy)
+      path = ' > '.join(l.path())
       topos = ', '.join(l.global_toponyms.keys())
       text += f'{path} ({topos} | c={l.confidence:.2f}):\n'
       for toponym, elements in l.osm_elements.items():
