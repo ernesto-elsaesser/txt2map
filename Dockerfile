@@ -1,5 +1,5 @@
 FROM python:3.8-slim
-RUN pip install flask requests spacy pylev
+RUN pip install flask requests spacy pylev unidecode
 WORKDIR /map2txt
 ADD ./geoparser /map2txt/geoparser
 ADD ./webserver /map2txt/webserver
