@@ -37,7 +37,6 @@ class ToponymRecognizer:
     self._add_ner_toponyms(ents, doc)
     self._add_name_tokens(spacy_doc, doc, person_pos)
     self.matcher.recognize_names(doc, 'gaz', self.gaz.lookup_prefix)
-    doc.merge_overlaps('rec', 'gaz', ['ner'])
 
     return doc
 

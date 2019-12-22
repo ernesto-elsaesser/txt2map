@@ -6,15 +6,26 @@ class ResponseFormatter:
 
   def doc_to_html(self, doc):
 
-    html = doc.text
-    seen = []
+    rec_anns = {}
     for a in doc.get('rec'):
-      if a.phrase in seen:
+      if a.pos not in rec_anns:
+        rec_anns[a.pos] = []
+      rec_anns[a.pos].append(a)
+    
+    i = 0
+    l = len(doc.text)
+    html = ''
+    while i < l:
+      if not i in rec_anns:
+        html += doc.text[i]
+        i += 1
         continue
-      seen.append(a.phrase)
+
+      anns = rec_anns[i]
+      phrase = anns[0].phrase
 
       rec_groups = []
-      for ar in doc.get('rec', pos=a.pos):
+      for ar in anns:
         if ar.group.startswith('cl'):
           group_name = 'Local Context'
         else:
@@ -22,23 +33,24 @@ class ResponseFormatter:
         rec_groups.append(group_name)
 
       urls = []
-      for ag in doc.get('res', 'sel', pos=a.pos):
+      for ag in doc.get('res', 'sel', pos=i):
         urls.append(f'<a title="GeoNames" href="{self._gns_url(ag)}">G</a>')
-      for al in doc.get('res', pos=a.pos, exclude_groups=['api', 'def', 'sel']):
+      for al in doc.get('res', pos=i, exclude_groups=['api', 'def', 'sel']):
         idx = al.group[2]
         els = self._rank_osm_elements(al.data)
         for e in els:
           urls.append(f'<a title="OpenStreetMap ({e[0]})" href="{self._osm_url(e)}">{idx}</a>')
 
       title = ', '.join(rec_groups)
-      repl = f'<span title="{title}">{a.phrase}</span>'
+      repl = f'<span title="{title}">{phrase}</span>'
       if len(urls) > 0:
         shown = urls[:3]
         ell = ''
         if len(urls) > 3:
           ell = ' ...'
         repl += ' [' + (' '.join(shown)) + ell + ']'
-      html = html.replace(a.phrase, repl)
+      html += repl
+      i += len(phrase)
 
     return html
     

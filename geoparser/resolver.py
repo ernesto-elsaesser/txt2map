@@ -24,7 +24,7 @@ class ToponymResolver:
       if len(candidates) > 0:
         self._resolve_new_ancestors(candidates[0], doc)
 
-    doc.merge_overlaps('rec', 'anc', ['ner', 'gaz'])
+    doc.clear_overlaps('rec')
 
     annotated = []
     for a in doc.get('rec'):
@@ -35,7 +35,7 @@ class ToponymResolver:
         default_id = self.gaz.defaults[a.data]
       else:
         candidates = self._select_candidates(a.phrase)
-        if len(candidates) == 0:
+        if len(candidates) > 0:
           default = candidates[0]
           default_id = default.id
 
@@ -75,7 +75,7 @@ class ToponymResolver:
       results = self.gns_cache.search(toponym)
       cs = [g for g in results if toponym in g.name]
       if len(cs) == 0:
-        cs = results
+        cs = [g for g in results if toponym in g.name]
     cs = sorted(cs, key=lambda g: -g.population)
     self.candidates[toponym] = cs
     return cs

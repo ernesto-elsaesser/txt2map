@@ -59,30 +59,23 @@ class Document:
       annotations.append(a)
     return annotations
 
-  def merge_overlaps(layer, to_group, from_groups):
-    to_anns = self.get(layer, to_group)
-    overlapping = []
-    for fa in self._anns:
-      if fa.layer != layer:
-        continue
-      if fa.group not in from_groups:
-        continue
-      fl = fa.pos
-      fr = fa.end_pos()
-      for ta in to_anns:
-        tl = ta.pos
-        tr = ta.end_pos()
-        if (fl < tl and tl < fr < tr) or \
-          (tl < fl < tr and tr < fr) or \
-          (tl < fl and fr < tr):
-          overlapping.append(fa)
-          break
-    for a in overlapping:
-      self._anns.remove(a)
+  def clear_overlaps(self, layer):
+    anns = self.get(layer)
+    spans = {}
+    for a in anns:
+      spans[a.pos] = a.end_pos()
+    
+    starts = sorted(spans.keys())
+    overlaps = []
+    for i in range(len(spans)-1):
+      last_end = spans[starts[i]]
+      next_start = starts[i+1]
+      if last_end >= next_start:
+        overlaps.append(next_start)
 
-
-
-
+    for a in anns:
+      if a.pos in overlaps:
+        self._anns.remove(a)
 
   def annotated_positions(self, layer):
     return [a.pos for a in self.get(layer)]
