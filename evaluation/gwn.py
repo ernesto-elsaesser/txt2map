@@ -1,5 +1,4 @@
 import os
-import logging
 import csv
 import json
 import datetime
@@ -35,12 +34,12 @@ class GeoWebNewsEvaluator:
     for i in doc_range:
       self.test(i, False)
 
-    logging.info('--- RESULTS ---')
-    logging.info(self.eval.metrics_str())
+    print('--- RESULTS ---')
+    print(self.eval.metrics_str())
 
   def test(self, doc_idx, print_metrics=True):
     doc_id = self.docs[doc_idx]
-    logging.info(f'--- GWN-{doc_id} [{doc_idx}] ---')
+    print(f'--- GWN-{doc_id} [{doc_idx}] ---')
 
     text_path = self.corpus_dir + doc_id + '.txt'
     with open(text_path, encoding='utf-8') as f:
@@ -101,4 +100,4 @@ class GeoWebNewsEvaluator:
           self.eval.evaluate(a)
 
     if print_metrics:
-      logging.info(self.eval.metrics_str())
+      print(self.eval.metrics_str())

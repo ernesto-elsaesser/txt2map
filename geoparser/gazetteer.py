@@ -146,7 +146,7 @@ class Gazetteer:
     if geoname.is_continent:
       return geoname.name
 
-    if geoname.cc != "-":
+    if geoname.cc in self.continent_map:
       return self.continent_map[geoname.cc]
 
     lat = geoname.lat
