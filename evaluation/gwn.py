@@ -17,7 +17,7 @@ class GeoWebNewsEvaluator:
     self.keep_defaults = keep_defaults
 
     dirname = os.path.dirname(__file__)
-    self.corpus_dir = dirname + '/corpora/GeoWebNews/'
+    self.corpus_dir = dirname + '/corpora/GeoWebNews'
     self.results_dir = dirname + '/results/GeoWebNews'
 
     if not os.path.exists(self.results_dir):
@@ -41,12 +41,12 @@ class GeoWebNewsEvaluator:
     doc_id = self.docs[doc_idx]
     print(f'--- GWN-{doc_id} [{doc_idx}] ---')
 
-    text_path = self.corpus_dir + doc_id + '.txt'
+    text_path = f'{self.corpus_dir}/{doc_id}.txt'
     with open(text_path, encoding='utf-8') as f:
       text = f.read()
 
     pre = 'def-' if self.keep_defaults else ''
-    result_path = f'{self.results_dir}/{pre}{doc_id}.json'
+    result_path = f'{self.results_dir}/txt2map/{pre}{doc_id}.json'
     if self.load_previous and os.path.exists(result_path):
       doc = Document(text)
       doc.load_annotations(result_path)
@@ -56,7 +56,7 @@ class GeoWebNewsEvaluator:
 
     self.eval.start_document(doc, self.parser)
 
-    annotation_path = self.corpus_dir + doc_id + '.ann'
+    annotation_path = f'{self.corpus_dir}/{doc_id}.ann'
     with open(annotation_path, encoding='utf-8') as f:
       reader = csv.reader(f, delimiter='\t')
 
