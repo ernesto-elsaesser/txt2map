@@ -10,27 +10,32 @@ class TestEvaluator:
     self.annotator = T2MAnnotator(update=True)
     self.eval = CorpusEvaluator(False, 1)
 
-  def test_all(self):
-    for title, data in self.tests.items():
-      text = data['text']
-      annotations = data['anns']
-
-      print(f'--- {title} ---')
-      doc = self.annotator.annotated_doc('Tests', title, text)
-      self.eval.start_document(doc)
-
-      for name, lat, lon, geoname_id in annotations:
-        pos = text.find(name)
-        a = GoldAnnotation(pos, name, lat, lon, geoname_id)
-        self.eval.evaluate(a)
-
-      if 'expect_none' in data:
-        recs = doc.get('rec')
-        if len(recs) > 0:
-          print('{title} test failed - toponyms recognized!')
+  def run_all(self):
+    for title in self.tests:
+      self.run(title)
 
     print(f'--- FINISHED ---')
     print(self.eval.metrics_str())
+
+  def run(self, title):
+    data = self.tests[title]
+    text = data['text']
+    annotations = data['anns']
+
+    print(f'--- {title} ---')
+    doc = self.annotator.annotated_doc('Tests', title, text)
+    self.eval.start_document(doc)
+
+    for name, lat, lon, geoname_id in annotations:
+      pos = text.find(name)
+      a = GoldAnnotation(pos, name, lat, lon, geoname_id)
+      self.eval.evaluate(a)
+
+    if 'expect_none' in data:
+      recs = doc.get('rec')
+      if len(recs) > 0:
+        print('{title} test failed - toponyms recognized!')
+
 
   tests = {
       'global_default_sense': {
@@ -119,11 +124,6 @@ class TestEvaluator:
       'local_abbrevs_2': {
           'text': 'On N. Bedford Drive in Beverly Hills.',
           'anns': [('N. Bedford Drive', 34.0678280, -118.4049976, None)]
-      },
-      'local_fuzzy': {
-          'text': 'She sang at Caesar\'s Palace in Las Vegas.',
-          'anns': [('Caesar\'s Palace', 36.11672, -115.17518, None)],
-          'note': 'in the OSM data Caesars is written without apostrophe'
       }
   }
 

@@ -1,5 +1,5 @@
 from evaluation import TestEvaluator
 
 evaluator = TestEvaluator()
-evaluator.test_all()
-#evaluator.test_global_person()
+evaluator.run_all()
+#evaluator.run('global_onto_sim_hard')

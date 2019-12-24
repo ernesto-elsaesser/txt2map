@@ -59,6 +59,9 @@ class Document:
       annotations.append(a)
     return annotations
 
+  def clear(self, layer):
+    self._anns = [a for a in self._anns if a.layer != layer]
+
   def clear_overlaps(self, layer):
     anns = self.get(layer)
     spans = {}

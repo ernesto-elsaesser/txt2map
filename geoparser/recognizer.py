@@ -15,7 +15,7 @@ class ToponymRecognizer:
     if Config.recog_large_ner_model:
       self.nlp_lg = spacy.load('en_core_web_lg', disable=['parser'])
     self.gaz = gazetteer
-    self.matcher = NameMatcher(['num','stp'], 2, False) # 2 for US, UK, ...
+    self.matcher = NameMatcher(['num','stp'], 2) # 2 for US, UK, ...
 
   def parse(self, text):
     doc = Document(text)

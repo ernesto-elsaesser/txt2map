@@ -31,17 +31,18 @@ class ToponymResolver:
       if a.pos in annotated:
         continue
       annotated.append(a.pos)
-      if a.data in self.gaz.defaults:
-        default_id = self.gaz.defaults[a.data]
+      la = max(doc.get('rec', pos=a.pos), key=lambda a: a.end_pos())
+      if la.data in self.gaz.defaults:
+        default_id = self.gaz.defaults[la.data]
       else:
-        candidates = self._select_candidates(a.phrase)
+        candidates = self._select_candidates(la.phrase)
         if len(candidates) == 0:
           continue
-        default = candidates[0]
-        default_id = default.id
+        first = candidates[0]
+        default_id = self._city_result(la.phrase, first).id
 
-      doc.annotate('res', a.pos, a.phrase, 'def', default_id)
-      doc.annotate('res', a.pos, a.phrase, 'sel', default_id)
+      doc.annotate('res', a.pos, la.phrase, 'def', default_id)
+      doc.annotate('res', a.pos, la.phrase, 'sel', default_id)
 
     changed = not keep_defaults
     rounds = 0
@@ -59,7 +60,7 @@ class ToponymResolver:
         new_geoname = self._select_heuristically(toponym, old_geoname, root)
         if new_geoname != None:
           changed = True
-          id_map[old_geoname.id] = new_geoname.id
+          id_map[old_geoname.id] = self._city_result(toponym, new_geoname).id
 
       for a in doc.get('res', 'sel'):
         if a.data in id_map:
@@ -75,9 +76,9 @@ class ToponymResolver:
       cs = [self.gns_cache.get(gid) for gid in geoname_ids]
     else:
       results = self.gns_cache.search(toponym)
-      cs = [g for g in results if toponym in g.name]
+      cs = [g for g in results if toponym in g.name or g.name in toponym]
       if len(cs) == 0:
-        cs = [g for g in results if toponym in g.name]
+        cs = results
     cs = sorted(cs, key=lambda g: -g.population)
     self.candidates[toponym] = cs
     return cs
@@ -154,11 +155,32 @@ class ToponymResolver:
 
       hierarchy = self.gns_cache.get_hierarchy(g.id)
       depth = len(hierarchy)
-      if depth <= max_depth:
-        print(f'Chose {g} over {current} for {toponym}')
-        return g
+      if depth > max_depth:
+        continue
+
+      print(f'Chose {g} over {current} for {toponym}')
+      return g
 
     return None
+
+  def _city_result(self, toponym, selected):
+    if selected.is_city:
+      return selected
+      
+    assert selected.adm1 != '-'
+
+    name = selected.name
+    region = selected.region()
+    results = self.gns_cache.search(toponym)
+    for g in results:
+      if not g.is_city:
+        continue
+      if not g.region() == region:
+        continue
+      if g.name in name or name in g.name:
+        return g
+
+    return selected
 
   def annotate_clusters(self, doc):
     (root, _) = self._make_tree(doc)
@@ -197,12 +219,8 @@ class ToponymResolver:
 
   def _find_anchor(self, toponym, geoname):
     hierarchy = self.gns_cache.get_hierarchy(geoname.id)
-
-    if len(hierarchy) == 1 or geoname.fcl != 'A':
+    if len(hierarchy) == 1:
       return None
-
-    search_results = self.gns_cache.search(toponym)
-    search_ids = set(g.id for g in search_results)
 
     while True:
 
@@ -212,19 +230,12 @@ class ToponymResolver:
         # if there's nothing below, assume we are already local
         return geoname
 
-      else:
-        children = sorted(children, key=lambda g: g.population, reverse=True)
-        similar_child = None
-        for child in children:
-          if child.id in search_ids or child.name in geoname.name or geoname.name in child.name:
-            if child.is_city:
-              return child
-            similar_child = child
-            break
-
-        if similar_child != None:
-          geoname = similar_child
-          continue
+      if len(children) == 1:
+        child = children[0]
+        if child.is_city:
+            return child
+        geoname = similar_child
+        continue
 
       return None
 

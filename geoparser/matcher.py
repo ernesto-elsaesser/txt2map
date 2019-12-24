@@ -39,10 +39,9 @@ class NameMatcher:
     'Sq': 'Square'
   }
 
-  def __init__(self, ignore, min_len, fuzzy):
+  def __init__(self, ignore, min_len):
     self.ignore = ignore
     self.min_len = min_len
-    self.fuzzy = fuzzy
     self.abbreviations = []
     for s, l in self.abbr.items():
       self.abbreviations.append((re.compile(l), s))
@@ -68,7 +67,7 @@ class NameMatcher:
       while text_pos < text_len and len(completions) > 0:
         next_char = doc.text[text_pos]
         for c in completions:
-          complete = c.trim(next_char, self.fuzzy)
+          complete = c.trim(next_char)
           if complete:
             longest_completion = c
         completions = [c for c in completions if c.active]
@@ -122,8 +121,6 @@ class Completion:
     self.suffix = phrase[len(prefix):]
     self.match = prefix
     self.end = None
-    self.is_fuzzy = False
-    self.was_fuzzy = False
     self.active = True
 
   def __repr__(self):
@@ -132,7 +129,7 @@ class Completion:
   def clone(self, pos):
     return Completion(self.phrase, self.prefix, self.db_name, pos)
 
-  def trim(self, char, fuzzy):
+  def trim(self, char):
 
     if self.suffix == '':
       self.active = False

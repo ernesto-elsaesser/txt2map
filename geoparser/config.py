@@ -8,5 +8,4 @@ class Config:
   resol_max_disam_rounds = 5
   local_search_dist = 15 # km
   local_match_min_len = 4
-  local_match_fuzzy = True
   local_osm_exclusions = ['shop', 'power', 'office', 'cuisine']

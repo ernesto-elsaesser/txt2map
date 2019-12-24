@@ -14,8 +14,7 @@ class OSMLoader:
 
   def __init__(self):
     min_match_len = Config.local_match_min_len
-    fuzzy = Config.local_match_fuzzy
-    self.matcher = NameMatcher(['stop'], min_match_len, fuzzy)
+    self.matcher = NameMatcher(['stop'], min_match_len)
 
   def annotate_local_names(self, geonames, doc, group):
     db = self._load_database(geonames)
