@@ -227,7 +227,7 @@ class ToponymResolver:
         child = children[0]
         if child.is_city:
             return child
-        geoname = similar_child
+        geoname = child
         continue
 
       return None
