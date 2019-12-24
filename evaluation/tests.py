@@ -65,7 +65,7 @@ class TestEvaluator:
       },
       'global_name_sim': {
           'text': 'The Mall of Asia in Paranaque City.',
-          'anns': [('Paranaque City', 0, 0, 1694782),
+          'anns': [('Paranaque City', 0, 0, 1694781),
                    ('Mall of Asia', 14.5349995, 120.9832017, None)],
           'note': 'there is a big one spelled with ñ and a small one without'
       },

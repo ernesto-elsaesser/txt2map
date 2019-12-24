@@ -17,15 +17,6 @@ class ToponymResolver:
   def resolve(self, doc, keep_defaults):
     self.candidates = {}
 
-    for a in doc.get('rec', 'ner'):
-      if a.data in self.gaz.defaults:
-        continue
-      candidates = self._select_candidates(a.phrase)
-      if len(candidates) > 0:
-        self._resolve_new_ancestors(candidates[0], doc)
-
-    doc.clear_overlaps('rec')
-
     annotated = []
     for a in doc.get('rec'):
       if a.pos in annotated:
@@ -40,8 +31,9 @@ class ToponymResolver:
         if len(candidates) == 0:
           continue
         default = self._city_result(toponym, candidates[0])
-        default_id = default.id
         print(f'Chose {default} as default for {toponym}')
+        self._resolve_new_ancestors(default, doc)
+        default_id = default.id
 
       doc.annotate('res', a.pos, la.phrase, 'def', default_id)
       doc.annotate('res', a.pos, la.phrase, 'sel', default_id)
@@ -96,7 +88,10 @@ class ToponymResolver:
       if name in geoname.name:
         continue
       for match in re.finditer(name, doc.text):
-        doc.annotate('rec', match.start(), name, 'ancestor', name)
+        pos = match.start()
+        doc.annotate('rec', pos, name, 'ancestor', name)
+        doc.annotate('res', pos, name, 'def', ancestor.id)
+        doc.annotate('res', pos, name, 'sel', ancestor.id)
 
   def _make_tree(self, doc):
     root = TreeNode(None, None)

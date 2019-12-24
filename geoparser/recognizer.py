@@ -38,6 +38,7 @@ class ToponymRecognizer:
     self._add_name_tokens(spacy_doc, doc, person_pos)
     self.matcher.recognize_names(doc, 'gaz', self.gaz.lookup_prefix)
 
+    doc.clear_overlaps('rec')
     return doc
 
   def _add_name_tokens(self, tokens, doc, person_pos):
