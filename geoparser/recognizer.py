@@ -6,16 +6,16 @@ import spacy
 from .document import Document
 from .matcher import NameMatcher
 from .gazetteer import Gazetteer
+from .config import Config
 
 class ToponymRecognizer:
 
-  def __init__(self, gns_cache, use_large_model):
-    self.use_large_model = use_large_model
+  def __init__(self, gazetteer):
     self.nlp_sm = spacy.load('en_core_web_sm', disable=['parser'])
-    if self.use_large_model:
+    if Config.recog_large_ner_model:
       self.nlp_lg = spacy.load('en_core_web_lg', disable=['parser'])
-    self.gaz = Gazetteer(gns_cache)
-    self.matcher = NameMatcher(['num','stp'], 2, False)
+    self.gaz = gazetteer
+    self.matcher = NameMatcher(['num','stp'], 2, False) # 2 for US, UK, ...
 
   def parse(self, text):
     doc = Document(text)
@@ -23,7 +23,7 @@ class ToponymRecognizer:
     spacy_doc = self.nlp_sm(text)
     ents = spacy_doc.ents
     person_ents = ents
-    if self.use_large_model:
+    if Config.recog_large_ner_model:
       lg_ents = self.nlp_lg(text).ents
       ents += lg_ents
       person_ents = lg_ents # lg is far better in recognizing persons

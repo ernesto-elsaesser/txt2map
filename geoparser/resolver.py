@@ -5,15 +5,16 @@ import pylev
 from .document import Document
 from .geonames import GeoNamesCache, GeoNamesAPI
 from .gazetteer import Gazetteer
+from .config import Config
 
 
 class ToponymResolver:
 
-  def __init__(self, gns_cache):
-    self.gns_cache = gns_cache
-    self.gaz = Gazetteer(gns_cache)
+  def __init__(self, gazetteer):
+    self.gaz = gazetteer
+    self.gns_cache = GeoNamesCache()
 
-  def resolve(self, doc, keep_defaults, max_disam_rounds=5):
+  def resolve(self, doc, keep_defaults):
     self.candidates = {}
 
     for a in doc.get('rec', 'ner'):
@@ -44,7 +45,8 @@ class ToponymResolver:
 
     changed = not keep_defaults
     rounds = 0
-    while changed and rounds < max_disam_rounds:
+    max_rounds = Config.resol_max_disam_rounds
+    while changed and rounds < max_rounds:
       rounds += 1
       changed = False
 
@@ -82,7 +84,8 @@ class ToponymResolver:
 
   def _resolve_new_ancestors(self, geoname, doc):
     hierarchy = self.gns_cache.get_hierarchy(geoname.id)
-    not_gaz = [g for g in hierarchy[:-1] if g.population <= Gazetteer.pop_limit]
+    pop_limit = Config.gazetteer_population_limit
+    not_gaz = [g for g in hierarchy[:-1] if g.population <= pop_limit]
     for ancestor in not_gaz:
       name = ancestor.name
       if name in geoname.name:

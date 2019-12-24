@@ -1,7 +1,6 @@
-from geoparser import Gazetteer, GeoNamesCache
+from geoparser import Gazetteer
 
-cache = GeoNamesCache()
-gaz = Gazetteer(cache)
+gaz = Gazetteer()
 #gaz.update_top_level()
 
 # data can be loaded from http://download.geonames.org/export/dump/

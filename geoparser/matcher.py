@@ -2,56 +2,6 @@ import re
 from unidecode import unidecode
 
 
-class Completion:
-
-  def __init__(self, phrase, prefix, db_name, pos):
-    self.phrase = phrase
-    self.prefix = prefix
-    self.db_name = db_name
-    self.pos = pos
-    
-    self.suffix = phrase[len(prefix):]
-    self.match = prefix
-    self.end = None
-    self.is_fuzzy = False
-    self.was_fuzzy = False
-    self.active = True
-
-  def __repr__(self):
-    return self.suffix if self.active else self.match
-
-  def clone(self, pos):
-    return Completion(self.phrase, self.prefix, self.db_name, pos)
-
-  def trim(self, char, fuzzy):
-
-    if self.suffix == '':
-      self.active = False
-      if char.isupper() or char.islower():
-        return False # end in middle of token
-      else:
-        self.end = self.pos + len(self.match)
-        return True
-
-    n = self.suffix[0]
-    nu = n.upper()
-    accepted = [n, nu]
-    asc = unidecode(n)
-    if len(asc) == 1:
-      accepted.append(asc)
-      accepted.append(asc.upper())
-
-    if char in accepted:
-      self.suffix = self.suffix[1:]
-      self.match += char
-      return False
-
-    else:
-      self.active = False
-      return False
-      
-
-
 class NameMatcher:
 
   abbr = {
@@ -160,3 +110,51 @@ class NameMatcher:
         completions.append(upper_compl)
     return completions
 
+
+class Completion:
+
+  def __init__(self, phrase, prefix, db_name, pos):
+    self.phrase = phrase
+    self.prefix = prefix
+    self.db_name = db_name
+    self.pos = pos
+
+    self.suffix = phrase[len(prefix):]
+    self.match = prefix
+    self.end = None
+    self.is_fuzzy = False
+    self.was_fuzzy = False
+    self.active = True
+
+  def __repr__(self):
+    return self.suffix if self.active else self.match
+
+  def clone(self, pos):
+    return Completion(self.phrase, self.prefix, self.db_name, pos)
+
+  def trim(self, char, fuzzy):
+
+    if self.suffix == '':
+      self.active = False
+      if char.isupper() or char.islower():
+        return False  # end in middle of token
+      else:
+        self.end = self.pos + len(self.match)
+        return True
+
+    n = self.suffix[0]
+    nu = n.upper()
+    accepted = [n, nu]
+    asc = unidecode(n)
+    if len(asc) == 1:
+      accepted.append(asc)
+      accepted.append(asc.upper())
+
+    if char in accepted:
+      self.suffix = self.suffix[1:]
+      self.match += char
+      return False
+
+    else:
+      self.active = False
+      return False

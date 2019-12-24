@@ -10,24 +10,18 @@ class GeoWebNewsEvaluator:
   non_topo_types = ["Non_Toponym", "Non_Lit_Expression", "Literal_Expression"]
   rec_only_types = ["Demonym", "Homonym", "Language"]
 
-  def __init__(self, load_previous=False, incl_rec_only=False, incl_hard=False, keep_defaults=False, count_inexact=True):
-    self.load_previous = load_previous
+  def __init__(self, annotator, incl_rec_only=False, incl_hard=False, count_inexact=True):
+    self.annotator = annotator
     self.no_rec = not incl_rec_only
     self.no_hard = not incl_hard
-    self.keep_defaults = keep_defaults
 
     dirname = os.path.dirname(__file__)
     self.corpus_dir = dirname + '/corpora/GeoWebNews'
-    self.results_dir = dirname + '/results/GeoWebNews'
-
-    if not os.path.exists(self.results_dir):
-      os.mkdir(self.results_dir)
 
     paths = os.listdir(self.corpus_dir)
     docs = [p.replace('.txt', '') for p in paths if p.endswith('.txt')]
     self.docs = list(sorted(docs, key=lambda s: int(s)))
 
-    self.parser = Geoparser()
     self.eval = CorpusEvaluator(count_inexact, 161)
 
   def test_all(self, doc_range=range(200)):
@@ -45,16 +39,8 @@ class GeoWebNewsEvaluator:
     with open(text_path, encoding='utf-8') as f:
       text = f.read()
 
-    pre = 'def-' if self.keep_defaults else ''
-    result_path = f'{self.results_dir}/txt2map/{pre}{doc_id}.json'
-    if self.load_previous and os.path.exists(result_path):
-      doc = Document(text)
-      doc.load_annotations(result_path)
-    else:
-      doc = self.parser.parse(text, self.keep_defaults)
-      doc.save_annotations(result_path)
-
-    self.eval.start_document(doc, self.parser)
+    doc = self.annotator.annotated_doc('GeoWebNews', doc_id)
+    self.eval.start_document(doc)
 
     annotation_path = f'{self.corpus_dir}/{doc_id}.ann'
     with open(annotation_path, encoding='utf-8') as f:

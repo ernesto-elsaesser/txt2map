@@ -4,15 +4,11 @@ from flask import Flask, request, jsonify
 from geoparser import Geoparser
 from .formatter import ResponseFormatter
 
-logging.basicConfig(format='%(asctime)s %(message)s',
-                    level=logging.INFO, 
-                    datefmt="%Y-%m-%d %H:%M:%S")
-
 logging.info('Loading geoparser ...')
 app = Flask(__name__)
 app.config['JSONIFY_PRETTYPRINT_REGULAR'] = True
 
-parser = Geoparser(use_large_model=True)
+parser = Geoparser()
 formatter = ResponseFormatter()
 dirname = os.path.dirname(__file__)
 with open(dirname + '/index.html', 'rb') as f:

@@ -7,19 +7,17 @@ import sqlite3
 from .database import Database
 from .geo import GeoUtil
 from .matcher import NameMatcher
+from .config import Config
 
 
 class OSMLoader:
 
-  def __init__(self, cache_dir, search_dist):
-    self.cache_dir = cache_dir
-    self.search_dist = search_dist
-    self.matcher = NameMatcher(['stop'], 4, True)
+  def __init__(self):
+    min_match_len = Config.local_match_min_len
+    fuzzy = Config.local_match_fuzzy
+    self.matcher = NameMatcher(['stop'], min_match_len, fuzzy)
 
   def annotate_local_names(self, geonames, doc, group):
-    if self.search_dist == 0:
-      return
-
     db = self._load_database(geonames)
     self.matcher.recognize_names(doc, group, lambda p: db.find_names(p))
 
@@ -31,16 +29,18 @@ class OSMLoader:
     doc.clear_overlaps('res')
 
   def _load_database(self, geonames):
+    cache_dir = Config.cache_dir
+    search_dist = Config.local_search_dist
     sorted_ids = sorted(str(g.id) for g in geonames)
     id_str = '-'.join(sorted_ids)
-    file_path = f'{self.cache_dir}/{id_str}-{self.search_dist}km.db'
+    file_path = f'{cache_dir}/{id_str}-{search_dist}km.db'
     is_cached = os.path.exists(file_path)
     db = sqlite3.connect(file_path)
     osm_db = OSMDatabase(db)
 
     if not is_cached:
       print(f'requesting OSM data for {geonames} ...')
-      def bbox(g): return GeoUtil.bounding_box(g.lat, g.lon, self.search_dist)
+      def bbox(g): return GeoUtil.bounding_box(g.lat, g.lon, search_dist)
       boxes = [bbox(g) for g in geonames]
       csv_reader = OverpassAPI.load_names_in_bounding_boxes(boxes)
       name_count = self._store_data(osm_db, csv_reader, 1, [2, 3, 4, 5])
@@ -50,6 +50,7 @@ class OSMLoader:
 
   def _store_data(self, osm_db, csv_reader, type_col, name_cols):
     osm_db.create_tables()
+    min_match_len = Config.local_match_min_len
 
     col_num = len(name_cols) + 2
     name_count = 0
@@ -59,7 +60,8 @@ class OSMLoader:
       type_name = row[type_col]
       names = set(map(lambda c: row[c], name_cols))
       for name in names:
-        name_count += osm_db.insert_element(name, type_name, row[0])
+        if len(name) >= min_match_len:
+          name_count += osm_db.insert_element(name, type_name, row[0])
 
     osm_db.commit_changes()
     return name_count
@@ -68,7 +70,8 @@ class OSMLoader:
     short_refs = [e[0][0] + str(e[1]) for e in elements]
     max_ref = max(short_refs)
     num = len(elements) - 1
-    file_path = f'{self.cache_dir}/{max_ref}+{num}.json'
+    cache_dir = Config.cache_dir
+    file_path = f'{cache_dir}/{max_ref}+{num}.json'
     is_cached = os.path.exists(file_path)
 
     if is_cached:
@@ -88,9 +91,10 @@ class OSMLoader:
 class OverpassAPI:
 
   @staticmethod
-  def load_names_in_bounding_boxes(bounding_boxes, excluded_keys=['shop', 'power', 'office', 'cuisine']):
+  def load_names_in_bounding_boxes(bounding_boxes):
     query = '[out:csv(::id, ::type, "name", "name:en", "alt_name", "ref"; false)]; ('
-    exclusions = ''.join('[!"' + e + '"]' for e in excluded_keys)
+    excl_keys = Config.local_osm_exclusions
+    exclusions = ''.join('[!"' + e + '"]' for e in excl_keys)
     for bounding_box in bounding_boxes:
       bbox = ','.join(map(str, bounding_box))
       query += f'node["name"]{exclusions}({bbox}); '
@@ -135,8 +139,6 @@ class OSMDatabase(Database):
     self.commit_changes()
 
   def insert_element(self, name, type_name, element_id):
-    if len(name) < 2:
-      return 0
     first = name[0]
     if not first.isupper() and not first.isdigit():
       return 0

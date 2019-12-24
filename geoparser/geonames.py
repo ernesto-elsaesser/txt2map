@@ -3,16 +3,17 @@ import requests
 import json
 import sqlite3
 from .database import Database
+from .config import Config
 
 
 class GeoNamesCache:
 
-  def __init__(self, cache_dir='cache'):
+  def __init__(self):
     self.geonames = {}
     self.hierarchies = {}
     self.search_results = {}
 
-    self.db_path = cache_dir + '/geonames.db'
+    self.db_path = Config.cache_dir + '/geonames.db'
     if not os.path.exists(self.db_path):
       self.get_db().create_tables()
 
@@ -197,8 +198,6 @@ class GeoNamesDatabase(Database):
 
 class GeoName:
 
-  # data: dict
-  # row: tupel
   def __init__(self, data=None, row=None):
     if data != None:
       self.id = data['geonameId']

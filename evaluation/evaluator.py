@@ -1,7 +1,7 @@
 import os
 import json
 import logging
-from geoparser import Geoparser, GeoNamesCache, OverpassAPI, GeoUtil, Document
+from geoparser import Geoparser, GeoNamesCache, OSMLoader, GeoUtil, Document
 
 
 class GoldAnnotation:
@@ -22,6 +22,8 @@ class CorpusEvaluator:
   def __init__(self, count_inexact, tolerance_km):
     self.inexact = count_inexact
     self.tolerance = tolerance_km
+    self.gns_cache = GeoNamesCache()
+    self.osm_loader = OSMLoader()
 
     self.true_pos = 0
     self.false_neg = 0
@@ -29,9 +31,8 @@ class CorpusEvaluator:
     self.ann_count = 0
     self.accurate = 0
 
-  def start_document(self, doc, parser):
+  def start_document(self, doc):
     self.doc = doc
-    self.parser = parser
     recognized = doc.annotated_positions('rec')
     self.false_pos += len(set(recognized))
 
@@ -62,14 +63,14 @@ class CorpusEvaluator:
           resolved_within = True
           break
         else:
-          geoname = self.parser.gns_cache.get(a.data)
+          geoname = self.gns_cache.get(a.data)
           dist = GeoUtil.distance(gold.lat, gold.lon, geoname.lat, geoname.lon)
           if dist < self.tolerance:
             resolved_within = True
             break
 
       elif a.group.startswith('cl'): # local
-        elements = self.parser.osm_loader.load_geometries(a.data)
+        elements = self.osm_loader.load_geometries(a.data)
         dist = GeoUtil.osm_element_distance(gold.lat, gold.lon, elements[0])
         if dist < self.tolerance:
           resolved_within = True

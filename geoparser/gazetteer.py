@@ -2,16 +2,15 @@ import os
 import csv
 import json
 from .geonames import GeoNamesCache, GeoNamesAPI
-from .geo import GeoUtil
+from .config import Config
 
 
 class Gazetteer:
 
-  pop_limit = 100_000
+  def __init__(self):
+    dirname = os.path.dirname(__file__)
+    self.data_dir = dirname + '/data'
 
-  def __init__(self, gns_cache):
-    self.dirname = os.path.dirname(__file__)
-    self.cache = gns_cache
     self.defaults = self._load('defaults')
     self.continents = self._load('continents')
     self.continent_map = self._load('continent_map')
@@ -51,10 +50,11 @@ class Gazetteer:
     countries = {}
     continent_map = {}
 
-    for continent in self.cache.get_children(6295630):  # Earth
+    cache = GeoNamesCache()
+    for continent in cache.get_children(6295630):  # Earth
       continents[continent.name] = continent.id
       print('loading countries in', continent.name)
-      for country in self.cache.get_children(continent.id):
+      for country in cache.get_children(continent.id):
         continent_map[country.cc] = continent.name
         full = GeoNamesAPI.get_geoname(country.id)  # names are not cached
         countries[full.name] = country.id
@@ -86,6 +86,7 @@ class Gazetteer:
                   'West Coast', 'South Coast', 'East Coast', 'North Coast',
                   'Ocean', 'Island', 'Delta', 'Bay']
 
+    pop_limit = Config.gazetteer_population_limit
     last_log = 0
     for row in reader:
       fcl = row[6]
@@ -130,7 +131,7 @@ class Gazetteer:
     for fcl in top_names:
       self._save(fcl, top_names[fcl])
 
-  def update_defaults(self, class_order=['P', 'A', 'L', 'T']):
+  def update_defaults(self):
 
     defaults = {}
 
@@ -153,6 +154,7 @@ class Gazetteer:
         for demonym in demonyms[toponym]:
           defaults[demonym] = countries[toponym]
 
+    class_order = Config.gazetteer_class_prio
     for fcl in class_order:
       entries = self._load(fcl)
       for toponym in entries:
@@ -174,13 +176,13 @@ class Gazetteer:
     self.defaults = defaults
     
   def _load(self, file_name):
-    file_path = f'{self.dirname}/data/{file_name}.json'
+    file_path = f'{self.data_dir}/{file_name}.json'
     with open(file_path, 'r') as f:
       data = json.load(f)
     return data
 
   def _save(self, file_name, obj):
-    file_path = f'{self.dirname}/data/{file_name}.json'
+    file_path = f'{self.data_dir}/{file_name}.json'
     with open(file_path, 'w') as f:
       json.dump(obj, f)
 

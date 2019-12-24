@@ -1,20 +1,22 @@
 import os
+from .gazetteer import Gazetteer
 from .recognizer import ToponymRecognizer
 from .resolver import ToponymResolver
-from .geonames import GeoNamesCache
 from .osm import OSMLoader
-from .gazetteer import Gazetteer
+from .config import Config
 
 
 class Geoparser:
 
-  def __init__(self, use_large_model=True, local_search_dist_km=15, cache_dir='cache'):
+  def __init__(self):
+    cache_dir = Config.cache_dir
     if not os.path.exists(cache_dir):
       os.mkdir(cache_dir)
-    self.gns_cache = GeoNamesCache(cache_dir)
-    self.recognizer = ToponymRecognizer(self.gns_cache, use_large_model)
-    self.resolver = ToponymResolver(self.gns_cache)
-    self.osm_loader = OSMLoader(cache_dir, local_search_dist_km)
+
+    self.gaz = Gazetteer()
+    self.recognizer = ToponymRecognizer(self.gaz)
+    self.resolver = ToponymResolver(self.gaz)
+    self.osm_loader = OSMLoader()
 
   def parse(self, text, keep_defaults=False):
     doc = self.recognizer.parse(text)
@@ -40,7 +42,9 @@ class Geoparser:
       confidence = 'high'
 
       if clust_count > 1 and len(clust_anns) == 1 and len(anchors) > 0:
-        if anchors[0].population < Gazetteer.pop_limit and ' ' not in clust_anns[0].phrase:
+        a = clust_anns[0]
+        in_gaz = a.phrase in self.gaz.defaults
+        if not in_gaz and ' ' not in a.phrase:
           if len(match_anns) == 0:
             confidence = 'low'
 
