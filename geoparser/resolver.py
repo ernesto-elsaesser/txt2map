@@ -35,11 +35,13 @@ class ToponymResolver:
       if la.data in self.gaz.defaults:
         default_id = self.gaz.defaults[la.data]
       else:
-        candidates = self._select_candidates(la.phrase)
+        toponym = la.phrase
+        candidates = self._select_candidates(toponym)
         if len(candidates) == 0:
           continue
-        first = candidates[0]
-        default_id = self._city_result(la.phrase, first).id
+        default = self._city_result(toponym, candidates[0])
+        default_id = default.id
+        print(f'Chose {default} as default for {toponym}')
 
       doc.annotate('res', a.pos, la.phrase, 'def', default_id)
       doc.annotate('res', a.pos, la.phrase, 'sel', default_id)
@@ -60,7 +62,9 @@ class ToponymResolver:
         new_geoname = self._select_heuristically(toponym, old_geoname, root)
         if new_geoname != None:
           changed = True
-          id_map[old_geoname.id] = self._city_result(toponym, new_geoname).id
+          city = self._city_result(toponym, new_geoname)
+          id_map[old_geoname.id] = city.id
+          print(f'Chose {city} over {old_geoname} for {toponym}')
 
       for a in doc.get('res', 'sel'):
         if a.data in id_map:
@@ -155,11 +159,8 @@ class ToponymResolver:
 
       hierarchy = self.gns_cache.get_hierarchy(g.id)
       depth = len(hierarchy)
-      if depth > max_depth:
-        continue
-
-      print(f'Chose {g} over {current} for {toponym}')
-      return g
+      if depth <= max_depth:
+        return g
 
     return None
 
