@@ -39,7 +39,7 @@ class GeoWebNewsEvaluator:
     with open(text_path, encoding='utf-8') as f:
       text = f.read()
 
-    doc = self.annotator.annotated_doc('GeoWebNews', doc_id)
+    doc = self.annotator.annotated_doc('GeoWebNews', doc_id, text)
     self.eval.start_document(doc)
 
     annotation_path = f'{self.corpus_dir}/{doc_id}.ann'
@@ -75,10 +75,7 @@ class GeoWebNewsEvaluator:
             a.lon = float(coords[1].strip())
           elif row[2] != 'N/A':
             geoname_id = int(row[2])
-            geoname = self.parser.gns_cache.get(geoname_id)
             a.geoname_id = geoname_id
-            a.lat = geoname.lat
-            a.lon = geoname.lon
 
           self.eval.evaluate(a)
 

@@ -31,7 +31,6 @@ class ToponymResolver:
         if len(candidates) == 0:
           continue
         default = self._city_result(toponym, candidates[0])
-        print(f'Chose {default} as default for {toponym}')
         self._resolve_new_ancestors(default, doc)
         default_id = default.id
 
@@ -160,10 +159,8 @@ class ToponymResolver:
     return None
 
   def _city_result(self, toponym, selected):
-    if selected.is_city:
+    if selected.is_city or selected.adm1 == '-':
       return selected
-      
-    assert selected.adm1 != '-'
 
     name = selected.name
     region = selected.region()
