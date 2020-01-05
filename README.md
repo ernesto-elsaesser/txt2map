@@ -1,6 +1,6 @@
 # txt2map
 
-txt2map is a street level geoparser written in Python (3). Unlike most available geoparsers, a street level geoparser does not only detect well-known names of countries and cities, but also street names, points of interest, public institution, restaurants, etc. This geoparser is the result of a master thesis, which describes the system in detail and provides evaluation results. The thesis will be published here as soon as possible.
+txt2map is a street level geoparser written in Python. Unlike other geoparsers, txt2map does not only detect well-known names of countries and cities, but also street names, points of interest, public institutions, restaurants, etc. The system is still work in progress, but you can try it out [here](http://34.247.167.219). 
 
 ## Approach
 
@@ -12,7 +12,9 @@ The txt2map geoparser recognizes place names (toponyms) in text documents and re
 4. For each cluster of resolved GeoName entries, load ALL named elements from OpenStreetMap
 5. Scan the text for any of the received names
 
-The output is a set of annotations, including layers for recognized names, linked GeoNames identifiers, matches local names and matches OSM references. These annotations can be visulaized using the included web server. Note that loading data from OSM for the first time might take some time.
+The output is a set of annotations, including layers for recognized names, linked GeoNames identifiers, matches local names and matches OSM references. These annotations can be visulaized using the included web server. Note that loading data from OSM for the first time might take some time. 
+
+The thesis that presents the underlying algorithm will be published here are soon as it is through review.
 
 ## Usage
 

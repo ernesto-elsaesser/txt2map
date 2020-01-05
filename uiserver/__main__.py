@@ -3,7 +3,6 @@ from flask import Flask, request
 from geoparser import Geoparser
 from .formatter import ResponseFormatter
 
-print('Loading geoparser ...')
 app = Flask(__name__)
 
 parser = Geoparser()
