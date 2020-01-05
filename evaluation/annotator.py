@@ -19,12 +19,16 @@ class Annotator:
     data_path = f'{results_dir}/{document_name}.json'
     if os.path.exists(data_path) and not self.update:
       doc = Document(text)
-      doc.load_annotations(data_path)
+      with open(file_path, 'r') as f:
+        json_str = f.read()
+      doc.import_json(json_str)
     else:
       doc = self.parse(text)
+      json_str = doc.export_json()
       if not os.path.exists(results_dir):
         os.mkdir(results_dir)
-      doc.save_annotations(data_path)
+      with open(data_path, 'w') as f:
+        f.write(json_str)
     return doc
 
 

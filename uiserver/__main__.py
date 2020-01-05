@@ -1,11 +1,10 @@
 import os
-from flask import Flask, request, jsonify
+from flask import Flask, request
 from geoparser import Geoparser
 from .formatter import ResponseFormatter
 
 print('Loading geoparser ...')
 app = Flask(__name__)
-app.config['JSONIFY_PRETTYPRINT_REGULAR'] = True
 
 parser = Geoparser()
 formatter = ResponseFormatter()

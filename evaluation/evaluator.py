@@ -64,8 +64,13 @@ class CorpusEvaluator:
           break
         else:
           g = self.gns_cache.get(a.data)
-          gg = self.gns_cache.get(gold.geoname_id)
-          dist = GeoUtil.distance(g.lat, g.lon, gg.lat, gg.lon)
+          gold_lat = gold.lat
+          gold_lon = gold.lon
+          if gold.geoname_id != None:
+            gold_g = self.gns_cache.get(gold.geoname_id)
+            gold_lat = gold_g.lat
+            gold_lon = gold_g.lon
+          dist = GeoUtil.distance(g.lat, g.lon, gold_lat, gold_lon)
           if dist < self.tolerance:
             resolved_within = True
             break

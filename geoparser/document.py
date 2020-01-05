@@ -23,22 +23,20 @@ class Document:
     self.text = text + ' ' # allow matching of last word
     self._anns = []
 
-  def load_annotations(self, file_path):
-    with open(file_path, 'r') as f:
-      data = json.load(f)
+  def import_json(self, json_str):
+    data = json.loads(json_str)
     for layer, arrarr in data.items():
       for arr in arrarr:
         a = Annotation(layer, arr[0], arr[1], arr[2], arr[3])
         self._anns.append(a)
 
-  def save_annotations(self, file_path):
+  def export_json(self):
     data = {}
     for a in self._anns:
       if a.layer not in data:
         data[a.layer] = []
       data[a.layer].append([a.pos, a.phrase, a.group, a.data])
-    with open(file_path, 'w') as f:
-      json.dump(data, f)
+    return json.dumps(data)
 
   def annotate(self, layer, pos, phrase, group, data):
     a = Annotation(layer, pos, phrase, group, data)
@@ -64,21 +62,21 @@ class Document:
 
   def clear_overlaps(self, layer):
     anns = self.get(layer)
-    spans = {}
+    anns_by_start = {}
     for a in anns:
-      spans[a.pos] = a.end_pos()
+      if a.pos in anns_by_start:
+        other = anns_by_start[a.pos]
+        if a.end_pos() <= other.end_pos():
+          continue
+      anns_by_start[a.pos] = a
     
-    starts = sorted(spans.keys())
-    overlaps = []
-    for i in range(len(spans)-1):
-      last_end = spans[starts[i]]
+    starts = sorted(anns_by_start.keys())
+    for i in range(len(anns_by_start)-1):
+      last_end = anns_by_start[starts[i]].end_pos()
       next_start = starts[i+1]
       if last_end >= next_start:
-        overlaps.append(next_start)
-
-    for a in anns:
-      if a.pos in overlaps:
-        self._anns.remove(a)
+        overlapped = anns_by_start[next_start]
+        self._anns.remove(overlapped)
 
   def annotated_positions(self, layer):
     return [a.pos for a in self.get(layer)]
