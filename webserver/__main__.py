@@ -1,10 +1,9 @@
 import os
-import logging
 from flask import Flask, request, jsonify
 from geoparser import Geoparser
 from .formatter import ResponseFormatter
 
-logging.info('Loading geoparser ...')
+print('Loading geoparser ...')
 app = Flask(__name__)
 app.config['JSONIFY_PRETTYPRINT_REGULAR'] = True
 
