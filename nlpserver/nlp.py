@@ -51,6 +51,8 @@ class SpacyNLP:
       name = ent.text
       if name.startswith('the ') or name.startswith('The '):
         name = name[4:]
+      elif name.endswith('\n'):
+        name = name[:-1]
       if name.endswith('\'s'):
         name = name[:-2]
       elif name.endswith('\''):

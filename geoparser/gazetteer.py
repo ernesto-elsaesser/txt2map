@@ -84,7 +84,7 @@ class Gazetteer:
                   'North West', 'South West', 'North East', 'South East',
                   'Western', 'Southern', 'Eastern', 'Northern',
                   'West Coast', 'South Coast', 'East Coast', 'North Coast',
-                  'Ocean', 'Island', 'Delta', 'Bay']
+                  'Ocean', 'Island', 'Delta', 'Bay', 'King', 'Union']
 
     pop_limit = Config.gazetteer_population_limit
     last_log = 0
