@@ -129,11 +129,3 @@ class TestsImporter:
 
       DocumentStore.save_text('Tests', doc_id, text)
       DocumentStore.save_annotations('Tests', doc_id, 'gold', doc)
-
-      # TODO: compare gold layer len on eval
-
-      #if 'expect_none' in data:
-      #  recs = doc.get('rec')
-      #  if len(recs) > 0:
-      #    print('{title} test failed - toponyms recognized!')
-

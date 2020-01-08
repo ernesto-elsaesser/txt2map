@@ -1,0 +1,1 @@
+{"ntk": [[0, "Che", "til", ""], [4, "Guevara", "til", ""], [30, "Cuban", "til", ""], [44, "Santa", "til", ""], [50, "Clara", "til", ""]], "ner": [[0, "Che Guevara", "per", "en_core_web_lg"], [30, "Cuban", "ent", "en_core_web_lg"], [44, "Santa Clara", "loc", "en_core_web_lg"]]}

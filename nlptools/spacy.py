@@ -25,9 +25,6 @@ class SpacyNLP:
         continue
       doc.annotate('ntk', token.idx, token.text, group, '')
 
-    if name_tokens_only:
-      return
-
     # named entities
     for ent in spacy_doc_lg.ents:
       name = self._normalized_name(ent)

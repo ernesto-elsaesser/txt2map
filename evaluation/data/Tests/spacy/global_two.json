@@ -1,0 +1,1 @@
+{"ntk": [[0, "Paris", "til", ""], [12, "France", "til", ""], [23, "Los", "til", ""], [27, "Angeles", "til", ""], [38, "California", "til", ""]], "ner": [[0, "Paris", "loc", "en_core_web_lg"], [12, "France", "loc", "en_core_web_lg"], [23, "Los Angeles", "loc", "en_core_web_lg"], [38, "California", "loc", "en_core_web_lg"]]}

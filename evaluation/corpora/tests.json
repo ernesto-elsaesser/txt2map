@@ -78,8 +78,8 @@
           "anns": [["Statue of Liberty", 40.689167, -74.044444, ""]]
       },
       "local_abbrevs": {
-          "text": "He painted St. Peter\"s Basilica in Rome.",
-          "anns": [["St. Peter\"s Basilica", 41.90216, 12.4536, ""]]
+          "text": "He painted St. Peter's Basilica in Rome.",
+          "anns": [["St. Peter's Basilica", 41.90216, 12.4536, ""]]
       },
       "local_abbrevs_2": {
           "text": "On N. Bedford Drive in Beverly Hills.",

@@ -8,7 +8,7 @@ if sys.argv[1] == 'ui':
   server = UIServer()
   port = 80
 elif sys.argv[1] == 'nlp':
-  print('Starting txt2map NLP server (this may take some time) ...')
+  print('Starting txt2map NLP server (this may take a while) ...')
   server = NLPServer()
   port = 81
 else:

@@ -1,0 +1,1 @@
+{"ntk": [[0, "I", "stp", ""], [7, "Paris", "til", ""]], "ner": [[7, "Paris", "loc", "en_core_web_lg"]], "rec": [[7, "Paris", "ner", "Paris"]], "res": [[7, "Paris", "top", 2988507]], "clu": [[7, "Paris", "cl1", [2988507]]], "con": [[7, "Paris", "high", ""]]}

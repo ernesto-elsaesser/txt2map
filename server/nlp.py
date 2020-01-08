@@ -1,5 +1,6 @@
 import os
-from geoparser import SpacyNLP, Document
+from geoparser import Document
+from nlptools import SpacyNLP
 
 class NLPServer:
 

@@ -51,7 +51,7 @@ class Document:
       if prev.pos == pos and prev.end_pos() >= end:
         return
       self.delete_annotation(layer, prev.pos)
-      print(f'Extended because of full overlap: {a} -> {phrase} [{group}]')
+      print(f'Extended because of full overlap: {prev} -> {phrase} [{group}]')
 
     anns_by_pos = self.annotations_by_position(layer)
     for i in range(pos, end):

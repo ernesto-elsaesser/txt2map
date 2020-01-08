@@ -84,7 +84,7 @@ class GeoNamesResolver:
       name = ancestor.name
       if name in geoname.name:
         continue
-      for match in re.finditer(name, doc.text):
+      for match in re.finditer(name, doc.text()):
         pos = match.start()
         doc.annotate('rec', pos, name, 'anc', name)
         doc.annotate('res', pos, name, 'anc', ancestor.id)

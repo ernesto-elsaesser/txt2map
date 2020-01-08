@@ -72,7 +72,8 @@ class OSMLoader:
     osm_db.commit_changes()
     return name_count
 
-  def load_geometries(self, elements):
+  @staticmethod
+  def load_geometries(elements):
     short_refs = [e[0][0] + str(e[1]) for e in elements]
     max_ref = max(short_refs)
     num = len(elements) - 1
