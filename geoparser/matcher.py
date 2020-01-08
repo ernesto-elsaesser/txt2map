@@ -52,7 +52,7 @@ class NameMatcher:
     prev_match_end = 0
     saved = {}
 
-    for a in doc.get('mat'):
+    for a in doc.get('ntk'):
       if a.pos < prev_match_end: continue
 
       if a.phrase in saved:

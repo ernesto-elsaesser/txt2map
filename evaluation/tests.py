@@ -6,7 +6,6 @@ from .evaluator import GoldAnnotation, CorpusEvaluator
 class TestEvaluator:
 
   def __init__(self):
-    Config.recog_large_ner_model = False
     self.annotator = T2MAnnotator(update=True)
     self.eval = CorpusEvaluator(False, 1)
 

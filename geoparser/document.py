@@ -21,12 +21,18 @@ class Document:
 
   def __init__(self, text=''):
     self.data = {'text': text, 'anns': {}}
-      
+
   def get_json(self):
     return json.dumps(self.data)
+
+  def get_annotation_json(self):
+    return json.dumps(self.data['anns'])
       
   def set_json(self, json_str):
     self.data = json.loads(json_str)
+      
+  def set_annotation_json(self, json_str):
+    self.data['anns'] = json.loads(json_str)
 
   def text(self):
     return self.data['text']
@@ -63,7 +69,8 @@ class Document:
         self.data['anns'][layer][i][3] = new_data
 
   def delete_layer(self, layer):
-    del self.data['anns'][layer]
+    if layer in self.data['anns']:
+      del self.data['anns'][layer]
 
   def delete_annotation(self, layer, pos):
     anns = self.data['anns'][layer]

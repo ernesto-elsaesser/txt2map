@@ -9,15 +9,13 @@ class HybridRecognizer:
 
   def annotate(self, doc):
 
-    pers_pos = []
-    for a in doc.get('ner'):
-      if a.data in ['GPE', 'LOC']:
-        doc.annotate('rec', a.pos, a.phrase, 'ner', a.phrase)
-      elif a.data == 'PERSON' and a.group == 'spacy_lg':
-        pers_pos += list(range(a.pos, a.end_pos()))
+    for a in doc.get('ner', 'loc'):
+      doc.annotate('rec', a.pos, a.phrase, 'ner', a.phrase)
+
+    person_indicies = doc.annotations_by_index('ner', 'per')
 
     def validate(a, c):
-      if a.pos in pers_pos and ' ' not in c.match:
+      if a.pos in person_indicies and ' ' not in c.match:
         return False
       l = len(c.match)
       if l in [2, 3] and c.match.isupper():

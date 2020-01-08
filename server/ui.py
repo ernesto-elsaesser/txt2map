@@ -20,10 +20,9 @@ class UIServer:
   def post(self, req_text):
     doc = Document(text=req_text)
 
-    json_doc = doc.get_json()
-    nlp_res = requests.post(url='http://localhost:81', data=json_doc)
+    nlp_res = requests.post(url='http://localhost:81', data=req_text)
     nlp_res.encoding = 'utf-8'
-    doc.set_json(nlp_res.text)
+    doc.set_annotation_json(nlp_res.text)
 
     self.geoparser.annotate(doc)
     return self.doc_to_html(doc)

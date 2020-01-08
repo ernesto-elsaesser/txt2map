@@ -4,19 +4,6 @@ import logging
 from geoparser import Geoparser, GeoNamesCache, OSMLoader, GeoUtil, Document
 
 
-class GoldAnnotation:
-
-  def __init__(self, position, phrase, lat, lon, geoname_id):
-    self.position = position
-    self.phrase = phrase
-    self.lat = lat
-    self.lon = lon
-    self.geoname_id = geoname_id
-
-  def __repr__(self):
-    return f'{self.phrase} @ {self.position} [{self.geoname_id}]'
-
-
 class CorpusEvaluator:
 
   def __init__(self, count_inexact, tolerance_km):

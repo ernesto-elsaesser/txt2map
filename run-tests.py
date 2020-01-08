@@ -1,5 +1,8 @@
-from evaluation import TestEvaluator
+from evaluation import LGLImporter
 
-evaluator = TestEvaluator()
-evaluator.run_all()
+imp = LGLImporter()
+imp.import_documents()
+
+#evaluator = TestEvaluator()
+#evaluator.run_all()
 #evaluator.run('local_way')
