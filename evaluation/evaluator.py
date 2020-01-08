@@ -4,18 +4,20 @@ from .store import DocumentStore
 
 class CorpusEvaluator:
 
-  def __init__(self, corpus_name, count_inexact, tolerance_km):
+  def __init__(self, corpus_name, strict, tolerance_km):
     self.corpus_name = corpus_name
-    self.inexact = count_inexact
+    self.strict = strict
     self.tolerance = tolerance_km
     self.gns_cache = GeoNamesCache()
 
   def evaluate_all(self, pipeline_id, target_pipeline_id='gold'):
     paths = DocumentStore.doc_ids(self.corpus_name)
+    num_docs = len(paths)
     total = Measurement()
 
     print(f'---- START EVALUATION: {pipeline_id} / {target_pipeline_id} ----')
-    for doc_id in paths:
+    for i, doc_id in enumerate(paths):
+      print(f'-- {doc_id} ({i}/{num_docs}) --')
       m = self.evaluate_one(doc_id, pipeline_id, target_pipeline_id)
       total.add(m)
 
@@ -23,7 +25,6 @@ class CorpusEvaluator:
     self._print_metrics(total)
 
   def evaluate_one(self, doc_id, pipeline_id, target_pipeline_id='gold'):
-    print(f'-- {doc_id} --')
     doc = DocumentStore.load_doc(self.corpus_name, doc_id, pipeline_id)
     target_doc = DocumentStore.load_doc(self.corpus_name, doc_id, target_pipeline_id)
 
@@ -40,10 +41,10 @@ class CorpusEvaluator:
       recognized = False
       if gold.pos in rec_anns:
         rec_ann = rec_anns[gold.pos]
-        if self.inexact:
-          recognized = True
-        else:
+        if self.strict:
           recognized = rec_ann.phrase == gold.phrase
+        else:
+          recognized = True
 
       if recognized:
         result.false_pos -= 1

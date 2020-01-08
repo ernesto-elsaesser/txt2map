@@ -11,16 +11,17 @@ class CorpusAnnotator:
 
   def annotate_all(self, pipeline, doc_range=None):
     paths = DocumentStore.doc_ids(self.corpus_name)
+    num_docs = len(paths)
     doc_range = doc_range or range(len(paths))
 
     print(f'---- START ANNOTATION: {pipeline.id_} ----')
     for i in doc_range:
       doc_id = paths[i]
+      print(f'-- {doc_id} ({i}/{num_docs}) --')
       m = self.annotate_one(pipeline, doc_id)
     print(f'---- END ANNOTATION ----')
 
   def annotate_one(self, pipeline, doc_id):
-    print(f'-- {doc_id} --')
     doc = pipeline.make_doc(self.corpus_name, doc_id)
     DocumentStore.save_annotations(self.corpus_name, doc_id, pipeline.id_, doc)
 

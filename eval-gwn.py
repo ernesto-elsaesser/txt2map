@@ -3,12 +3,12 @@ from evaluation import GeoWebNewsImporter, CorpusAnnotator, SpacyPipeline, GCNLP
 
 importer = GeoWebNewsImporter()
 annotator = CorpusAnnotator('GeoWebNews')
-evaluator = CorpusEvaluator('GeoWebNews', False, 1)
+evaluator = CorpusEvaluator('GeoWebNews', True, 161)
 
-spacy = SpacyPipeline(use_server=True)
-spacy_txt2map = SpacyT2MPipeline()
+ner = SpacyPipeline(use_server=True)
+geoparse = SpacyT2MPipeline()
 
 #importer.import_documents()
-annotator.annotate_all(spacy)
-#annotator.annotate_all(spacy_txt2map)
-#evaluator.evaluate_all(spacy_txt2map.id_)
+#annotator.annotate_all(ner)
+#annotator.annotate_all(geoparse)
+evaluator.evaluate_all(geoparse.id_)

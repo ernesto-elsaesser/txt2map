@@ -46,18 +46,17 @@ class Document:
     if pos in anns_by_index:
       prev = anns_by_index[pos]
       if prev.pos < pos:
-        print(f'Not added because of partial overlap: {layer}: {phrase} [{pos}/{group}]')
         return
       if prev.pos == pos and prev.end_pos() >= end:
         return
       self.delete_annotation(layer, prev.pos)
-      print(f'Extended because of full overlap: {prev} -> {phrase} [{group}]')
+      print(f'Extended annotation {prev} -> {phrase} [{group}]')
 
     anns_by_pos = self.annotations_by_position(layer)
     for i in range(pos, end):
       if i in anns_by_pos:
         self.delete_annotation(layer, i)
-        print(f'Deleted because of partial overlap: {anns_by_pos[i]} -> {phrase} [{group}]')
+        print(f'Replaced annotation {anns_by_pos[i]} -> {phrase} [{group}]')
 
     ann = [pos, phrase, group, data]
     self.data['anns'][layer].append(ann)
