@@ -18,11 +18,19 @@ The thesis that presents the underlying algorithm will be published here are soo
 
 ## Usage
 
-The [Geoparser](geoparser/parser.py) can be used directly as Python module, or via the included web server.
+The [Geoparser](geoparser/parser.py) can be used directly as Python module, or via the included web application. The web application is a simple HTML form that accepts an input texts, parses it and vizualizes the generated annotations. The web application uses a dedicated server for the NLP tool (currently spaCy). To run the application your machine, first start the NLP server via
 
-The [Web Server](webserver/server.py) listens on port 80 for POST requests with text as body (any path). The response is a JSON object containing all annotation layers produced throughout the geoparsing process. To visualize the annotations, the HTML form served on any GET request can be used.
+```
+python3 -m server nlp
+```
 
-The repository also contains a [Dockerfile](Dockerfile) which can be used to build a Docker container that runs the web server.
+and then the UI server via
+
+```
+python3 -m server ui
+```
+
+or simply execute the [start-servers.sh](start-servers.sh) script (note that the NLP server starts quite slow). The UI server listens on port 80 and serves the input form on any path. To simplify distribution, the repository further includes a [Dockerfile](Dockerfile) which can be used to build a Docker container that hosts the web application.
 
 ## Evaluation
 
