@@ -39,21 +39,20 @@ class NameMatcher:
     'Sq': 'Square'
   }
 
-  def __init__(self, ignore, min_len):
-    self.ignore = ignore
-    self.min_len = min_len
+  def __init__(self):
     self.abbreviations = []
     for s, l in self.abbr.items():
       self.abbreviations.append((re.compile(l), s))
     for s, l in self.abbr_end.items():
       self.abbreviations.append((re.compile(l), s))
 
-  def recognize_names(self, doc, group, lookup_prefix):
-    text_len = len(doc.text)
+  def recognize_names(self, doc, group, lookup_prefix, validate_match):
+    text = doc.text() + ' '  # allow matching of last token
+    text_len = len(text)
     prev_match_end = 0
     saved = {}
 
-    for a in doc.get('tok', exclude_groups=self.ignore):
+    for a in doc.get('mat'):
       if a.pos < prev_match_end: continue
 
       if a.phrase in saved:
@@ -65,10 +64,10 @@ class NameMatcher:
       text_pos = a.pos + len(a.phrase)
       longest_completion = None
       while text_pos < text_len and len(completions) > 0:
-        next_char = doc.text[text_pos]
+        next_char = text[text_pos]
         for c in completions:
           complete = c.trim(next_char)
-          if complete:
+          if complete and validate_match(a,c):
             longest_completion = c
         completions = [c for c in completions if c.active]
         text_pos += 1
@@ -82,8 +81,6 @@ class NameMatcher:
     found_names = lookup_prefix(prefix)
     completions = []
     for db_name in found_names:
-      if len(db_name) < self.min_len:
-        continue
       compl = Completion(db_name, prefix, db_name, pos)
       completions.append(compl)
       for regex, repl in self.abbreviations:

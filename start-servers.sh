@@ -1,2 +1,2 @@
-python3 -m nlpserver &
-python3 -m uiserver &
+python3 -m server nlp &
+python3 -m server ui

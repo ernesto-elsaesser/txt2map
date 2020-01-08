@@ -5,27 +5,34 @@ import json
 import io
 import sqlite3
 from .database import Database
-from .geo import GeoUtil
-from .matcher import NameMatcher
+from .util import GeoUtil
 from .config import Config
 
 
 class OSMLoader:
 
-  def __init__(self):
-    min_match_len = Config.local_match_min_len
-    self.matcher = NameMatcher(['stp'], min_match_len)
+  def __init__(self, matcher):
+    self.matcher = matcher
 
   def annotate_local_names(self, geonames, doc, group):
     db = self._load_database(geonames)
-    self.matcher.recognize_names(doc, group, lambda p: db.find_names(p))
+
+    def lookup_prefix(p):
+      return db.find_names(p)
+      
+    def validate_match(a, c):
+      if a.group == 'stp' and ' ' not in c.match:
+        return False
+      if len(c.match) < Config.local_match_min_len:
+        return False
+      return True
+
+    self.matcher.recognize_names(doc, group, lookup_prefix, validate_match)
 
     for a in doc.get('rec', group):
       osm_refs = db.get_elements(a.data)
       doc.annotate('res', a.pos, a.phrase, group, osm_refs)
 
-    doc.clear_overlaps('rec')
-    doc.clear_overlaps('res')
 
   def _load_database(self, geonames):
     cache_dir = Config.cache_dir

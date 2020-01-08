@@ -32,6 +32,13 @@ class Annotator:
     return doc
 
 
+class NERAnnotator(Annotator):
+
+
+class TopoAnnotator(Annotator):
+
+
+
 class T2MAnnotator(Annotator):
 
   def __init__(self, update=False, keep_defaults=False):

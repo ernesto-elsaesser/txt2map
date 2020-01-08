@@ -1,7 +1,8 @@
 from .config import Config
 from .document import Annotation, Document
+from .nlp import SpacyNLP
 from .geonames import GeoNamesCache, GeoNamesAPI, GeoName
 from .osm import OSMLoader, OverpassAPI
-from .geo import GeoUtil
+from .util import GeoUtil
 from .parser import Geoparser
 from .gazetteer import Gazetteer

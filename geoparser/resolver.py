@@ -8,38 +8,39 @@ from .gazetteer import Gazetteer
 from .config import Config
 
 
-class ToponymResolver:
+class GeoNamesResolver:
 
   def __init__(self, gazetteer):
     self.gaz = gazetteer
     self.gns_cache = GeoNamesCache()
 
-  def resolve(self, doc, keep_defaults):
+  def annotate(self, doc):
     self.candidates = {}
 
-    annotated = []
+    api_defaults = {}
     for a in doc.get('rec'):
-      if a.pos in annotated:
-        continue
-      annotated.append(a.pos)
-      la = max(doc.get('rec', pos=a.pos), key=lambda a: a.end_pos())
-      if la.data in self.gaz.defaults:
-        default_id = self.gaz.defaults[la.data]
+      if a.data in self.gaz.defaults:
+        group = 'top'
+        default_id = self.gaz.defaults[a.data]
       else:
-        toponym = la.phrase
-        candidates = self._select_candidates(toponym)
-        if len(candidates) == 0:
-          continue
-        default = self._city_result(toponym, candidates[0])
-        self._resolve_new_ancestors(default, doc)
-        default_id = default.id
+        group = 'api'
+        toponym = a.phrase
+        if toponym in api_defaults:
+          default_id = api_defaults[toponym]
+        else:
+          candidates = self._select_candidates(toponym)
+          if len(candidates) == 0:
+            continue
+          default = self._city_result(toponym, candidates[0])
+          self._resolve_new_ancestors(default, doc)
+          default_id = default.id
+          api_defaults[toponym] = default_id
 
-      doc.annotate('res', a.pos, la.phrase, 'def', default_id)
-      doc.annotate('res', a.pos, la.phrase, 'sel', default_id)
+      doc.annotate('res', a.pos, a.phrase, group, default_id)
 
-    changed = not keep_defaults
+    changed = True
     rounds = 0
-    max_rounds = Config.resol_max_disam_rounds
+    max_rounds = Config.resol_max_onto_sim_rounds
     while changed and rounds < max_rounds:
       rounds += 1
       changed = False
@@ -54,12 +55,9 @@ class ToponymResolver:
         if new_geoname != None:
           changed = True
           city = self._city_result(toponym, new_geoname)
-          id_map[old_geoname.id] = city.id
+          for pos in adm1.positions[toponym]:
+            doc.update_annotation_data('res', pos, city.id)
           print(f'Chose {city} over {old_geoname} for {toponym}')
-
-      for a in doc.get('res', 'sel'):
-        if a.data in id_map:
-          a.data = id_map[a.data]
 
   def _select_candidates(self, toponym):
     if toponym in self.candidates:
@@ -88,14 +86,13 @@ class ToponymResolver:
         continue
       for match in re.finditer(name, doc.text):
         pos = match.start()
-        doc.annotate('rec', pos, name, 'ancestor', name)
-        doc.annotate('res', pos, name, 'def', ancestor.id)
-        doc.annotate('res', pos, name, 'sel', ancestor.id)
+        doc.annotate('rec', pos, name, 'anc', name)
+        doc.annotate('res', pos, name, 'anc', ancestor.id)
 
   def _make_tree(self, doc):
     root = TreeNode(None, None)
     adm1s = []
-    for a in doc.get('res', 'sel'):
+    for a in doc.get('res'):
       geoname = self.gns_cache.get(a.data)
       key_path = self._key_path(geoname)
       node = root.get(key_path, True)
