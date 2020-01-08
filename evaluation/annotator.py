@@ -1,6 +1,6 @@
 import requests
 from .store import DocumentStore
-from geoparser import Geoparser
+from geoparser import Geoparser, Config
 from nlptools import SpacyNLP, GoogleCloudNL
 
 
@@ -43,7 +43,8 @@ class SpacyPipeline(Pipeline):
     doc = DocumentStore.load_doc(corpus_name, doc_id)
 
     if self.use_server:
-      response = requests.post(url='http://localhost:81', data=doc.text())
+      body = doc.text().encode('utf-8')
+      response = requests.post(url='http://localhost:81', data=body)
       response.encoding = 'utf-8'
       doc.set_annotation_json(response.text)
     else:
@@ -73,6 +74,21 @@ class SpacyT2MPipeline(Pipeline):
 
   def make_doc(self, corpus_name, doc_id):
     doc = DocumentStore.load_doc(corpus_name, doc_id, 'spacy')
+    Config.resol_max_onto_sim_rounds = 5
+    self.geoparser.annotate(doc)
+    return doc
+
+
+class SpacyDefaultsPipeline(Pipeline):
+
+  id_ = 'spacy-defaults'
+
+  def __init__(self):
+    self.geoparser = Geoparser()
+
+  def make_doc(self, corpus_name, doc_id):
+    doc = DocumentStore.load_doc(corpus_name, doc_id, 'spacy')
+    Config.resol_max_onto_sim_rounds = 0
     self.geoparser.annotate(doc)
     return doc
 

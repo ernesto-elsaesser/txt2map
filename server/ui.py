@@ -20,7 +20,8 @@ class UIServer:
   def post(self, req_text):
     doc = Document(text=req_text)
 
-    nlp_res = requests.post(url='http://localhost:81', data=req_text)
+    body = req_text.encode('utf-8')
+    nlp_res = requests.post(url='http://localhost:81', data=body)
     nlp_res.encoding = 'utf-8'
     doc.set_annotation_json(nlp_res.text)
 
