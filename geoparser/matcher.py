@@ -67,15 +67,16 @@ class NameMatcher:
         next_char = text[text_pos]
         for c in completions:
           complete = c.trim(next_char)
-          if complete and validate_match(a,c):
+          if complete:
             longest_completion = c
         completions = [c for c in completions if c.active]
         text_pos += 1
 
       if longest_completion != None:
         c = longest_completion
-        prev_match_end = c.end
-        doc.annotate('rec', a.pos, c.match, group, c.db_name)
+        if validate_match(a, c):
+          prev_match_end = c.end
+          doc.annotate('rec', a.pos, c.match, group, c.db_name)
 
   def _get_completions(self, prefix, lookup_prefix, pos):
     found_names = lookup_prefix(prefix)

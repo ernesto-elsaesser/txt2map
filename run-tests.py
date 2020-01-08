@@ -4,12 +4,12 @@ importer = TestsImporter()
 annotator = CorpusAnnotator('Tests')
 evaluator = CorpusEvaluator('Tests', False, 1)
 
-#importer.import_documents()
-
-#spacy = SpacyPipeline(use_server=True)
-#annotator.annotate_all(spacy)
-
+spacy = SpacyPipeline(use_server=True)
 spacy_txt2map = SpacyT2MPipeline()
-annotator.annotate_all(spacy_txt2map)
+
+#importer.import_documents()
+#annotator.annotate_all(spacy)
+#annotator.annotate_all(spacy_txt2map)
+annotator.annotate_one(spacy_txt2map, 'local_way')
 
 evaluator.evaluate_all(spacy_txt2map.id_)

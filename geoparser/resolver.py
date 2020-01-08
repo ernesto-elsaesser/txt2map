@@ -69,6 +69,7 @@ class GeoNamesResolver:
       cs = [self.gns_cache.get(gid) for gid in geoname_ids]
     else:
       results = self.gns_cache.search(toponym)
+      results = [g for g in results if g.fcl in Config.resol_considered_classes]
       cs = [g for g in results if toponym in g.name or g.name in toponym]
       if len(cs) == 0:
         cs = results

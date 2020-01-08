@@ -25,13 +25,12 @@ class OSMLoader:
         return False
       if len(c.match) < Config.local_match_min_len:
         return False
+
+      osm_refs = db.get_elements(c.db_name)
+      doc.annotate('res', a.pos, a.phrase, group, osm_refs)
       return True
 
     self.matcher.recognize_names(doc, group, lookup_prefix, validate_match)
-
-    for a in doc.get('rec', group):
-      osm_refs = db.get_elements(a.data)
-      doc.annotate('res', a.pos, a.phrase, group, osm_refs)
 
 
   def _load_database(self, geonames):

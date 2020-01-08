@@ -39,7 +39,7 @@ class CorpusEvaluator:
 
       recognized = False
       if gold.pos in rec_anns:
-        rec_ann = res_anns[gold.pos]
+        rec_ann = rec_anns[gold.pos]
         if self.inexact:
           recognized = True
         else:
