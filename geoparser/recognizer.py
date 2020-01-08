@@ -16,7 +16,7 @@ class HybridRecognizer:
 
     def validate(a, c):
       if a.pos in person_indicies and ' ' not in c.match:
-        return False
+        return c.match in self.gaz.demonyms
       l = len(c.match)
       if l in [2, 3] and c.match.isupper():
         return True # abbreviations like 'US', 'UK', 'UAE'

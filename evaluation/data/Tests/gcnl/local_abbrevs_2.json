@@ -1,0 +1,1 @@
+{"ner": [[3, "N. Bedford Drive", "loc", "gcnl"], [23, "Beverly Hills", "loc", "gcnl"]], "rec": [[3, "N. Bedford Drive", "ner", "N. Bedford Drive"], [23, "Beverly Hills", "ner", "Beverly Hills"]], "res": [[23, "Beverly Hills", "wik", "https://en.wikipedia.org/wiki/Beverly_Hills,_California"]]}

@@ -17,7 +17,7 @@ class CorpusAnnotator:
     print(f'---- START ANNOTATION: {pipeline.id_} ----')
     for i in doc_range:
       doc_id = paths[i]
-      print(f'-- {doc_id} ({i}/{num_docs}) --')
+      print(f'-- {doc_id} ({i+1}/{num_docs}) --')
       m = self.annotate_one(pipeline, doc_id)
     print(f'---- END ANNOTATION ----')
 
@@ -61,9 +61,10 @@ class GCNLPipeline(Pipeline):
   def __init__(self):
     self.gncl = GoogleCloudNL()
 
-  def annotate(self, corpus_name, doc_id):
+  def make_doc(self, corpus_name, doc_id):
     doc = DocumentStore.load_doc(corpus_name, doc_id)
     self.gncl.annotate(doc)
+    return doc
 
 
 class SpacyT2MPipeline(Pipeline):

@@ -1,3 +1,4 @@
+import requests
 from geoparser import GeoNamesCache, OSMLoader, GeoUtil
 from .store import DocumentStore
 
@@ -17,7 +18,7 @@ class CorpusEvaluator:
 
     print(f'---- START EVALUATION: {pipeline_id} / {target_pipeline_id} ----')
     for i, doc_id in enumerate(paths):
-      print(f'-- {doc_id} ({i}/{num_docs}) --')
+      print(f'-- {doc_id} ({i+1}/{num_docs}) --')
       m = self.evaluate_one(doc_id, pipeline_id, target_pipeline_id)
       total.add(m)
 
@@ -58,10 +59,12 @@ class CorpusEvaluator:
       if gold.pos in res_anns:
         res_ann = res_anns[gold.pos]
         
-        if not res_ann.group.startswith('cl'):  # global
-          resolved_within = self._global_res_in_tolerance(res_ann, gold)
-        else:  # local
+        if res_ann.group == 'wik': # Wikipedia URL
+          resolved_within = self._wiki_res_in_tolerance(res_ann, gold)
+        elif res_ann.group.startswith('cl'):  # OpenStreetMap reference
           resolved_within = self._local_res_in_tolerance(res_ann, gold)
+        else:  # GeoNames identifier
+          resolved_within = self._global_res_in_tolerance(res_ann, gold)
           
       if resolved_within:
         result.accurate += 1
@@ -70,6 +73,32 @@ class CorpusEvaluator:
 
     self._print_metrics(result)
     return result
+
+  def _wiki_res_in_tolerance(self, a, gold):
+    url = a.data
+    title = url.split('/')[-1]
+    params = {
+        "action": "query",
+        "format": "json",
+        "titles": title,
+        "prop": "coordinates"
+    }
+    resp = requests.post(url='https://en.wikipedia.org/w/api.php', params=params)
+    data = resp.json()
+    pages = data['query']['pages']
+    coords = []
+    for page in pages.values():
+      if 'coordinates' in page:
+        for cs in page['coordinates']:
+          coords.append((cs['lat'], cs['lon']))
+    if len(coords) == 0:
+      return False
+    (gold_lat, gold_lon) = self._gold_coords(gold)
+    for lat, lon in coords:
+      dist = GeoUtil.distance(lat, lon, gold_lat, gold_lon)
+      if dist < self.tolerance:
+        return True
+    return False
 
   def _global_res_in_tolerance(self, a, gold):
     if gold.data == a.data:

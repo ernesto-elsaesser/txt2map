@@ -1,0 +1,1 @@
+{"ner": [[0, "Che Guevara", "per", "gcnl"], [30, "Cuban", "loc", "gcnl"], [44, "Santa Clara", "loc", "gcnl"]], "rec": [[30, "Cuban", "ner", "Cuban"], [44, "Santa Clara", "ner", "Santa Clara"]], "res": [[30, "Cuban", "wik", "https://en.wikipedia.org/wiki/Cuba"]]}

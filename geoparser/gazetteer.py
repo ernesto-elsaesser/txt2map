@@ -15,6 +15,7 @@ class Gazetteer:
     self.continents = self._load('continents')
     self.continent_map = self._load('continent_map')
     self.country_boxes = self._load('country_boxes')
+    self.demonyms = self._load('demonyms')
 
     self.lookup_tree = {}
     for toponym in self.defaults:
@@ -135,13 +136,10 @@ class Gazetteer:
 
     defaults = {}
 
-    demonyms = self._load('demonyms')
-
-    continents = self._load('continents')
-    for toponym in continents:
-      defaults[toponym] = continents[toponym]
-      for demonym in demonyms[toponym]:
-        defaults[demonym] = continents[toponym]
+    for toponym in self.continents:
+      defaults[toponym] = self.continents[toponym]
+      for demonym in self.demonyms[toponym]:
+        defaults[demonym] = self.continents[toponym]
 
     oceans = self._load('oceans')
     for toponym in oceans:
@@ -150,8 +148,8 @@ class Gazetteer:
     countries = self._load('countries')
     for toponym in countries:
       defaults[toponym] = countries[toponym]
-      if toponym in demonyms:
-        for demonym in demonyms[toponym]:
+      if toponym in self.demonyms:
+        for demonym in self.demonyms[toponym]:
           defaults[demonym] = countries[toponym]
 
     class_order = Config.gazetteer_class_prio
@@ -160,8 +158,8 @@ class Gazetteer:
       for toponym in entries:
         if toponym not in defaults:
           defaults[toponym] = entries[toponym]
-          if toponym in demonyms:
-            for demonym in demonyms[toponym]:
+          if toponym in self.demonyms:
+            for demonym in self.demonyms[toponym]:
               defaults[demonym] = entries[toponym]
 
     # common abbreviations

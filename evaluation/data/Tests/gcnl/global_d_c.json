@@ -1,0 +1,1 @@
+{"ner": [[27, "Washington, D.C.", "loc", "gcnl"], [19, "U.S.", "loc", "gcnl"]], "rec": [[27, "Washington, D.C.", "ner", "Washington, D.C."], [19, "U.S.", "ner", "U.S."]], "res": [[27, "Washington, D.C.", "wik", "https://en.wikipedia.org/wiki/Washington,_D.C."], [19, "U.S.", "wik", "https://en.wikipedia.org/wiki/United_States"]]}
