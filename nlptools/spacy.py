@@ -3,6 +3,9 @@ import spacy
 
 class SpacyNLP:
 
+  label_map_lg = {'GPE': 'loc', 'LOC': 'loc', 'FAC': 'fac', 'ORG': 'org', 'PERSON': 'per'}
+  label_map_sm = {'GPE': 'loc', 'LOC': 'loc'}
+
   def __init__(self):
     self.nlp_sm = spacy.load('en_core_web_sm', disable=['parser'])
     self.nlp_lg = spacy.load('en_core_web_lg', disable=['parser'])
@@ -52,13 +55,15 @@ class SpacyNLP:
     return name
 
   def _annotate_all_occurences(self, doc, name, label, large_model):
-    if label in ['GPE','LOC']:
-      group = 'loc'
-    elif label == 'PERSON' and large_model: # lg is more reliable
-      group = 'per'
+    group = 'msc'
+    if large_model:
+      data = 'spacy_lg'
+      label_map = self.label_map_lg
     else:
-      group = 'ent'
-    data = 'en_core_web_lg' if large_model else 'en_core_web_sm'
+      data = 'spacy_sm'
+      label_map = self.label_map_sm
+    for label in label_map:
+      group = label_map[label]
     escaped_name = re.escape(name)
     matches = re.finditer(escaped_name, doc.text())
     for match in matches:

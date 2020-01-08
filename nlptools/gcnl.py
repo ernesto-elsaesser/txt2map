@@ -22,8 +22,10 @@ class GoogleCloudNL:
         ner_group = 'loc'
       elif entity.type == enums.Entity.Type.PERSON:
         ner_group = 'per'
+      elif entity.type == enums.Entity.Type.ORGANIZATION:
+        ner_group = 'org'
       else:
-        ner_group = 'ent'
+        ner_group = 'msc'
       name = entity.name
       wiki_url = None
       if 'wikipedia_url' in entity.metadata:

@@ -1,14 +1,14 @@
-import requests
-from geoparser import GeoNamesCache, OSMLoader, GeoUtil
+from geoparser import GeoNamesCache, OSMLoader, GeoUtil, WikiUtil
 from .store import DocumentStore
 
 
 class CorpusEvaluator:
 
-  def __init__(self, corpus_name, strict, tolerance_km):
+  def __init__(self, corpus_name, strict, tolerance_global=161, tolerance_local=1):
     self.corpus_name = corpus_name
     self.strict = strict
-    self.tolerance = tolerance_km
+    self.tol_global = tolerance_global
+    self.tol_local = tolerance_local
     self.gns_cache = GeoNamesCache()
 
   def evaluate_all(self, pipeline_id, target_pipeline_id='gold'):
@@ -75,28 +75,13 @@ class CorpusEvaluator:
     return result
 
   def _wiki_res_in_tolerance(self, a, gold):
-    url = a.data
-    title = url.split('/')[-1]
-    params = {
-        "action": "query",
-        "format": "json",
-        "titles": title,
-        "prop": "coordinates"
-    }
-    resp = requests.post(url='https://en.wikipedia.org/w/api.php', params=params)
-    data = resp.json()
-    pages = data['query']['pages']
-    coords = []
-    for page in pages.values():
-      if 'coordinates' in page:
-        for cs in page['coordinates']:
-          coords.append((cs['lat'], cs['lon']))
+    coords = WikiUtil.coordinates_for_url(a.data)
     if len(coords) == 0:
       return False
     (gold_lat, gold_lon) = self._gold_coords(gold)
     for lat, lon in coords:
       dist = GeoUtil.distance(lat, lon, gold_lat, gold_lon)
-      if dist < self.tolerance:
+      if dist < self.tol_global:
         return True
     return False
 
@@ -106,18 +91,18 @@ class CorpusEvaluator:
     g = self.gns_cache.get(a.data)
     (gold_lat, gold_lon) = self._gold_coords(gold)
     dist = GeoUtil.distance(g.lat, g.lon, gold_lat, gold_lon)
-    return dist < self.tolerance
+    return dist < self.tol_global
 
   def _local_res_in_tolerance(self, a, gold):
     elements = OSMLoader.load_geometries(a.data)
     (gold_lat, gold_lon) = self._gold_coords(gold)
     dist = GeoUtil.osm_element_distance(gold_lat, gold_lon, elements[0])
-    if dist < self.tolerance:
+    if dist < self.tol_local:
       return True
-    elif dist < self.tolerance + 30.0:  # max dist between two elements
+    elif dist < self.tol_local + 30.0:  # max dist between two elements
       for e in elements[1:]:
         d = GeoUtil.osm_element_distance(gold_lat, gold_lon, e)
-        if d < dist:
+        if d < self.tol_local:
           return True
     return False
 
@@ -140,8 +125,7 @@ class CorpusEvaluator:
       acc = m.accurate / m.ann_count
       acc_r = m.accurate / m.true_pos
 
-    am = f'Acc@{self.tolerance:.1f}km'
-    print(f'P: {p:.3f} R: {r:.3f} F1: {f1:.3f} {am}: {acc:.3f} ({acc_r:.3f} for resol only)')
+    print(f'P: {p:.3f} R: {r:.3f} F1: {f1:.3f} Acc@Xkm: {acc:.3f} ({acc_r:.3f} for resol only)')
 
 
 class Measurement:

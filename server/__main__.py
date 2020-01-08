@@ -1,4 +1,5 @@
 import sys
+import os
 from flask import Flask, request
 from .ui import UIServer
 from .nlp import NLPServer
@@ -7,10 +8,16 @@ if sys.argv[1] == 'ui':
   print('Starting txt2map UI server ...')
   server = UIServer()
   port = 80
-elif sys.argv[1] == 'nlp':
-  print('Starting txt2map NLP server (this may take a while) ...')
+elif sys.argv[1] == 'spacy':
+  print('Starting spaCy NLP server (this may take a while) ...')
   server = NLPServer()
-  port = 81
+  port = 8001
+elif sys.argv[1] == 'cogcomp':
+  print('Starting CogComp NLP server (this may take a while) ...')
+  t2m_dir = os.path.dirname(__file__)[:-6]
+  cc_dir = t2m_dir + 'nlptools/cogcomp'
+  os.system(f'cd "{cc_dir}"; java -Xmx4g -classpath ".:lib/*:dist/*" CogCompServer 8002')
+  exit(0)
 else:
   print('Invalid argument')
   exit(0)

@@ -1,5 +1,7 @@
 import geojson_utils
 import math
+import re
+import requests
 
 class GeoUtil:
 
@@ -76,3 +78,41 @@ class GeoUtil:
       if len(distances) == 0:
         return float('inf')
       return min(distances)
+
+
+class WikiUtil:
+
+  patterns = [
+      ('<span property="geo:lat" xmlns:geo="http:\/\/www\.w3\.org\/2003\/01\/geo\/wgs84_pos#">([0-9\.\-]+)</span>',
+       '<span property="geo:long" xmlns:geo="http:\/\/www\.w3\.org\/2003\/01\/geo\/wgs84_pos#">([0-9\.\-]+)</span>'),
+      ('<span property="dbp:latitude">([0-9\.\-]+)<\/span>',
+       '<span property="dbp:longitude">([0-9\.\-]+)<\/span>')
+  ]
+
+  @staticmethod
+  def coordinates_for_url(url):
+    dbpedia_url = url.replace('https://en.wikipedia.org/wiki',
+                         'http://dbpedia.org/page')
+    resp = requests.get(url=dbpedia_url)
+    html = resp.text
+    coords = []
+
+    for lat_pat, lon_pat in WikiUtil.patterns:
+      lat_matches = list(re.findall(lat_pat, html))
+      lon_matches = list(re.findall(lon_pat, html))
+      num = len(lat_matches)
+      assert num == len(lon_matches)
+      if num == 1:
+        lat = float(lat_matches[0])
+        lon = float(lon_matches[0])
+        coords.append((lat, lon))
+      elif num == 2:
+        min_lat = float(lat_matches[0])
+        min_lon = float(lon_matches[0])
+        max_lat = float(lat_matches[1])
+        max_lon = float(lon_matches[1])
+        lat = (min_lat + max_lat) / 2
+        lon = (min_lon + max_lon) / 2
+        coords.append((lat, lon))
+
+    return coords
