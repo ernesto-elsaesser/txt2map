@@ -1,1 +1,1 @@
-{}
+{"ner": [[7, "Mexican", "msc", "ill_ner_conll"], [60, "Tijuana", "loc", "ill_ner_conll"], [85, "US", "loc", "ill_ner_conll"], [338, "TIJUANA & SAN", "org", "ill_ner_conll"], [382, "Mexican", "msc", "ill_ner_conll"], [461, "Tijuana", "loc", "ill_ner_conll"], [598, "Tijuana", "loc", "ill_ner_conll"], [615, "Baja California", "loc", "ill_ner_conll"], [660, "Roberto Ramirez Parra", "per", "ill_ner_conll"], [699, "National Water Commission.", "org", "ill_ner_conll"], [888, "Imperial Beach", "loc", "ill_ner_conll"], [1039, "Water Industry News", "org", "ill_ner_conll"]]}

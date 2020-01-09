@@ -22,7 +22,7 @@ public class CogCompServer {
       return;
     }
 
-    Parameters.forceNewSentenceOnLineBreaks = true;
+    ParametersForLbjCode.currentParameters.forceNewSentenceOnLineBreaks = true;
     NETagPlain.init();
 
     System.out.println("Starting server on port " + args[0]);
@@ -42,15 +42,22 @@ public class CogCompServer {
 
       InputStream is = t.getRequestBody();
       String text = IOUtils.toString(is, "UTF-8");
-      String response = "";
 
+      String tagged_text = "";
       try {
-        response = NETagPlain.tagLine(text);
-      } catch(Exception e) {} 
+        tagged_text = NETagPlain.tagLine(text);
+        String in_len = Integer.toString(text.length());
+        String out_len = Integer.toString(tagged_text.length());
+        System.out.println("TAGGED " + in_len + " > " + out_len);
+      } catch(Exception e) {
+        e.printStackTrace();
+        System.out.println(e);
+      } 
 
-      t.sendResponseHeaders(200, response.length());
+      byte[] response = tagged_text.getBytes();
+      t.sendResponseHeaders(200, response.length);
       OutputStream os = t.getResponseBody();
-      os.write(response.getBytes());
+      os.write(response);
       os.close();
     }
   }

@@ -1,1 +1,1 @@
-{}
+{"ner": [[156, "Food Hygiene Rating", "org", "ill_ner_conll"], [197, "Food Standards Agency", "org", "ill_ner_conll"], [220, "FSA", "org", "ill_ner_conll"], [271, "UK", "loc", "ill_ner_conll"], [465, "Cambridge", "loc", "ill_ner_conll"], [713, "UK", "loc", "ill_ner_conll"], [841, "Environmental Food Safety Officer", "org", "ill_ner_conll"], [947, "Environmental Food Safety Officer", "org", "ill_ner_conll"], [983, "Image: Getty", "per", "ill_ner_conll"], [2054, "FSA", "org", "ill_ner_conll"], [2270, "Daily Newsletter", "org", "ill_ner_conll"]]}

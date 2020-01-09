@@ -1,1 +1,1 @@
-{}
+{"ner": [[7, "Kim Kardashian West", "per", "ill_ner_conll"], [65, "LINK:", "msc", "ill_ner_conll"], [153, "LOS ANGELES", "org", "ill_ner_conll"], [166, "AP", "org", "ill_ner_conll"], [172, "Kim Kardashian West", "per", "ill_ner_conll"], [278, "Kanye West", "per", "ill_ner_conll"], [300, "North", "org", "ill_ner_conll"], [310, "Chicago", "loc", "ill_ner_conll"], [327, "Saint", "per", "ill_ner_conll"], [366, "Easter", "msc", "ill_ner_conll"], [374, "Kardashian", "per", "ill_ner_conll"], [658, "Chicago", "loc", "ill_ner_conll"], [708, "Saint", "per", "ill_ner_conll"]]}

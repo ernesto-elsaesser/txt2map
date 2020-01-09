@@ -11,9 +11,9 @@ rec_eval = Evaluator(tolerance_global=161, tolerance_local=161, rec_only=True)
 res_eval = Evaluator(tolerance_global=161, tolerance_local=161)
 
 #corpus.annotate_all(spacy)
-#corpus.annotate_all(cogcomp)
+corpus.annotate_all(cogcomp)
 
-corpus.annotate_one(cogcomp, '0')
+#corpus.annotate_one(cogcomp, '0')
 
 #corpus.annotate_all(gcnl)
 #corpus.annotate_all(t2m)

@@ -1,1 +1,1 @@
-{}
+{"ner": [[0, "TITLE: Man", "org", "ill_ner_conll"], [61, "LINK:", "msc", "ill_ner_conll"], [302, "Colin Rockett", "per", "ill_ner_conll"], [343, "Belfast Magistrate\u2019s Court", "org", "ill_ner_conll"], [497, "Shankill", "loc", "ill_ner_conll"], [529, "Ainsworth Parade", "loc", "ill_ner_conll"], [839, "McCandless Street", "org", "ill_ner_conll"], [885, "PSNI", "org", "ill_ner_conll"], [936, "Rockett", "per", "ill_ner_conll"], [1002, "Rockett", "per", "ill_ner_conll"], [1059, "Liam McStay", "per", "ill_ner_conll"]]}

@@ -1,1 +1,1 @@
-{}
+{"ner": [[0, "TITLE: Md.", "org", "ill_ner_conll"], [102, "LINK:", "msc", "ill_ner_conll"], [235, "SEVERN", "loc", "ill_ner_conll"], [243, "Md", "loc", "ill_ner_conll"], [248, "ABC7", "msc", "ill_ner_conll"], [278, "Md.", "loc", "ill_ner_conll"], [410, "Maryland State Police", "org", "ill_ner_conll"], [573, "Glenn Ranger", "per", "ill_ner_conll"], [1015, "Anne Arundel", "msc", "ill_ner_conll"], [1079, "Maryland State Police", "org", "ill_ner_conll"]]}
