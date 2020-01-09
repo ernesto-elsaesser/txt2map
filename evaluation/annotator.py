@@ -1,6 +1,6 @@
 import requests
 from .store import DocumentStore
-from geoparser import Geoparser, Config
+from geoparser import GazetteerRecognizer, Geoparser, Config
 from nlptools import SpacyNLP, SpacyClient, GoogleCloudNL, CogCompClient
 
 
@@ -45,22 +45,34 @@ class GCNLAnnotator:
     return doc
 
 
-class T2MAnnotator:
+class GazetteerAnnotator:
 
-  def __init__(self, ner_key, keep_defaults=False):
+  def __init__(self, ner_key):
     self.ner_key = ner_key
-    self.keep_defaults = keep_defaults
-    key_suffix = '-def' if keep_defaults else ''
-    self.onto_sim_rounds = 0 if keep_defaults else 5
-    self.key = f'{ner_key}-txt2map{key_suffix}'
-    self.geoparser = Geoparser()
+    self.key = f'{ner_key}-gaz'
+    self.gazrec = GazetteerRecognizer()
 
   def annotate(self, corpus_name, doc_id):
     doc = DocumentStore.load_doc(corpus_name, doc_id, self.ner_key)
-    doc.delete_layer('rec')
-    doc.delete_layer('res')
+    self.gazrec.annotate(doc)
+    return doc
 
-    if self.ner_key != 'spacy':
+
+class T2MAnnotator:
+
+  def __init__(self, ann_key, keep_defaults=False):
+    self.ann_key = ann_key
+    self.keep_defaults = keep_defaults
+    key_suffix = '-def' if keep_defaults else ''
+    self.onto_sim_rounds = 0 if keep_defaults else 5
+    self.key = f'{ann_key}-txt2map{key_suffix}'
+    self.geoparser = Geoparser()
+
+  def annotate(self, corpus_name, doc_id):
+    doc = DocumentStore.load_doc(corpus_name, doc_id, self.ann_key)
+    doc.delete_layer('res') # GCNL adds res layer
+
+    if 'spacy' not in self.ann_key:
       spacy_doc = DocumentStore.load_doc(corpus_name, doc_id, 'spacy')
       spacy_anns = spacy_doc.get_annotation_json()
       doc.add_annotation_json(spacy_anns, 'ntk')

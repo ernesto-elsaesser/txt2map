@@ -34,6 +34,8 @@ class CogCompClient:
           ent_phrase = ent_phrase[4:]
           ent_pos += 4
         doc.annotate('ner', ent_pos, ent_phrase, ent_group, 'ill_ner_conll')
+        if ent_group == 'loc':
+          doc.annotate('rec', ent_pos, ent_phrase, 'ner', ent_phrase)
         ent_pos = ent_group = ent_phrase = None
         i += 1
       elif oc == '\n' and c != '\n':

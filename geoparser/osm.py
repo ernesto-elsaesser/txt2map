@@ -6,13 +6,14 @@ import io
 import sqlite3
 from .database import Database
 from .util import GeoUtil
+from .matcher import NameMatcher
 from .config import Config
 
 
 class OSMLoader:
 
-  def __init__(self, matcher):
-    self.matcher = matcher
+  def __init__(self):
+    self.matcher = NameMatcher()
 
   def annotate_local_names(self, geonames, doc, group):
     db = self._load_database(geonames)

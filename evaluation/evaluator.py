@@ -2,9 +2,9 @@ from geoparser import GeoNamesCache, OSMLoader, GeoUtil, WikiUtil
 
 class Evaluator:
 
-  def __init__(self, strict=True, rec_only=False, tolerance_global=161, tolerance_local=1):
+  def __init__(self, strict=True, resol=True, tolerance_global=161, tolerance_local=1):
     self.strict = strict
-    self.rec_only = rec_only
+    self.resol = resol
     self.tol_global = tolerance_global
     self.tol_local = tolerance_local
     self.total = Measurement()
@@ -20,7 +20,10 @@ class Evaluator:
       if gold.pos in rec_anns:
         rec_ann = rec_anns[gold.pos]
         if self.strict:
-          recognized = rec_ann.phrase == gold.phrase
+          if rec_ann.phrase == gold.phrase:
+            recognized = True
+          elif rec_ann.phrase + '.' == gold.phrase:
+            recognized = True
         else:
           recognized = True
 
@@ -32,24 +35,22 @@ class Evaluator:
         print(f'NOT RECOGNIZED: {gold}')
         continue
 
-      if self.rec_only:
-        return
-
-      resolved_within = False
-      if gold.pos in res_anns:
-        res_ann = res_anns[gold.pos]
-        
-        if res_ann.group == 'wik': # Wikipedia URL
-          resolved_within = self._wiki_res_in_tolerance(res_ann, gold)
-        elif res_ann.group.startswith('cl'):  # OpenStreetMap reference
-          resolved_within = self._local_res_in_tolerance(res_ann, gold)
-        else:  # GeoNames identifier
-          resolved_within = self._global_res_in_tolerance(res_ann, gold)
+      if self.resol:
+        resolved_within = False
+        if gold.pos in res_anns:
+          res_ann = res_anns[gold.pos]
           
-      if resolved_within:
-        result.accurate += 1
-      else:
-        print(f'NOT RESOLVED: {gold}')
+          if res_ann.group == 'wik': # Wikipedia URL
+            resolved_within = self._wiki_res_in_tolerance(res_ann, gold)
+          elif res_ann.group.startswith('cl'):  # OpenStreetMap reference
+            resolved_within = self._local_res_in_tolerance(res_ann, gold)
+          else:  # GeoNames identifier
+            resolved_within = self._global_res_in_tolerance(res_ann, gold)
+            
+        if resolved_within:
+          result.accurate += 1
+        else:
+          print(f'NOT RESOLVED: {gold}')
 
     self.total.add(result)
     return result
@@ -70,7 +71,7 @@ class Evaluator:
       acc_r = m.accurate / m.true_pos
 
     result = f'P: {p: .3f} R: {r: .3f} F1: {f1: .3f}'
-    if not self.rec_only:
+    if self.resol:
       tg = self.tol_global
       tl = self.tol_local
       result += f' Acc({tg}|{tl}): {acc:.3f} ({acc_r:.3f} resol only)'

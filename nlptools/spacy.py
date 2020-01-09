@@ -1,4 +1,5 @@
 import re
+import requests
 import spacy
 
 class SpacyNLP:
@@ -67,7 +68,10 @@ class SpacyNLP:
     matches = re.finditer(escaped_name, doc.text())
     phrase = name.rstrip('.')
     for match in matches:
-      doc.annotate('ner', match.start(), phrase, group, data)
+      pos = match.start()
+      doc.annotate('ner', pos, phrase, group, data)
+      if group == 'loc':
+        doc.annotate('rec', pos, phrase, 'ner', phrase)
 
 
 class SpacyClient:

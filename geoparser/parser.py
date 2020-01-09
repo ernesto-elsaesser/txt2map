@@ -1,7 +1,7 @@
 import os
 from .matcher import NameMatcher
 from .gazetteer import Gazetteer
-from .recognizer import HybridRecognizer
+from .recognizer import GazetteerRecognizer
 from .resolver import GeoNamesResolver
 from .osm import OSMLoader
 from .config import Config
@@ -14,27 +14,19 @@ class Geoparser:
     if not os.path.exists(cache_dir):
       os.mkdir(cache_dir)
 
-    matcher = NameMatcher()
     self.gaz = Gazetteer()
-    self.recognizer = HybridRecognizer(self.gaz, matcher)
     self.resolver = GeoNamesResolver(self.gaz)
-    self.osm_loader = OSMLoader(matcher)
+    self.osm_loader = OSMLoader()
 
-  # expects a Document object with 'ner' and 'anc' annotations
   def annotate(self, doc):
-
-    self.recognizer.annotate(doc)
     self.resolver.annotate(doc)
-
     clusters = self.resolver.annotate_clusters(doc)
     for cluster_key, geonames in clusters.items():
       if len(geonames) > 0:
         self.osm_loader.annotate_local_names(geonames, doc, cluster_key)
+    self._annotate_con(doc, clusters)
 
-    self._annotate_confidences(doc, clusters)
-    return doc
-
-  def _annotate_confidences(self, doc, clusters):
+  def _annotate_con(self, doc, clusters):
     clust_count = len(clusters)
 
     if clust_count == 0:

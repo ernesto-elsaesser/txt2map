@@ -1,16 +1,14 @@
 from .document import Document
+from .matcher import NameMatcher
 from .gazetteer import Gazetteer
 
-class HybridRecognizer:
+class GazetteerRecognizer:
 
-  def __init__(self, gazetteer, matcher):
-    self.gaz = gazetteer
-    self.matcher = matcher
+  def __init__(self):
+    self.gaz = Gazetteer()
+    self.matcher = NameMatcher()
 
   def annotate(self, doc):
-
-    for a in doc.get('ner', 'loc'):
-      doc.annotate('rec', a.pos, a.phrase, 'ner', a.phrase)
 
     person_indicies = doc.annotations_by_index('ner', 'per')
 
