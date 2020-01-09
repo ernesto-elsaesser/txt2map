@@ -15,7 +15,7 @@ cogcomp_geo = CogCompT2MPipeline()
 #annotator.annotate_all(cogcomp)
 #annotator.annotate_all(cogcomp_geo)
 
-#annotator.annotate_one(cogcomp_geo, 'global_abbrevs')
+annotator.annotate_one(cogcomp_geo, 'global_onto_sim')
 
 #evaluator.evaluate_all(spacy_geo.id_)
 #evaluator.evaluate_all(gcnl.id_)

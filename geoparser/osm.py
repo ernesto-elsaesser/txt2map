@@ -27,7 +27,7 @@ class OSMLoader:
         return False
 
       osm_refs = db.get_elements(c.db_name)
-      doc.annotate('res', a.pos, a.phrase, group, osm_refs)
+      doc.annotate('res', a.pos, c.match, group, osm_refs)
       return True
 
     self.matcher.recognize_names(doc, group, lookup_prefix, validate_match)

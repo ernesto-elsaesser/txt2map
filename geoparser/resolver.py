@@ -63,14 +63,23 @@ class GeoNamesResolver:
     if toponym in self.candidates:
       return self.candidates[toponym]
     results = self.gns_cache.search(toponym)
-    results = [g for g in results if g.fcl in Config.resol_considered_classes]
-    trimmed = toponym.strip(' .') # handle abbreviation
-    cs = [g for g in results if trimmed in g.name or g.name in toponym]
-    if len(cs) == 0:
-      cs = results
-    cs = sorted(cs, key=lambda g: -g.population)
-    self.candidates[toponym] = cs
-    return cs
+    name = toponym.strip(' .,') # handle abbreviations
+    parts = len(name.split(' '))
+    candidates = []
+    for g in results:
+      if name not in g.name and name not in g.toponym_name:
+        continue
+      g_parts = len(g.name.split(' '))
+      if g_parts > parts and g.population == 0:
+        continue
+      candidates.append(g)
+    if len(candidates) == 0 and len(results) == 1 and results[0].population > 0:
+      only = results[0]
+      candidates.append(only)
+      print(f'Chose single non-matching cadidate for "{toponym}": {only}')
+    candidates = sorted(candidates, key=lambda g: -g.population)
+    self.candidates[toponym] = candidates
+    return candidates
 
   def _resolve_new_ancestors(self, geoname, doc):
     hierarchy = self.gns_cache.get_hierarchy(geoname.id)
@@ -139,9 +148,6 @@ class GeoNamesResolver:
       node = root.get(key_path, False)
 
       if node == None or toponym in node.geonames:
-        continue
-
-      if len(g.name) > len(toponym) and g.population == 0:
         continue
 
       hierarchy = self.gns_cache.get_hierarchy(g.id)
