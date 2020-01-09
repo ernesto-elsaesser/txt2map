@@ -24,8 +24,10 @@ spacy_only = Pipeline.standard(global_resol=False, local_resol=False)
 cc_only = Pipeline.standard(use_cogcomp=True, ner_port=8002, global_resol=False, local_resol=False)
 
 #imp_tests.import_documents(tests)
-#tests.bulk_exectue(spacy_full, evaluator=ev)
-gwn.bulk_exectue(cc_only, evaluator=ev_rec)
+tests.bulk_process(cc_full, evaluator=ev)
+#gwn.bulk_process(cc_only, saved_steps=['tok', 'cogcomp', 'loc'], evaluator=ev_rec)
+#gwn.bulk_process(spacy_only, saved_steps=['spacy', 'loc'], evaluator=ev_rec)
+#gwn.process(cc_only, '160')
 
 '''
 tests.annotate_all(cogcomp)
