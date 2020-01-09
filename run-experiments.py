@@ -53,8 +53,8 @@ gcnl_nogaz = Pipeline.gcnl(use_gazetteer=False, global_resol=False, local_resol=
 #gwn.bulk_process(cc, saved_steps=['tok', 'cogcomp', 'loc', 'gaz', 'geores', 'clust'], evaluator=ev_161)
 
 #gwn.bulk_process(gcnl_nogaz, evaluator=ev_rec)
-#gwn.bulk_process(gcnl_nores, saved_steps=['tok', 'cogcomp', 'loc', 'gaz'], evaluator=ev_rec)
-#gwn.bulk_process(gcnl_noclust, saved_steps=['tok', 'cogcomp', 'loc', 'gaz', 'geores'], evaluator=ev_161)
-#gwn.bulk_process(gcnl, saved_steps=['tok', 'cogcomp', 'loc', 'gaz', 'geores', 'clust'], evaluator=ev_161)
+#gwn.bulk_process(gcnl_nores, saved_steps=['tok', 'gcnl', 'loc'], evaluator=ev_rec)
+#gwn.bulk_process(gcnl_noclust, saved_steps=['tok', 'gcnl', 'loc', 'gaz'], evaluator=ev_161)
+#gwn.bulk_process(gcnl, saved_steps=['tok', 'gcnl', 'loc', 'gaz', 'geores', 'clust'], evaluator=ev_161)
 
-gwn.process(gcnl_nogaz, '12')
+#gwn.process(gcnl_nogaz, '12')
