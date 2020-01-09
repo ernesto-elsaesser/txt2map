@@ -20,6 +20,7 @@ ev = Evaluator()
 # pipelines
 std = Pipeline.standard()
 
+#imp_tests.import_documents(tests)
 tests.bulk_exectue(std, evaluator=ev)
 
 '''

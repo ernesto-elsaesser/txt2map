@@ -44,7 +44,7 @@
       },
       "global_demonyms": {
           "text": "Che Guevara is burried in the Cuban city of Santa Clara.",
-          "anns": [["Santa Clara", 3537906], ["Santa Clara", 3537906]]
+          "anns": [["Cuban", 3562981], ["Santa Clara", 3537906]]
       },
       "global_demonyms_hard": {
           "text": "The Kurdish fighters keep up the resistance.",
@@ -57,7 +57,7 @@
       },
       "ancestors": {
           "text": "Avoyelles task force arrests 14. They live in Cottonport, US.",
-          "anns": [["Avoyelles", 4315243], ["Cottonport", 4320874]]
+          "anns": [["Avoyelles", 4315243], ["Cottonport", 4320874], ["US", 6252001]]
       },
       "embedded": {
           "text": "He is from South Africa.",
