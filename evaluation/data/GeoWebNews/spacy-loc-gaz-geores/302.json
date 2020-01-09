@@ -1,0 +1,1 @@
+{"rec": [[779, "American", "ner", "American"], [1191, "Para\u00f1aque City", "ner", "Para\u00f1aque City"], [666, "Asia", "gaz", "Asia"], [1410, "Muntinlupa", "gaz", "Muntinlupa"]], "res": [[779, "American", "top", 6252001], [666, "Asia", "top", 6255147], [1410, "Muntinlupa", "top", 1699077]]}

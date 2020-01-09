@@ -19,24 +19,21 @@ ev = Evaluator()
 
 # pipelines
 spacy_full = Pipeline.standard()
-cc_full = Pipeline.standard(use_cogcomp=True, ner_port=8002)
+spacy_glob = Pipeline.standard(local_resol=False)
 spacy_only = Pipeline.standard(global_resol=False, local_resol=False)
+cc_full = Pipeline.standard(use_cogcomp=True, ner_port=8002)
+cc_glob = Pipeline.standard(use_cogcomp=True, ner_port=8002, local_resol=False)
 cc_only = Pipeline.standard(use_cogcomp=True, ner_port=8002, global_resol=False, local_resol=False)
 
+
 #imp_tests.import_documents(tests)
-tests.bulk_process(cc_full, evaluator=ev)
+#tests.bulk_process(cc_full, evaluator=ev)
 #gwn.bulk_process(cc_only, saved_steps=['tok', 'cogcomp', 'loc'], evaluator=ev_rec)
 #gwn.bulk_process(spacy_only, saved_steps=['spacy', 'loc'], evaluator=ev_rec)
+#gwn.bulk_process(spacy_glob, saved_steps=['spacy', 'loc', 'gaz', 'geores'], evaluator=ev)
+#gwn.bulk_process(cc_glob, saved_steps=['tok', 'cogcomp', 'loc', 'gaz'], evaluator=ev)
+#gwn.bulk_process(spacy_full, saved_steps=['spacy', 'loc', 'gaz', 'geores'], evaluator=ev)
+gwn.bulk_process(cc_full, saved_steps=['tok', 'cogcomp', 'loc', 'gaz', 'geores'], evaluator=ev)
+
+
 #gwn.process(cc_only, '160')
-
-'''
-tests.annotate_all(cogcomp)
-tests.annotate_all(cogcomp_gaz)
-tests.annotate_all(cogcomp_t2m)
-tests.evaluate_all(cogcomp_t2m, ev_res)
-
-tests.annotate_all(spacy)
-tests.annotate_all(spacy_gaz)
-tests.annotate_all(spacy_t2m)
-tests.evaluate_all(spacy_t2m, ev_rec)
-'''

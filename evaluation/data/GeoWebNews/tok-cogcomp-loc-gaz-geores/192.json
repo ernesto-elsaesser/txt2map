@@ -1,0 +1,1 @@
+{"rec": [[1094, "Yuba City", "ner", "Yuba City"], [1829, "Sacramento", "ner", "Sacramento"], [2099, "Tyler", "gaz", "Tyler"], [2207, "Tyler", "gaz", "Tyler"], [2598, "Tyler", "gaz", "Tyler"]], "res": [[1094, "Yuba City", "api", 5411015], [1829, "Sacramento", "top", 5389489], [2099, "Tyler", "top", 4738214], [2207, "Tyler", "top", 4738214], [2598, "Tyler", "top", 4738214]]}

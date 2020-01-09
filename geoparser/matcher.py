@@ -136,10 +136,15 @@ class Completion:
         self.end = self.pos + len(self.match)
         return True
 
-    n = self.suffix[0].lower()
-    accepted = [n, unidecode(n)]
+    n = self.suffix[0]
+    nu = n.upper()
+    accepted = [n, nu]
+    asc = unidecode(n)
+    if len(asc) == 1:
+      accepted.append(asc)
+      accepted.append(asc.upper())
 
-    if char.lower() in accepted:
+    if char in accepted:
       self.suffix = self.suffix[1:]
       self.match += char
       return False

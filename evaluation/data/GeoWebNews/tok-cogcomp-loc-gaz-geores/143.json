@@ -1,0 +1,1 @@
+{"rec": [[516, "Holland", "ner", "Holland"], [155, "Cork", "gaz", "Cork"], [231, "Cork", "gaz", "Cork"], [747, "Cork city", "gaz", "Cork City"]], "res": [[516, "Holland", "top", 2750405], [155, "Cork", "top", 2965140], [231, "Cork", "top", 2965140], [747, "Cork city", "top", 7778678]]}
