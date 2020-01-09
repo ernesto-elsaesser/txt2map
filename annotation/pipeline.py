@@ -20,7 +20,7 @@ class Pipeline:
       step.annotate(doc)
 
   @staticmethod
-  def standard(use_cogcomp=False, ner_port=8001, global_resol=True, local_resol=True):
+  def standard(use_cogcomp=False, ner_port=8001, use_gazetteer=True, global_resol=True, local_resol=True):
     pipe = Pipeline()
     if use_cogcomp:
       pipe.add(SpacyTokenStep())
@@ -28,7 +28,8 @@ class Pipeline:
     else:
       pipe.add(SpacyServerStep(ner_port))
     pipe.add(LocationRecogStep())
-    pipe.add(GazetteerRecogStep())
+    if use_gazetteer:
+      pipe.add(GazetteerRecogStep())
     if global_resol:
       pipe.add(GeoNamesRecogResolStep())
       if local_resol:
