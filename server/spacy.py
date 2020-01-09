@@ -1,16 +1,15 @@
 import os
-from geoparser import Document
-from nlptools import SpacyNLP
+from annotation import Document, SpacyStep 
 
 class SpacyServer:
 
   def __init__(self):
-    self.nlp = SpacyNLP()
+    self.step = SpacyStep()
 
   def get(self):
-    return 'txt2map stand-alone NLP server'
+    return 'txt2map spaCy NLP server'
 
   def post(self, req_text):
     doc = Document(req_text)
-    self.nlp.annotate(doc)
-    return doc.get_annotation_json()
+    self.step.annotate(doc)
+    return doc.export_layers()

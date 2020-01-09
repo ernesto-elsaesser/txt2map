@@ -1,88 +1,133 @@
-from geoparser import GeoNamesCache, OSMLoader, GeoUtil, WikiUtil
+from geoparser import GeoNamesCache, OSMLoader, GeoUtil
 
 class Evaluator:
 
-  def __init__(self, strict=True, resol=True, tolerance_global=161, tolerance_local=1):
+  def __init__(self, strict=True, recog=True, resol=True, tolerance_global=161, tolerance_local=1):
     self.strict = strict
+    self.recog = recog
     self.resol = resol
     self.tol_global = tolerance_global
     self.tol_local = tolerance_local
-    self.total = Measurement()
     self.gns_cache = GeoNamesCache()
 
-  def evaluate(self, rec_anns, res_anns, gold_anns):
-    result = Measurement()
-    result.ann_count = len(gold_anns)
-    recognized_pos = []
+    self.gold_rec_count = 0
+    self.true_pos = 0
+    self.false_neg = 0
+    self.false_pos = 0
 
-    for gold in gold_anns:
-      recognized = False
-      if gold.pos in rec_anns:
-        rec_ann = rec_anns[gold.pos]
-        if self.strict:
-          if rec_ann.phrase == gold.phrase:
-            recognized = True
-          elif rec_ann.phrase + '.' == gold.phrase:
-            recognized = True
-        else:
-          recognized = True
+    self.gold_res_count = 0
+    self.accurate = 0
+    self.inaccurate = 0
 
-      if recognized:
-        result.true_pos += 1
-        recognized_pos.append(gold.pos)
-      else:
-        result.false_neg += 1
-        print(f'NOT RECOGNIZED: {gold}')
-        continue
-
-      if self.resol:
-        resolved_within = False
-        if gold.pos in res_anns:
-          res_ann = res_anns[gold.pos]
-          
-          if res_ann.group == 'wik': # Wikipedia URL
-            resolved_within = self._wiki_res_in_tolerance(res_ann, gold)
-          elif res_ann.group.startswith('cl'):  # OpenStreetMap reference
-            resolved_within = self._local_res_in_tolerance(res_ann, gold)
-          else:  # GeoNames identifier
-            resolved_within = self._global_res_in_tolerance(res_ann, gold)
-            
-        if resolved_within:
-          result.accurate += 1
-        else:
-          print(f'NOT RESOLVED: {gold}')
-
-    for rec_ann in rec_anns.values():
-      if rec_ann.pos in recognized_pos:
-        continue
-      result.false_pos += 1
-      print(f'WRONG RECOGNIZED: {rec_ann}')
-
-    self.total.add(result)
-    return result
-
-  def log_total(self):
-    self.log(self.total)
-
-  def log(self, m):
-    if m.ann_count == 0:
-      p = r = f1 = acc = acc_r = 1.0
-    elif m.true_pos == 0:
-      p = r = f1 = acc = acc_r = 0.0
-    else:
-      p = m.true_pos / (m.true_pos + m.false_pos)
-      r = m.true_pos / (m.true_pos + m.false_neg)
-      f1 = (2 * p * r) / (p + r)
-      acc = m.accurate / m.ann_count
-      acc_r = m.accurate / m.true_pos
-
-    result = f'P: {p: .3f} R: {r: .3f} F1: {f1: .3f}'
+  def evaluate(self, doc, gold_doc):
+    if self.recog:
+      self._evaluate_rec(doc, gold_doc)
     if self.resol:
+      self._evaluate_res(doc, gold_doc)
+
+  def _evaluate_rec(self, doc, gold_doc):
+    true_positives = []
+    false_positives = []
+    false_negatives = []
+
+    anns = doc.annotations_by_position('rec')
+    golds = gold_doc.get_all('rec')
+
+    for gold in golds:
+      recognized = False
+      if gold.pos in anns:
+        rec_ann = anns[gold.pos]
+        if not self.strict:
+          recognized = True
+        elif rec_ann.phrase == gold.phrase:
+          recognized = True
+        elif rec_ann.phrase + '.' == gold.phrase:
+          recognized = True
+          
+      if recognized:
+        true_positives.append(gold)
+      else:
+        false_negatives.append(gold)
+
+    correct_pos = [a.pos for a in true_positives]
+    for rec_ann in anns.values():
+      if rec_ann.pos not in correct_pos:
+        false_positives.append(rec_ann)
+
+    self.gold_rec_count += len(golds)
+    self.true_pos += len(true_positives)
+    self.false_pos += len(false_positives)
+    self.false_neg += len(false_negatives)
+
+    self._print_if_not_empty(false_positives, 'REC FALSE POS')
+    self._print_if_not_empty(false_negatives, 'REC FALSE NEG')
+
+  def _evaluate_res(self, doc, gold_doc):
+    accurates = []
+    inaccurates = []
+    missed = []
+
+    anns = doc.annotations_by_position('res')
+    golds = gold_doc.get_all('res')
+
+    for gold in golds:
+      if gold.pos in anns:
+        res_ann = anns[gold.pos]
+        resolved = False
+
+        if res_ann.group == 'wik':  # Wikipedia URL
+          resolved = self._wiki_res_in_tolerance(res_ann, gold)
+        elif res_ann.group.startswith('cl'):  # OpenStreetMap reference
+          resolved = self._local_res_in_tolerance(res_ann, gold)
+        else:  # GeoNames identifier
+          resolved = self._global_res_in_tolerance(res_ann, gold)
+            
+        if resolved:
+          accurates.append(gold)
+        else:
+          inaccurates.append(gold)
+
+      else:
+        missed.append(gold)
+
+    self.gold_res_count += len(golds)
+    self.inaccurate += len(inaccurates)
+    self.accurate += len(accurates)
+
+    self._print_if_not_empty(missed, 'RES MISSED')
+    self._print_if_not_empty(inaccurates, 'RES INACC')
+
+  def print_metrics(self):
+    if self.recog:
+      if self.gold_rec_count == 0:
+        p = r = f1 = 1.0
+      elif self.true_pos == 0:
+        p = r = f1 = 0.0
+      else:
+        p = self.true_pos / (self.true_pos + self.false_pos)
+        r = self.true_pos / (self.true_pos + self.false_neg)
+        f1 = (2 * p * r) / (p + r)
+      print(f'P: {p:.3f} R: {r:.3f} F1: {f1:.3f}')
+
+    if self.resol:
+      not_missed = self.accurate + self.inaccurate
+      if self.gold_res_count == 0:
+        acc = acc_r = 1.0
+      elif not_missed == 0:
+        acc = self.accurate / self.gold_res_count
+        acc_r = 0.0
+      else:
+        acc = self.accurate / self.gold_res_count
+        acc_r = self.accurate / (self.accurate + self.inaccurate)
       tg = self.tol_global
       tl = self.tol_local
-      result += f' Acc<{tg}/{tl}>: {acc:.3f} ({acc_r:.3f} resol only)'
+      print(f'Acc<{tg}/{tl}>: {acc:.3f} ({acc_r:.3f} of recognized)')
 
-    print(result)
+  def _print_if_not_empty(self, anns, msg):
+    if len(anns) == 0:
+      return
+    names = [a.phrase for a in anns]
+    print(f'{msg}: {names}')
 
   def _wiki_res_in_tolerance(self, a, gold):
     coords = WikiUtil.coordinates_for_url(a.data)
@@ -122,21 +167,3 @@ class Evaluator:
       return (g.lat, g.lon)
     else:
       return (gold.data[0], gold.data[1])
-
-
-
-class Measurement:
-
-  def __init__(self):
-    self.true_pos = 0
-    self.false_neg = 0
-    self.false_pos = 0
-    self.ann_count = 0
-    self.accurate = 0
-
-  def add(self, m):
-    self.true_pos += m.true_pos
-    self.false_neg += m.false_neg
-    self.false_pos += m.false_pos
-    self.ann_count += m.ann_count
-    self.accurate += m.accurate

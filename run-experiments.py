@@ -1,29 +1,33 @@
+from annotation import *
 from evaluation import *
 
-# annotators
-spacy = SpacyAnnotator(port=8001)
-gcnl = GCNLAnnotator()
-cogcomp = CogCompAnnotator(port=8002)
-spacy_gaz = GazetteerAnnotator('spacy')
-cogcomp_gaz = GazetteerAnnotator('cogcomp')
-spacy_t2m = T2MAnnotator('spacy')
-cogcomp_t2m = T2MAnnotator('cogcomp')
 
 # corpora
 tests = Corpus('Tests')
 gwn = Corpus('GeoWebNews')
+lgl = Corpus('LGL')
+
+# importers
+imp_tests = TestsImporter()
+imp_gwn = GeoWebNewsImporter()
+imp_lgl = LGLImporter()
 
 # evaluators
-ev_rec_161 = Evaluator(tolerance_local=161, resol=False)
-ev_res_161 = Evaluator(tolerance_local=161)
 ev_rec = Evaluator(resol=False)
-ev_res = Evaluator()
+ev_161 = Evaluator(tolerance_local=161)
+ev = Evaluator()
 
-#gwn.annotate_all(spacy)
-#gwn.annotate_all(spacy_gaz)
-gwn.evaluate_all(spacy_gaz, ev_rec)
+# pipelines
+std = Pipeline.standard()
+
+tests.bulk_exectue(std, evaluator=ev)
 
 '''
+tests.annotate_all(cogcomp)
+tests.annotate_all(cogcomp_gaz)
+tests.annotate_all(cogcomp_t2m)
+tests.evaluate_all(cogcomp_t2m, ev_res)
+
 tests.annotate_all(spacy)
 tests.annotate_all(spacy_gaz)
 tests.annotate_all(spacy_t2m)

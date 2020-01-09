@@ -1,26 +1,23 @@
-import os
 import re
-import json
 import pylev
-from .document import Document
-from .geonames import GeoNamesCache, GeoNamesAPI
+from .geonames import GeoNamesCache
 from .gazetteer import Gazetteer
+from .tree import GeoNamesTree
 from .config import Config
 
 
 class GeoNamesResolver:
 
-  def __init__(self):
+  def __init__(self, keep_defaults=False):
+    self.keep_defaults = keep_defaults
     self.gns_cache = GeoNamesCache()
     self.defaults = Gazetteer.defaults()
-    self.continent_map = Gazetteer.continent_map()
-    self.country_boxes = Gazetteer.country_boxes()
 
-  def annotate(self, doc):
+  def annotate_rec_res(self, doc):
     self.candidates = {}
 
     api_defaults = {}
-    for a in doc.get('rec'):
+    for a in doc.get_all('rec'):
       if a.data in self.defaults:
         group = 'top'
         default_id = self.defaults[a.data]
@@ -40,20 +37,20 @@ class GeoNamesResolver:
 
       doc.annotate('res', a.pos, a.phrase, group, default_id)
 
-    changed = True
+    changed = not self.keep_defaults
     rounds = 0
     max_rounds = Config.resol_max_onto_sim_rounds
     while changed and rounds < max_rounds:
       rounds += 1
       changed = False
 
-      (root, adm1s) = self._make_tree(doc)
-      unsupported = self._find_unsupported_adm1s(adm1s)
+      tree = GeoNamesTree(doc)
+      unsupported = tree.find_unsupported_adm1s()
 
       id_map = {}
       for adm1 in unsupported:
         (toponym, old_geoname) = list(adm1.geonames.items())[0]
-        new_geoname = self._select_heuristically(toponym, old_geoname, root)
+        new_geoname = self._select_heuristically(toponym, old_geoname, tree)
         if new_geoname != None:
           changed = True
           city = self._city_result(toponym, new_geoname)
@@ -91,60 +88,12 @@ class GeoNamesResolver:
       name = ancestor.name
       if name in geoname.name:
         continue
-      for match in re.finditer(name, doc.text()):
+      for match in re.finditer(name, doc.text):
         pos = match.start()
         doc.annotate('rec', pos, name, 'anc', name)
         doc.annotate('res', pos, name, 'anc', ancestor.id)
 
-  def _make_tree(self, doc):
-    root = TreeNode(None, None)
-    adm1s = []
-    for a in doc.get('res'):
-      geoname = self.gns_cache.get(a.data)
-      key_path = self._key_path(geoname)
-      node = root.get(key_path, True)
-      node.add(a.phrase, geoname, a.pos)
-      if len(key_path) == 3 and node not in adm1s:
-        adm1s.append(node)
-    return (root, adm1s)
-
-  def _key_path(self, g):
-    if g.is_continent:
-      cont_name = g.name
-    elif g.cc in self.continent_map:
-      cont_name = self.continent_map[g.cc]
-    else:
-      cont_name = 'Nowhere'
-      for name, box in self.country_boxes.items():
-        if box[1] < g.lat < box[3] and box[0] < g.lon < box[2]:  # [w, s, e, n]
-          cont_name = self.continent_map[name]
-          break
-
-    key_path = [cont_name]
-    if g.cc != "-":
-      key_path.append(g.cc)
-      if g.adm1 != "-" and g.adm1 != "00":
-        key_path.append(g.adm1)
-    return key_path
-
-  def _find_unsupported_adm1s(self, adm1s):
-    if len(adm1s) < 2:
-      return []
-
-    unsupported = []
-    for node in adm1s:
-      support = [len(n.geonames) for n in node.iter()]
-      if sum(support) > 2 or support[0] > 1:
-        continue # multiple support or siblings
-      if support[2] == 1 and len(node.parent.parent.children) == 1:
-        continue # exclusive continent
-      if support[1] == 1 and len(node.parent.children) == 1:
-        continue # exclusive country
-      unsupported.append(node)
-
-    return unsupported
-
-  def _select_heuristically(self, toponym, current, root):
+  def _select_heuristically(self, toponym, current, tree):
 
     candidates = self._select_candidates(toponym)
 
@@ -156,8 +105,8 @@ class GeoNamesResolver:
 
     for g in candidates[:10]:
 
-      key_path = self._key_path(g)
-      node = root.get(key_path, False)
+      key_path = tree.key_path(g)
+      node = tree.root.get(key_path, False)
 
       if node == None or toponym in node.geonames:
         continue
@@ -185,100 +134,3 @@ class GeoNamesResolver:
         return g
 
     return selected
-
-  def annotate_clusters(self, doc):
-    (root, _) = self._make_tree(doc)
-
-    leafs = []
-    for cont in root.children.values():
-      if len(cont.children) == 0:
-        leafs.append(cont)
-      for country in cont.children.values():
-        if len(country.children) == 0:
-          leafs.append(country)
-        for adm1 in country.children.values():
-          leafs.append(adm1)
-
-    clusters = {}
-    for idx, leaf in enumerate(leafs):
-
-      tupels = list(leaf.geonames.items())
-      anchors = [g for _, g in tupels if g.is_city]
-      if len(anchors) == 0:
-        (toponym, geoname) = min(tupels, key=lambda t: t[1].population)
-        anchor = self._find_anchor(toponym, geoname)
-        if anchor != None:
-          anchors.append(anchor)
-
-      cluster_key = f'cl{idx+1}'
-      geoname_ids = [g.id for _, g in tupels]
-      for node in leaf.iter():
-        for phrase, positions in node.positions.items():
-          for pos in positions:
-            doc.annotate('clu', pos, phrase, cluster_key, geoname_ids)
-
-      clusters[cluster_key] = anchors
-
-    return clusters
-
-  def _find_anchor(self, toponym, geoname):
-    hierarchy = self.gns_cache.get_hierarchy(geoname.id)
-    if len(hierarchy) == 1:
-      return None
-
-    while True:
-
-      children = self.gns_cache.get_children(geoname.id)
-
-      if len(children) == 0:
-        # if there's nothing below, assume we are already local
-        return geoname
-
-      if len(children) == 1:
-        child = children[0]
-        if child.is_city:
-            return child
-        geoname = child
-        continue
-
-      return None
-
-
-class TreeNode:
-
-  def __init__(self, key, parent):
-    self.key = key
-    self.parent = parent
-    self.children = {}  # key: TreeNode
-    self.geonames = {}  # phrase: GeoName
-    self.positions = {}  # phrase: [pos]
-
-  def __repr__(self):
-    return self.key
-
-  def get(self, key_path, create):
-    if len(key_path) == 0:
-      return self
-    key = key_path[0]
-    if key not in self.children:
-      if create:
-        child = TreeNode(key, self)
-        self.children[key] = child
-      else:
-        return None
-    else:
-      child = self.children[key]
-    return child.get(key_path[1:], create)
-
-  def add(self, phrase, geoname, position):
-    if phrase not in self.geonames:
-      self.geonames[phrase] = geoname
-      self.positions[phrase] = [position]
-    else:
-      self.positions[phrase].append(position)
-
-  def iter(self):
-    node = self
-    while node.key != None:
-      yield node
-      node = node.parent

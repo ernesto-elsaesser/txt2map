@@ -5,6 +5,13 @@ import requests
 
 class GeoUtil:
 
+  dbpedia_patterns = [
+      ('<span property="geo:lat" xmlns:geo="http:\/\/www\.w3\.org\/2003\/01\/geo\/wgs84_pos#">([0-9\.\-]+)</span>',
+       '<span property="geo:long" xmlns:geo="http:\/\/www\.w3\.org\/2003\/01\/geo\/wgs84_pos#">([0-9\.\-]+)</span>'),
+      ('<span property="dbp:latitude">([0-9\.\-]+)<\/span>',
+       '<span property="dbp:longitude">([0-9\.\-]+)<\/span>')
+  ]
+
   @staticmethod
   def geojson_point(lat, lon):
       return {'type': 'Point', 'coordinates': [lon, lat]}
@@ -80,24 +87,15 @@ class GeoUtil:
       return min(distances)
 
 
-class WikiUtil:
-
-  patterns = [
-      ('<span property="geo:lat" xmlns:geo="http:\/\/www\.w3\.org\/2003\/01\/geo\/wgs84_pos#">([0-9\.\-]+)</span>',
-       '<span property="geo:long" xmlns:geo="http:\/\/www\.w3\.org\/2003\/01\/geo\/wgs84_pos#">([0-9\.\-]+)</span>'),
-      ('<span property="dbp:latitude">([0-9\.\-]+)<\/span>',
-       '<span property="dbp:longitude">([0-9\.\-]+)<\/span>')
-  ]
-
   @staticmethod
-  def coordinates_for_url(url):
+  def coordinates_for_wiki_url(url):
     dbpedia_url = url.replace('https://en.wikipedia.org/wiki',
                          'http://dbpedia.org/page')
     resp = requests.get(url=dbpedia_url)
     html = resp.text
     coords = []
 
-    for lat_pat, lon_pat in WikiUtil.patterns:
+    for lat_pat, lon_pat in GeoUtil.dbpedia_patterns:
       lat_matches = list(re.findall(lat_pat, html))
       lon_matches = list(re.findall(lon_pat, html))
       num = len(lat_matches)

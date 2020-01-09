@@ -1,1 +1,0 @@
-{"ner": [[4, "Statue of Liberty", "ent", "gcnl"], [28, "New York", "loc", "gcnl"]], "rec": [[28, "New York", "ner", "New York"]], "res": [[28, "New York", "wik", "https://en.wikipedia.org/wiki/New_York_City"]]}

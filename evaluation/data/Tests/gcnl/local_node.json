@@ -1,1 +1,0 @@
-{"ner": [[10, "Checkpoint Charlie", "loc", "gcnl"], [32, "Berlin", "loc", "gcnl"]], "rec": [[10, "Checkpoint Charlie", "ner", "Checkpoint Charlie"], [32, "Berlin", "ner", "Berlin"]], "res": [[10, "Checkpoint Charlie", "wik", "https://en.wikipedia.org/wiki/Checkpoint_Charlie"], [32, "Berlin", "wik", "https://en.wikipedia.org/wiki/Berlin"]]}

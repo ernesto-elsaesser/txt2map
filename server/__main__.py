@@ -17,7 +17,7 @@ elif sys.argv[1] == 'spacy':
 elif sys.argv[1] == 'cogcomp':
   print('Starting CogComp NLP server (might take some time) ...')
   t2m_dir = os.path.dirname(__file__)[:-6]
-  cc_dir = t2m_dir + 'nlptools/cogcomp'
+  cc_dir = t2m_dir + 'annotation/cogcomp'
   os.system(f'cd "{cc_dir}"; java -Xmx4g -classpath ".:lib/*:dist/*" CogCompServer {ner_port}')
   exit(0)
 else:

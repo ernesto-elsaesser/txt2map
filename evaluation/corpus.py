@@ -1,46 +1,86 @@
-from .store import DocumentStore
-
+import os
+from annotation import Document
 
 class Corpus:
 
-  def __init__(self, corpus_name, gold_key='gold'):
+  def __init__(self, corpus_name):
     self.corpus_name = corpus_name
-    self.gold_key = gold_key
+    dirname = os.path.dirname(__file__)
+    self.corpus_dir = f'{dirname}/data/{corpus_name}'
+    self.text_dir = f'{self.corpus_dir}/text'
+    if not os.path.exists(self.corpus_dir):
+      os.mkdir(self.corpus_dir)
+    if not os.path.exists(self.text_dir):
+      os.mkdir(self.text_dir)
 
-  def annotate_all(self, annotator, doc_range=None):
-    paths = DocumentStore.doc_ids(self.corpus_name)
-    num_docs = len(paths)
-    doc_range = doc_range or range(len(paths))
+  def document_ids(self):
+    paths = os.listdir(self.text_dir)
+    return [p.replace('.txt', '') for p in paths]
 
-    print(f'---- START ANNOTATION: {annotator.key} ----')
+  def add_document(self, doc_id, gold_doc):
+    text_path = self._text_path(doc_id)
+    with open(text_path, 'w') as f:
+      f.write(gold_doc.text)
+    self.annotate_document(doc_id, ['gold'], gold_doc, ['rec', 'res'])
+
+  def get_gold_document(self, doc_id):
+    return self.get_document(doc_id, ['gold'])
+
+  def annotate_document(self, doc_id, key_path, doc, layers):
+    ann_path = self._annotations_path(key_path, doc_id)
+    json_str = doc.export_layers(layers)
+    with open(ann_path, 'w') as f:
+      f.write(json_str)
+
+  def get_document(self, doc_id, key_path):
+    text_path = self._text_path(doc_id)
+    with open(text_path, 'r') as f:
+      text = f.read()
+    doc = Document(text)
+
+    for i in range(len(key_path)):
+      path = key_path[:i+1]
+      ann_path = self._annotations_path(path, doc_id)
+      with open(ann_path, 'r') as f:
+        json_str = f.read()
+      doc.import_layers(json_str)
+
+    return doc
+
+  def bulk_exectue(self, pipeline, load_steps=[], doc_range=None, evaluator=None):
+    doc_ids = self.document_ids()
+    num_docs = len(doc_ids)
+    doc_range = doc_range or range(num_docs)
+    load_path = [s.key for s in load_steps]
+
     for i in doc_range:
-      doc_id = paths[i]
+      doc_id = doc_ids[i]
       print(f'-- {doc_id} ({i+1}/{num_docs}) --')
-      m = self.annotate_one(annotator, doc_id)
-    print(f'---- END ANNOTATION ----')
+      doc = self.get_document(doc_id, load_path)
 
-  def annotate_one(self, annotator, doc_id):
-    doc = annotator.annotate(self.corpus_name, doc_id)
-    DocumentStore.save_annotations(self.corpus_name, doc_id, annotator.key, doc)
+      key_path = list(load_path)
+      for step in pipeline.steps:
+        layers = step.annotate(doc)
+        key_path.append(step.key)
+        self.annotate_document(doc_id, key_path, doc, layers)
 
-  def evaluate_all(self, annotator, evaluator):
-    paths = DocumentStore.doc_ids(self.corpus_name)
-    num_docs = len(paths)
+      if evaluator != None:
+        gold_doc = self.get_gold_document(doc_id)
+        evaluator.evaluate(doc, gold_doc)
 
-    print(f'---- START EVALUATION: {annotator.key} / {self.gold_key} ----')
-    for i, doc_id in enumerate(paths):
-      print(f'-- {doc_id} ({i+1}/{num_docs}) --')
-      self.evaluate_one(annotator, evaluator, doc_id)
+    if evaluator != None:
+      print(f'-- EVALUATION --')
+      evaluator.print_metrics()
 
-    print(f'---- END EVALUATION ----')
-    evaluator.log_total()
+  def _annotations_path(self, key_path, doc_id):
+    key_str = '-'.join(key_path)
+    ann_dir = f'{self.corpus_dir}/{key_str}'
+    if not os.path.exists(ann_dir):
+      os.mkdir(ann_dir)
+    ann_path = f'{ann_dir}/{doc_id}.json'
+    return ann_path
 
-  def evaluate_one(self, annotator, evaluator, doc_id):
-    doc = DocumentStore.load_doc(self.corpus_name, doc_id, annotator.key)
-    target_doc = DocumentStore.load_doc(self.corpus_name, doc_id, self.gold_key)
+  def _text_path(self, doc_id):
+    return f'{self.text_dir}/{doc_id}.txt'
 
-    rec_anns = doc.annotations_by_position('rec')
-    res_anns = doc.annotations_by_position('res')
-    gold_anns = target_doc.get('gld')
 
-    evaluator.evaluate(rec_anns, res_anns, gold_anns)

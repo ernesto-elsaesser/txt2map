@@ -46,13 +46,13 @@ class NameMatcher:
     for s, l in self.abbr_end.items():
       self.abbreviations.append((re.compile(l), s))
 
-  def recognize_names(self, doc, group, lookup_prefix, validate_match):
-    text = doc.text() + ' '  # allow matching of last token
+  def find_matches(self, doc, lookup_prefix, commit_match):
+    text = doc.text + ' '  # allow matching of last token
     text_len = len(text)
     prev_match_end = 0
     saved = {}
 
-    for a in doc.get('ntk'):
+    for a in doc.get_all('ntk'):
       if a.pos < prev_match_end: continue
 
       if a.phrase in saved:
@@ -74,9 +74,8 @@ class NameMatcher:
 
       if longest_completion != None:
         c = longest_completion
-        if validate_match(a, c):
+        if commit_match(a, c):
           prev_match_end = c.end
-          doc.annotate('rec', a.pos, c.match, group, c.db_name)
 
   def _get_completions(self, prefix, lookup_prefix, pos):
     found_names = lookup_prefix(prefix)

@@ -1,0 +1,1 @@
+{"rec": [[32, "California", "ner", "California"], [61, "America", "ner", "America"], [18, "San Marcos", "gaz", "San Marcos"]], "res": [[32, "California", "top", 5332921], [61, "America", "top", 6252001], [18, "San Marcos", "heu", 5392368]]}

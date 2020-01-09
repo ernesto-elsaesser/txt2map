@@ -12,30 +12,12 @@ from .config import Config
 
 class OSMLoader:
 
-  def __init__(self):
-    self.matcher = NameMatcher()
-
-  def annotate_local_names(self, geonames, doc, group):
-    db = self._load_database(geonames)
-
-    def lookup_prefix(p):
-      return db.find_names(p)
-      
-    def validate_match(a, c):
-      if a.group == 'stp' and ' ' not in c.match:
-        return False
-      if len(c.match) < Config.local_match_min_len:
-        return False
-
-      osm_refs = db.get_elements(c.db_name)
-      doc.annotate('res', a.pos, c.match, group, osm_refs)
-      return True
-
-    self.matcher.recognize_names(doc, group, lookup_prefix, validate_match)
-
-
-  def _load_database(self, geonames):
+  @staticmethod
+  def load_database(geonames):
     cache_dir = Config.cache_dir
+    if not os.path.exists(cache_dir):
+      os.mkdir(cache_dir)
+
     search_dist = Config.local_search_dist
     sorted_ids = sorted(str(g.id) for g in geonames)
     id_str = '-'.join(sorted_ids)
@@ -49,12 +31,13 @@ class OSMLoader:
       def bbox(g): return GeoUtil.bounding_box(g.lat, g.lon, search_dist)
       boxes = [bbox(g) for g in geonames]
       csv_reader = OverpassAPI.load_names_in_bounding_boxes(boxes)
-      name_count = self._store_data(osm_db, csv_reader, 1, [2, 3, 4, 5])
+      name_count = OSMLoader._store_data(osm_db, csv_reader, 1, [2, 3, 4, 5])
       print(f'created database with {name_count} names.')
 
     return osm_db
 
-  def _store_data(self, osm_db, csv_reader, type_col, name_cols):
+  @staticmethod
+  def _store_data(osm_db, csv_reader, type_col, name_cols):
     osm_db.create_tables()
     min_match_len = Config.local_match_min_len
 

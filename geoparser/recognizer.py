@@ -1,4 +1,3 @@
-from .document import Document
 from .matcher import NameMatcher
 from .gazetteer import Gazetteer
 
@@ -13,22 +12,24 @@ class GazetteerRecognizer:
         self.lookup_tree[key] = []
       self.lookup_tree[key].append(toponym)
 
-  def annotate(self, doc):
+  def annotate_rec(self, doc):
     person_indicies = doc.annotations_by_index('ner', 'per')
 
-    def validate(a, c):
+    def commit_match(a, c):
       if a.pos in person_indicies:
         a_per = person_indicies[a.pos]
         if len(a_per.phrase) > len(c.match):
           return False
       l = len(c.match)
-      if l in [2, 3] and c.match.isupper():
-        return True # abbreviations like 'US', 'UK', 'UAE'
-      if a.group == 'til' and l > 3:
-        return True
-      return False
+      if 1 < l <= 3:
+        is_match = c.match.isupper() # abbreviation
+      elif l != 1:
+        is_match = a.group == 'til'
+      if is_match:
+        doc.annotate('rec', a.pos, c.match, 'gaz', c.db_name)
+      return is_match
 
-    self.matcher.recognize_names(doc, 'gaz', self.lookup_prefix, validate)
+    self.matcher.find_matches(doc, self.lookup_prefix, commit_match)
 
   def lookup_prefix(self, prefix):
     key = prefix[:2]

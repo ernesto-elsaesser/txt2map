@@ -4,15 +4,15 @@ import json
 import datetime
 from io import StringIO
 from lxml import etree
-from geoparser import Document
-from .store import DocumentStore
+from annotation import Document
+from .corpus import Corpus
 
 class GeoWebNewsImporter:
 
   non_topo_types = ["Non_Toponym", "Non_Lit_Expression", "Literal_Expression"]
   rec_only_types = ["Demonym", "Homonym", "Language"]
 
-  def import_documents(self):
+  def import_documents(self, corpus):
     dirname = os.path.dirname(__file__)
     corpus_dir = dirname + '/corpora/GeoWebNews'
 
@@ -26,18 +26,12 @@ class GeoWebNewsImporter:
       with open(text_path, encoding='utf-8') as f:
         text = f.read()
 
-      doc = Document(text)
+      gold_doc = Document(text)
+      self._annotate_gold_coords(gold_doc, annotation_path)
+      corpus.add_document(doc_id, gold_doc)
 
-      self._annotate_gold_coords(doc, annotation_path, False)
-      DocumentStore.save_text('GeoWebNews', doc_id, text)
-      DocumentStore.save_annotations('GeoWebNews', doc_id, 'gold', doc)
-
-      doc.delete_layer('gld')
-      self._annotate_gold_coords(doc, annotation_path, True)
-      DocumentStore.save_annotations('GeoWebNews', doc_id, 'gold-incl-rec', doc)
-
-  def _annotate_gold_coords(self, doc, path, incl_rec):
-    incomplete = {}
+  def _annotate_gold_coords(self, doc, path):
+    res_tags = {}
 
     with open(path, encoding='utf-8') as f:
       reader = csv.reader(f, delimiter='\t')
@@ -49,31 +43,32 @@ class GeoWebNewsImporter:
           ann_type = data[0]
           if ann_type in self.non_topo_types:
             continue
-          if ann_type in self.rec_only_types and not incl_rec:
-            continue
           pos = int(data[1])
           phrase = row[2]
-          incomplete[tag_id] = (pos, phrase)
+          doc.annotate('rec', pos, phrase, 'gld', phrase)
+
+          if ann_type not in self.rec_only_types:
+            res_tags[tag_id] = (pos, phrase)
 
         elif tag_id.startswith('#'):  # BRAT annotator note
           tag_id = data[1]
-          if tag_id not in incomplete:
+          if tag_id not in res_tags:
               continue
 
-          (pos, phrase) = incomplete[tag_id]
+          (pos, phrase) = res_tags[tag_id]
           if ',' in row[2]:
             coords = row[2].split(',')
             lat = float(coords[0].strip())
             lon = float(coords[1].strip())
-            doc.annotate('gld', pos, phrase, 'raw', [lat, lon])
+            doc.annotate('res', pos, phrase, 'raw', [lat, lon])
           elif row[2] != 'N/A':
             geoname_id = int(row[2])
-            doc.annotate('gld', pos, phrase, 'gns', geoname_id)
+            doc.annotate('res', pos, phrase, 'gns', geoname_id)
 
 
 class LGLImporter:
 
-  def import_documents(self):
+  def import_documents(self, corpus):
     dirname = os.path.dirname(__file__)
     corpus_file = dirname + '/corpora/lgl.xml'
     tree = etree.parse(corpus_file)
@@ -82,24 +77,49 @@ class LGLImporter:
       doc_id = article.get('docid')
       text = article.find('text').text
 
-      doc = Document(text)
-      self._annotate_gold_coords(doc, article)
-      DocumentStore.save_text('LGL', doc_id, text)
-      DocumentStore.save_annotations('LGL', doc_id, 'gold', doc)
+      gold_doc = Document(text)
+      self._annotate_gold_coords(gold_doc, article)
+      corpus.add_document(doc_id, gold_doc)
 
   def _annotate_gold_coords(self, doc, article):
-
     toponyms = article.find('toponyms')
 
     for toponym in toponyms:
+      pos = int(toponym.find('start').text)
+      phrase = toponym.find('phrase').text
+
+      doc.annotate('rec', pos, phrase, 'gld', phrase)
+
       tag = toponym.find('gaztag')
       if tag == None:
         continue
 
-      pos = int(toponym.find('start').text)
-      phrase = toponym.find('phrase').text
       geoname_id = tag.get('geonameid')
       #lat = float(tag.find('lat').text)
       #lon = float(tag.find('lon').text)
+      doc.annotate('res', pos, phrase, 'gns', geoname_id)
 
-      doc.annotate('gld', pos, phrase, 'gns', geoname_id)
+
+class TestsImporter:
+
+  def import_documents(self, corpus):
+    dirname = os.path.dirname(__file__)
+    json_path = f'{dirname}/corpora/tests.json'
+    with open(json_path, encoding='utf-8') as f:
+      tests = json.load(f)
+
+    for doc_id, data in tests.items():
+      text = data['text']
+      anns = data['anns']
+
+      gold_doc = Document(text)
+      for arr in anns:
+        phrase = arr[0]
+        pos = text.find(phrase)
+        gold_doc.annotate('rec', pos, phrase, 'gld', phrase)
+        if len(arr) == 3:
+          gold_doc.annotate('res', pos, phrase, 'raw', arr[1:3])
+        else:
+          gold_doc.annotate('res', pos, phrase, 'gns', arr[1])
+
+      corpus.add_document(doc_id, gold_doc)

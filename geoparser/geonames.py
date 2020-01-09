@@ -8,17 +8,18 @@ from .config import Config
 
 class GeoNamesCache:
 
-  def __init__(self):
-    self.geonames = {}
-    self.hierarchies = {}
-    self.search_results = {}
-
-    self.db_path = Config.cache_dir + '/geonames.db'
-    if not os.path.exists(self.db_path):
-      self.get_db().create_tables()
+  geonames = {}
+  hierarchies = {}
+  search_results = {}
 
   def get_db(self):
-    db = sqlite3.connect(self.db_path)
+    cache_dir = Config.cache_dir
+    if not os.path.exists(cache_dir):
+      os.mkdir(cache_dir)
+    db_path = cache_dir + '/geonames.db'
+    if not os.path.exists(db_path):
+      self.get_db().create_tables()
+    db = sqlite3.connect(db_path)
     return GeoNamesDatabase(db)
 
   def get(self, geoname_id):

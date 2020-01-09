@@ -1,1 +1,0 @@
-{"ner": [[8, "Los Angeles", "loc", "gcnl"], [30, "Hollywood Blvd", "loc", "gcnl"]], "rec": [[8, "Los Angeles", "ner", "Los Angeles"], [30, "Hollywood Blvd", "ner", "Hollywood Blvd"]], "res": [[8, "Los Angeles", "wik", "https://en.wikipedia.org/wiki/Los_Angeles"], [30, "Hollywood Blvd", "wik", "https://en.wikipedia.org/wiki/Hollywood_Boulevard"]]}
