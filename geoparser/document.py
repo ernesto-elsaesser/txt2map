@@ -33,6 +33,10 @@ class Document:
       
   def set_annotation_json(self, json_str):
     self.data['anns'] = json.loads(json_str)
+      
+  def add_annotation_json(self, json_str, layer):
+    anns = json.loads(json_str)
+    self.data['anns'][layer] = anns[layer]
 
   def text(self):
     return self.data['text']

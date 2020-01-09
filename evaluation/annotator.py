@@ -99,6 +99,23 @@ class SpacyT2MPipeline:
     return doc
 
 
+class CogCompT2MPipeline:
+
+  id_ = 'cogcomp-txt2map'
+
+  def __init__(self):
+    self.geoparser = Geoparser()
+
+  def make_doc(self, corpus_name, doc_id):
+    spacy_doc = DocumentStore.load_doc(corpus_name, doc_id, 'spacy')
+    doc = DocumentStore.load_doc(corpus_name, doc_id, 'cogcomp')
+    spacy_anns = spacy_doc.get_annotation_json()
+    doc.add_annotation_json(spacy_anns, 'ntk')
+    Config.resol_max_onto_sim_rounds = 5
+    self.geoparser.annotate(doc)
+    return doc
+
+
 class SpacyDefaultsPipeline:
 
   id_ = 'spacy-defaults'

@@ -62,17 +62,12 @@ class GeoNamesResolver:
   def _select_candidates(self, toponym):
     if toponym in self.candidates:
       return self.candidates[toponym]
-    if '.' in toponym:
-      prefix = toponym.split('.')[0]
-      toponyms = self.gaz.lookup_prefix(prefix)
-      geoname_ids = [self.gaz.defaults[t] for t in toponyms]
-      cs = [self.gns_cache.get(gid) for gid in geoname_ids]
-    else:
-      results = self.gns_cache.search(toponym)
-      results = [g for g in results if g.fcl in Config.resol_considered_classes]
-      cs = [g for g in results if toponym in g.name or g.name in toponym]
-      if len(cs) == 0:
-        cs = results
+    results = self.gns_cache.search(toponym)
+    results = [g for g in results if g.fcl in Config.resol_considered_classes]
+    trimmed = toponym.strip(' .') # handle abbreviation
+    cs = [g for g in results if trimmed in g.name or g.name in toponym]
+    if len(cs) == 0:
+      cs = results
     cs = sorted(cs, key=lambda g: -g.population)
     self.candidates[toponym] = cs
     return cs

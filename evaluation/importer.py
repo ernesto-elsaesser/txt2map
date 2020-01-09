@@ -103,29 +103,3 @@ class LGLImporter:
       #lon = float(tag.find('lon').text)
 
       doc.annotate('gld', pos, phrase, 'gns', geoname_id)
-
-
-class TestsImporter:
-
-  def import_documents(self):
-    dirname = os.path.dirname(__file__)
-    json_path = f'{dirname}/corpora/tests.json'
-    with open(json_path, encoding='utf-8') as f:
-      tests = json.load(f)
-
-    for doc_id, data in tests.items():
-      text = data['text']
-      anns = data['anns']
-      doc = Document(text)
-
-      for arr in anns:
-        phrase = arr[0]
-        pos = text.find(phrase)
-
-        if arr[3] == '':
-          doc.annotate('gld', pos, phrase, 'raw', arr[1:3])
-        else:
-          doc.annotate('gld', pos, phrase, 'gns', arr[3])
-
-      DocumentStore.save_text('Tests', doc_id, text)
-      DocumentStore.save_annotations('Tests', doc_id, 'gold', doc)
