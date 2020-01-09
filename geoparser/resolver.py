@@ -74,10 +74,11 @@ class GeoNamesResolver:
       if g_parts > parts and g.population == 0:
         continue
       candidates.append(g)
-    if len(candidates) == 0 and len(results) == 1 and results[0].population > 0:
+    if len(candidates) == 0 and len(results) == 1:
       only = results[0]
-      candidates.append(only)
-      print(f'Chose single non-matching cadidate for "{toponym}": {only}')
+      if only.population > 0 or only.is_city:
+        candidates.append(only)
+        print(f'Chose single non-matching cadidate for "{toponym}": {only}')
     candidates = sorted(candidates, key=lambda g: -g.population)
     self.candidates[toponym] = candidates
     return candidates
