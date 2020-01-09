@@ -30,7 +30,7 @@ class Corpus:
     print(f'---- START EVALUATION: {annotator.key} / {self.gold_key} ----')
     for i, doc_id in enumerate(paths):
       print(f'-- {doc_id} ({i+1}/{num_docs}) --')
-      m = self.evaluate_one(annotator, evaluator, doc_id)
+      self.evaluate_one(annotator, evaluator, doc_id)
 
     print(f'---- END EVALUATION ----')
     evaluator.log_total()
@@ -43,6 +43,4 @@ class Corpus:
     res_anns = doc.annotations_by_position('res')
     gold_anns = target_doc.get('gld')
 
-    result = evaluator.evaluate(rec_anns, res_anns, gold_anns)
-    evaluator.log(result)
-    return result
+    evaluator.evaluate(rec_anns, res_anns, gold_anns)

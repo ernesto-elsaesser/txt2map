@@ -8,15 +8,15 @@ class SpacyAnnotator:
 
   key = 'spacy'
 
-  def __init__(self, use_server):
-    self.use_server = use_server
-    if not use_server:
+  def __init__(self, port=None):
+    self.port = port
+    if port == None:
       self.spacy = SpacyNLP()
 
   def annotate(self, corpus_name, doc_id):
     doc = DocumentStore.load_doc(corpus_name, doc_id)
-    if self.use_server:
-      SpacyClient.annotate(doc)
+    if self.port != None:
+      SpacyClient.annotate(doc, self.port)
     else:
       self.spacy.annotate(doc)
     return doc
@@ -26,9 +26,12 @@ class CogCompAnnotator:
 
   key = 'cogcomp'
 
+  def __init__(self, port):
+    self.port = port
+
   def annotate(self, corpus_name, doc_id):
     doc = DocumentStore.load_doc(corpus_name, doc_id)
-    CogCompClient.annotate(doc)
+    CogCompClient.annotate(doc, self.port)
     return doc
 
 

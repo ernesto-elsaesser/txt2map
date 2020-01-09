@@ -16,6 +16,7 @@ class Geoparser:
 
     self.resolver = GeoNamesResolver()
     self.osm_loader = OSMLoader()
+    self.top_names = Gazetteer.defaults().keys()
 
   def annotate(self, doc):
     self.resolver.annotate(doc)
@@ -23,9 +24,9 @@ class Geoparser:
     for cluster_key, geonames in clusters.items():
       if len(geonames) > 0:
         self.osm_loader.annotate_local_names(geonames, doc, cluster_key)
-    self._annotate_con(doc, clusters)
+    self._annotate_confidences(doc, clusters)
 
-  def _annotate_con(self, doc, clusters):
+  def _annotate_confidences(self, doc, clusters):
     clust_count = len(clusters)
 
     if clust_count == 0:
@@ -39,7 +40,7 @@ class Geoparser:
 
       if clust_count > 1 and len(clust_anns) == 1 and len(anchors) > 0:
         a = clust_anns[0]
-        in_gaz = a.phrase in Gazetteer.defaults
+        in_gaz = a.phrase in self.top_names
         if not in_gaz and ' ' not in a.phrase:
           if len(match_anns) == 0:
             confidence = 'low'

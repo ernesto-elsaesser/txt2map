@@ -1,0 +1,1 @@
+{"ntk": [[0, "On", "stp", ""], [3, "N.", "til", ""], [6, "Bedford", "til", ""], [14, "Drive", "til", ""], [23, "Beverly", "til", ""], [31, "Hills", "til", ""]], "ner": [[3, "N. Bedford Drive", "fac", "spacy_lg"], [23, "Beverly Hills", "loc", "spacy_lg"]], "rec": [[23, "Beverly Hills", "ner", "Beverly Hills"], [6, "Bedford", "gaz", "Bedford"]]}

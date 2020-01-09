@@ -77,8 +77,9 @@ class SpacyNLP:
 class SpacyClient:
 
   @staticmethod
-  def annotate(doc):
+  def annotate(doc, port):
     body = doc.text().encode('utf-8')
-    response = requests.post(url='http://localhost:8001', data=body)
+    url = f'http://localhost:{port}'
+    response = requests.post(url=url, data=body)
     response.encoding = 'utf-8'
     doc.set_annotation_json(response.text)

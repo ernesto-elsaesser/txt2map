@@ -2,7 +2,7 @@ import os
 from geoparser import Document
 from nlptools import SpacyNLP
 
-class NLPServer:
+class SpacyServer:
 
   def __init__(self):
     self.nlp = SpacyNLP()

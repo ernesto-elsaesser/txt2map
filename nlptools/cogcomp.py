@@ -3,12 +3,13 @@ import requests
 class CogCompClient:
 
   @staticmethod
-  def annotate(doc):
+  def annotate(doc, port):
     text = doc.text()
 
     esc_text = text.replace('[', '{').replace(']', '}')
     body = esc_text.encode('utf-8')
-    response = requests.post(url='http://localhost:8002', data=body)
+    url = f'http://localhost:{port}'
+    response = requests.post(url=url, data=body)
     response.encoding = 'utf-8'
     cc_text = response.text
 

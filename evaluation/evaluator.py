@@ -12,8 +12,8 @@ class Evaluator:
 
   def evaluate(self, rec_anns, res_anns, gold_anns):
     result = Measurement()
-    result.false_pos = len(rec_anns)
     result.ann_count = len(gold_anns)
+    recognized_pos = []
 
     for gold in gold_anns:
       recognized = False
@@ -28,8 +28,8 @@ class Evaluator:
           recognized = True
 
       if recognized:
-        result.false_pos -= 1
         result.true_pos += 1
+        recognized_pos.append(gold.pos)
       else:
         result.false_neg += 1
         print(f'NOT RECOGNIZED: {gold}')
@@ -51,6 +51,12 @@ class Evaluator:
           result.accurate += 1
         else:
           print(f'NOT RESOLVED: {gold}')
+
+    for rec_ann in rec_anns.values():
+      if rec_ann.pos in recognized_pos:
+        continue
+      result.false_pos += 1
+      print(f'WRONG RECOGNIZED: {rec_ann}')
 
     self.total.add(result)
     return result
@@ -74,7 +80,7 @@ class Evaluator:
     if self.resol:
       tg = self.tol_global
       tl = self.tol_local
-      result += f' Acc({tg}|{tl}): {acc:.3f} ({acc_r:.3f} resol only)'
+      result += f' Acc<{tg}/{tl}>: {acc:.3f} ({acc_r:.3f} resol only)'
 
     print(result)
 

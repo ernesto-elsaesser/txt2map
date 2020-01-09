@@ -1,1 +1,0 @@
-{"ner": [[7, "Paris", "loc", "cogcomp_conll"]], "ntk": [[0, "I", "stp", ""], [7, "Paris", "til", ""]], "rec": [[7, "Paris", "ner", "Paris"]], "res": [[7, "Paris", "top", 2988507]], "clu": [[7, "Paris", "cl1", [2988507]]], "con": [[7, "Paris", "high", ""]]}

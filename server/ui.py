@@ -9,7 +9,8 @@ class UIServer:
   res_group_names = {'top': 'Global Gazetteer Default Sense', 'api': 'GeoNames Top Sense', 'anc': 'Ancestor Scan', 
                 'heu': 'Ontological Similarity Heuristic', 'wik': 'Wikipedia Reference'}
 
-  def __init__(self):
+  def __init__(self, ner_port):
+    self.ner_port = ner_port
     self.gazrec = GazetteerRecognizer()
     self.geoparser = Geoparser()
     dirname = os.path.dirname(__file__)
@@ -23,7 +24,7 @@ class UIServer:
     doc = Document(text=req_text)
 
     body = req_text.encode('utf-8')
-    nlp_res = requests.post(url='http://localhost:8001', data=body)
+    nlp_res = requests.post(url='http://localhost:' + ner_port, data=body)
     nlp_res.encoding = 'utf-8'
     doc.set_annotation_json(nlp_res.text)
 

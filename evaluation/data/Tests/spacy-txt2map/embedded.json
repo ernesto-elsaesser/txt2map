@@ -1,1 +1,0 @@
-{"ntk": [[0, "He", "stp", ""], [11, "South", "til", ""], [17, "Africa", "til", ""]], "ner": [[11, "South Africa", "loc", "spacy_lg"]], "rec": [[11, "South Africa", "ner", "South Africa"]], "res": [[11, "South Africa", "top", 953987]], "clu": [[11, "South Africa", "cl1", [953987]]], "con": [[11, "South Africa", "high", ""]]}
