@@ -2,7 +2,7 @@ from evaluation import *
 
 corpus = Corpus('Tests')
 
-spacy = SpacyAnnotator(use_server=True)
+spacy = SpacyAnnotator(use_server=False)
 gcnl = GCNLAnnotator()
 cogcomp = CogCompAnnotator()
 t2m = T2MAnnotator('spacy')

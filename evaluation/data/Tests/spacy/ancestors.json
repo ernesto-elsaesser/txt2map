@@ -1,1 +1,1 @@
-{"ntk": [[0, "Avoyelles", "til", ""], [29, "14", "num", ""], [33, "They", "stp", ""], [46, "Cottonport", "til", ""], [58, "US", "stp", ""]], "ner": [[29, "14", "msc", "spacy_lg"], [46, "Cottonport", "loc", "spacy_lg"], [58, "US", "loc", "spacy_lg"]]}
+{"ntk": [[0, "Avoyelles", "til", ""], [29, "14", "num", ""], [33, "They", "stp", ""], [46, "Cottonport", "til", ""], [58, "US", "stp", ""]], "ner": [[46, "Cottonport", "loc", "spacy_lg"], [58, "US", "loc", "spacy_lg"]]}

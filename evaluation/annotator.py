@@ -1,7 +1,7 @@
 import requests
 from .store import DocumentStore
 from geoparser import Geoparser, Config
-from nlptools import SpacyNLP, GoogleCloudNL, CogCompNLP
+from nlptools import SpacyNLP, SpacyClient, GoogleCloudNL, CogCompClient
 
 
 class SpacyAnnotator:
@@ -15,15 +15,10 @@ class SpacyAnnotator:
 
   def annotate(self, corpus_name, doc_id):
     doc = DocumentStore.load_doc(corpus_name, doc_id)
-
     if self.use_server:
-      body = doc.text().encode('utf-8')
-      response = requests.post(url='http://localhost:8001', data=body)
-      response.encoding = 'utf-8'
-      doc.set_annotation_json(response.text)
+      SpacyClient.annotate(doc)
     else:
       self.spacy.annotate(doc)
-
     return doc
 
 
@@ -33,15 +28,7 @@ class CogCompAnnotator:
 
   def annotate(self, corpus_name, doc_id):
     doc = DocumentStore.load_doc(corpus_name, doc_id)
-
-    text = doc.text()
-    esc_text = text.replace('[', '{').replace(']', '}')
-    body = esc_text.encode('utf-8')
-    response = requests.post(url='http://localhost:8002', data=body)
-    response.encoding = 'utf-8'
-
-    CogCompNLP.import_annotations(doc, response.text)
-
+    CogCompClient.annotate(doc)
     return doc
 
 

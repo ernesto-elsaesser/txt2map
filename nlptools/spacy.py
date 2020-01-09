@@ -3,8 +3,10 @@ import spacy
 
 class SpacyNLP:
 
-  label_map_lg = {'GPE': 'loc', 'LOC': 'loc', 'NORP': 'loc', 'FAC': 'fac', 'ORG': 'org', 'PERSON': 'per'}
-  label_map_sm = {'GPE': 'loc', 'LOC': 'loc', 'NORP': 'loc'}
+  label_map_lg = {'GPE': 'loc', 'LOC': 'loc', 'NORP': 'loc', 'FAC': 'fac', 'ORG': 'org', 
+                  'PERSON': 'per', 'PRODUCT': 'msc', 'EVENT': 'msc', 'WORK_OF_ART': 'msc', 'LANGUAGE': 'msc'}
+  label_map_sm = {'GPE': 'loc', 'LOC': 'loc', 'NORP': 'loc', 'FAC': 'msc', 'ORG': 'msc',
+                  'PERSON': 'msc', 'PRODUCT': 'msc', 'EVENT': 'msc', 'WORK_OF_ART': 'msc', 'LANGUAGE': 'msc'}
 
   def __init__(self):
     self.nlp_sm = spacy.load('en_core_web_sm', disable=['parser'])
@@ -30,16 +32,22 @@ class SpacyNLP:
 
     # named entities
     for ent in spacy_doc_lg.ents:
+      if ent.label_ not in self.label_map_lg:
+        continue
       name = self._normalized_name(ent)
+      group = self.label_map_lg[ent.label_]
       if name not in unique_names:
         unique_names.append(name)
-        self._annotate_all_occurences(doc, name, ent.label_, True)
+        self._annotate_all_occurences(doc, name, group, 'spacy_lg')
 
     for ent in spacy_doc_sm.ents:
+      if ent.label_ not in self.label_map_sm:
+        continue
       name = self._normalized_name(ent)
+      group = self.label_map_sm[ent.label_]
       if name not in unique_names:
         unique_names.append(name)
-        self._annotate_all_occurences(doc, name, ent.label_, False)
+        self._annotate_all_occurences(doc, name, group, 'spacy_sm')
 
 
   def _normalized_name(self, entity):
@@ -54,18 +62,19 @@ class SpacyNLP:
       name = name[:-1]
     return name
 
-  def _annotate_all_occurences(self, doc, name, label, large_model):
-    group = 'msc'
-    if large_model:
-      data = 'spacy_lg'
-      label_map = self.label_map_lg
-    else:
-      data = 'spacy_sm'
-      label_map = self.label_map_sm
-    if label in label_map:
-      group = label_map[label]
+  def _annotate_all_occurences(self, doc, name, group, data):
     escaped_name = re.escape(name)
     matches = re.finditer(escaped_name, doc.text())
-    stripped = name.strip('.')
+    phrase = name.rstrip('.')
     for match in matches:
-      doc.annotate('ner', match.start(), stripped, group, data)
+      doc.annotate('ner', match.start(), phrase, group, data)
+
+
+class SpacyClient:
+
+  @staticmethod
+  def annotate(doc):
+    body = doc.text().encode('utf-8')
+    response = requests.post(url='http://localhost:8001', data=body)
+    response.encoding = 'utf-8'
+    doc.set_annotation_json(response.text)

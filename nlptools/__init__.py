@@ -1,3 +1,3 @@
-from .spacy import SpacyNLP
+from .spacy import SpacyNLP, SpacyClient
 from .gcnl import GoogleCloudNL
-from .cogcomp import CogCompNLP
+from .cogcomp import CogCompClient

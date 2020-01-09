@@ -22,6 +22,7 @@ public class CogCompServer {
       return;
     }
 
+    Parameters.forceNewSentenceOnLineBreaks = true;
     NETagPlain.init();
 
     System.out.println("Starting server on port " + args[0]);
