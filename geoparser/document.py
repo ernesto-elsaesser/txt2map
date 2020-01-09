@@ -65,10 +65,11 @@ class Document:
     ann = [pos, phrase, group, data]
     self.data['anns'][layer].append(ann)
 
-  def update_annotation_data(self, layer, pos, new_data):
+  def update_annotation(self, layer, pos, new_group, new_data):
     anns = self.data['anns'][layer]
     for i in range(len(anns)):
       if anns[i][0] == pos:
+        self.data['anns'][layer][i][2] = new_group
         self.data['anns'][layer][i][3] = new_data
 
   def delete_layer(self, layer):

@@ -7,46 +7,40 @@ from .config import Config
 
 class Gazetteer:
 
-  def __init__(self):
-    dirname = os.path.dirname(__file__)
-    self.data_dir = dirname + '/data'
+  @staticmethod
+  def defaults():
+    return Gazetteer._load('defaults')
 
-    self.defaults = self._load('defaults')
-    self.continents = self._load('continents')
-    self.continent_map = self._load('continent_map')
-    self.country_boxes = self._load('country_boxes')
-    self.demonyms = self._load('demonyms')
+  @staticmethod
+  def demonyms():
+    return Gazetteer._load('demonyms')
 
-    self.lookup_tree = {}
-    for toponym in self.defaults:
-      key = toponym[:2]
-      if key not in self.lookup_tree:
-        self.lookup_tree[key] = []
-      self.lookup_tree[key].append(toponym)
+  @staticmethod
+  def continent_map():
+    return Gazetteer._load('continent_map')
 
-  def lookup_prefix(self, prefix):
-    key = prefix[:2]
-    if key not in self.lookup_tree:
-      return []
-    toponyms = self.lookup_tree[key]
-    return [t for t in toponyms if t.startswith(prefix)]
+  @staticmethod
+  def country_boxes():
+    return Gazetteer._load('country_boxes')
 
-  def continent_name(self, geoname):
-
+  @staticmethod
+  def continent_name(geoname):
     if geoname.is_continent:
       return geoname.name
 
-    if geoname.cc in self.continent_map:
-      return self.continent_map[geoname.cc]
+    if geoname.cc in Gazetteer.continent_map:
+      return Gazetteer.continent_map[geoname.cc]
 
     lat = geoname.lat
     lon = geoname.lon
-    for name, box in self.country_boxes.items():
+    country_boxes = Gazetteer._load('country_boxes')
+    for name, box in country_boxes.items():
       if box[1] < lat < box[3] and box[0] < lon < box[2]:  # [w, s, e, n]
-        return self.continent_map[name]
+        return Gazetteer.continent_map[name]
     return 'Nowhere'
 
-  def update_top_level(self):
+  @staticmethod
+  def update_top_level():
     continents = {}
     countries = {}
     continent_map = {}
@@ -64,14 +58,12 @@ class Gazetteer:
           if 'lang' in entry and entry['lang'] == 'en':
             countries[entry['name']] = country.id
 
-    self._save('continents', continents)
-    self._save('countries', countries)
-    self._save('continent_map', continent_map)
+    Gazetteer._save('continents', continents)
+    Gazetteer._save('countries', countries)
+    Gazetteer._save('continent_map', continent_map)
 
-    self.continents = continents
-    self.continent_map = continent_map
-
-  def extract_large_entries(self, data_path):
+  @staticmethod
+  def extract_large_entries(data_path):
 
     top_names = {}
     top_pops = {}
@@ -104,7 +96,7 @@ class Gazetteer:
 
       names = [name]
       if ' ' in name:
-        parts = self._grams(name)
+        parts = Gazetteer._grams(name)
         alt_names = row[3].split(',')
         for alt_name in alt_names:
           if alt_name in parts:
@@ -130,36 +122,38 @@ class Gazetteer:
         last_log = reader.line_num
 
     for fcl in top_names:
-      self._save(fcl, top_names[fcl])
+      Gazetteer._save(fcl, top_names[fcl])
 
-  def update_defaults(self):
+  @staticmethod
+  def update_defaults():
 
     defaults = {}
 
-    for toponym in self.continents:
-      defaults[toponym] = self.continents[toponym]
-      for demonym in self.demonyms[toponym]:
-        defaults[demonym] = self.continents[toponym]
+    continents = Gazetteer._load('continents')
+    for toponym in continents:
+      defaults[toponym] = continents[toponym]
+      for demonym in Gazetteer.demonyms[toponym]:
+        defaults[demonym] = continents[toponym]
 
-    oceans = self._load('oceans')
+    oceans = Gazetteer._load('oceans')
     for toponym in oceans:
       defaults[toponym] = oceans[toponym]
 
-    countries = self._load('countries')
+    countries = Gazetteer._load('countries')
     for toponym in countries:
       defaults[toponym] = countries[toponym]
-      if toponym in self.demonyms:
-        for demonym in self.demonyms[toponym]:
+      if toponym in Gazetteer.demonyms:
+        for demonym in Gazetteer.demonyms[toponym]:
           defaults[demonym] = countries[toponym]
 
     class_order = Config.gazetteer_class_prio
     for fcl in class_order:
-      entries = self._load(fcl)
+      entries = Gazetteer._load(fcl)
       for toponym in entries:
         if toponym not in defaults:
           defaults[toponym] = entries[toponym]
-          if toponym in self.demonyms:
-            for demonym in self.demonyms[toponym]:
+          if toponym in Gazetteer.demonyms:
+            for demonym in Gazetteer.demonyms[toponym]:
               defaults[demonym] = entries[toponym]
 
     # common abbreviations
@@ -170,21 +164,25 @@ class Gazetteer:
     defaults['UAE'] = 290557
     defaults['D.C.'] = 4140963
 
-    self._save('defaults', defaults)
-    self.defaults = defaults
-    
-  def _load(self, file_name):
-    file_path = f'{self.data_dir}/{file_name}.json'
+    Gazetteer._save('defaults', defaults)
+
+  @staticmethod
+  def _load(file_name):
+    dirname = os.path.dirname(__file__)
+    file_path = f'{dirname}/data/{file_name}.json'
     with open(file_path, 'r') as f:
       data = json.load(f)
     return data
 
-  def _save(self, file_name, obj):
-    file_path = f'{self.data_dir}/{file_name}.json'
+  @staticmethod
+  def _save(file_name, obj):
+    dirname = os.path.dirname(__file__)
+    file_path = f'{dirname}/data/{file_name}.json'
     with open(file_path, 'w') as f:
       json.dump(obj, f)
 
-  def _grams(self, name):
+  @staticmethod
+  def _grams(name):
     parts = name.split(' ')
     grams = []
     l = len(parts)

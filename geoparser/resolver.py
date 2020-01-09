@@ -10,18 +10,20 @@ from .config import Config
 
 class GeoNamesResolver:
 
-  def __init__(self, gazetteer):
-    self.gaz = gazetteer
+  def __init__(self):
     self.gns_cache = GeoNamesCache()
+    self.defaults = Gazetteer.defaults()
+    self.continent_map = Gazetteer.continent_map()
+    self.country_boxes = Gazetteer.country_boxes()
 
   def annotate(self, doc):
     self.candidates = {}
 
     api_defaults = {}
     for a in doc.get('rec'):
-      if a.data in self.gaz.defaults:
+      if a.data in self.defaults:
         group = 'top'
-        default_id = self.gaz.defaults[a.data]
+        default_id = self.defaults[a.data]
       else:
         group = 'api'
         toponym = a.phrase
@@ -56,7 +58,7 @@ class GeoNamesResolver:
           changed = True
           city = self._city_result(toponym, new_geoname)
           for pos in adm1.positions[toponym]:
-            doc.update_annotation_data('res', pos, city.id)
+            doc.update_annotation('res', pos, 'heu', city.id)
           print(f'Chose {city} over {old_geoname} for {toponym}')
 
   def _select_candidates(self, toponym):
@@ -106,7 +108,17 @@ class GeoNamesResolver:
     return (root, adm1s)
 
   def _key_path(self, g):
-    cont_name = self.gaz.continent_name(g)
+    if g.is_continent:
+      cont_name = g.name
+    elif g.cc in self.continent_map:
+      cont_name = self.continent_map[g.cc]
+    else:
+      cont_name = 'Nowhere'
+      for name, box in self.country_boxes.items():
+        if box[1] < g.lat < box[3] and box[0] < g.lon < box[2]:  # [w, s, e, n]
+          cont_name = self.continent_map[name]
+          break
+
     key_path = [cont_name]
     if g.cc != "-":
       key_path.append(g.cc)

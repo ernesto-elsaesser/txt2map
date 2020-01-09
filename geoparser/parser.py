@@ -14,8 +14,7 @@ class Geoparser:
     if not os.path.exists(cache_dir):
       os.mkdir(cache_dir)
 
-    self.gaz = Gazetteer()
-    self.resolver = GeoNamesResolver(self.gaz)
+    self.resolver = GeoNamesResolver()
     self.osm_loader = OSMLoader()
 
   def annotate(self, doc):
@@ -40,7 +39,7 @@ class Geoparser:
 
       if clust_count > 1 and len(clust_anns) == 1 and len(anchors) > 0:
         a = clust_anns[0]
-        in_gaz = a.phrase in self.gaz.defaults
+        in_gaz = a.phrase in Gazetteer.defaults
         if not in_gaz and ' ' not in a.phrase:
           if len(match_anns) == 0:
             confidence = 'low'

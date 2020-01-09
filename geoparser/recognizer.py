@@ -5,11 +5,15 @@ from .gazetteer import Gazetteer
 class GazetteerRecognizer:
 
   def __init__(self):
-    self.gaz = Gazetteer()
     self.matcher = NameMatcher()
+    self.lookup_tree = {}
+    for toponym in Gazetteer.defaults():
+      key = toponym[:2]
+      if key not in self.lookup_tree:
+        self.lookup_tree[key] = []
+      self.lookup_tree[key].append(toponym)
 
   def annotate(self, doc):
-
     person_indicies = doc.annotations_by_index('ner', 'per')
 
     def validate(a, c):
@@ -24,4 +28,11 @@ class GazetteerRecognizer:
         return True
       return False
 
-    self.matcher.recognize_names(doc, 'gaz', self.gaz.lookup_prefix, validate)
+    self.matcher.recognize_names(doc, 'gaz', self.lookup_prefix, validate)
+
+  def lookup_prefix(self, prefix):
+    key = prefix[:2]
+    if key not in self.lookup_tree:
+      return []
+    toponyms = self.lookup_tree[key]
+    return [t for t in toponyms if t.startswith(prefix)]
