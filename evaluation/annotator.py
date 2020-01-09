@@ -67,33 +67,7 @@ class CogCompPipeline:
     response.encoding = 'utf-8'
     cc_text = response.text
 
-    i = 0
-    pos = 0
-    ent_pos = None
-    ent_group = None
-    ent_phrase = None
-    while i < l:
-      c = cc_text[i]
-      if c == '[':
-        ent_pos = pos
-        ent_phrase = ''
-        if cc_text[i+1] == 'M':
-          ent_group = 'msc'
-          i += 6
-        else:
-          ent_group = cc_text[i+1:i+4].lower()
-          i += 5
-      elif c == ']':
-        doc.annotate('ner', ent_pos, ent_phrase, ent_group, 'cogcomp_conll')
-      else:
-        if c == text[pos]:
-          if ent_phrase != None:
-            ent_phrase += c
-          pos += 1
-        i += 1
-
-
-    doc.set_annotation_json(response.text)
+    CogCompNLP.import_annotations(doc, cc_text)
 
     return doc
 

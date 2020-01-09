@@ -24,8 +24,8 @@ public class CogCompServer {
 
     NETagPlain.init();
 
-    System.out.println("Starting server on port " + args[1]);
-    int port = Integer.parseInt(args[1]);
+    System.out.println("Starting server on port " + args[0]);
+    int port = Integer.parseInt(args[0]);
     InetAddress addr = InetAddress.getByName(null);
     InetSocketAddress saddr = new InetSocketAddress(addr, port);
     HttpServer server = HttpServer.create(saddr, 0);
