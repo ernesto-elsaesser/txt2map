@@ -1,1 +1,1 @@
-{"ntk": [[0, "On", "stp", ""], [3, "N.", "til", ""], [6, "Bedford", "til", ""], [14, "Drive", "til", ""], [23, "Beverly", "til", ""], [31, "Hills", "til", ""]], "ner": [[3, "N. Bedford Drive", "ent", "en_core_web_lg"], [23, "Beverly Hills", "loc", "en_core_web_lg"]]}
+{"ntk": [[0, "On", "stp", ""], [3, "N.", "til", ""], [6, "Bedford", "til", ""], [14, "Drive", "til", ""], [23, "Beverly", "til", ""], [31, "Hills", "til", ""]], "ner": [[3, "N. Bedford Drive", "fac", "spacy_lg"], [23, "Beverly Hills", "loc", "spacy_lg"]]}

@@ -63,11 +63,10 @@ class GeoNamesResolver:
     if toponym in self.candidates:
       return self.candidates[toponym]
     results = self.gns_cache.search(toponym)
-    name = toponym.strip(' .,') # handle abbreviations
-    parts = len(name.split(' '))
+    parts = len(toponym.split(' '))
     candidates = []
     for g in results:
-      if name not in g.name and name not in g.toponym_name:
+      if toponym not in g.name and toponym not in g.toponym_name:
         continue
       g_parts = len(g.name.split(' '))
       if g_parts > parts and g.population == 0:

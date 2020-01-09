@@ -3,8 +3,8 @@ import spacy
 
 class SpacyNLP:
 
-  label_map_lg = {'GPE': 'loc', 'LOC': 'loc', 'FAC': 'fac', 'ORG': 'org', 'PERSON': 'per'}
-  label_map_sm = {'GPE': 'loc', 'LOC': 'loc'}
+  label_map_lg = {'GPE': 'loc', 'LOC': 'loc', 'NORP': 'loc', 'FAC': 'fac', 'ORG': 'org', 'PERSON': 'per'}
+  label_map_sm = {'GPE': 'loc', 'LOC': 'loc', 'NORP': 'loc'}
 
   def __init__(self):
     self.nlp_sm = spacy.load('en_core_web_sm', disable=['parser'])
@@ -62,9 +62,10 @@ class SpacyNLP:
     else:
       data = 'spacy_sm'
       label_map = self.label_map_sm
-    for label in label_map:
+    if label in label_map:
       group = label_map[label]
     escaped_name = re.escape(name)
     matches = re.finditer(escaped_name, doc.text())
+    stripped = name.strip('.')
     for match in matches:
-      doc.annotate('ner', match.start(), name, group, data)
+      doc.annotate('ner', match.start(), stripped, group, data)

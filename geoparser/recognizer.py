@@ -15,8 +15,10 @@ class HybridRecognizer:
     person_indicies = doc.annotations_by_index('ner', 'per')
 
     def validate(a, c):
-      if a.pos in person_indicies and ' ' not in c.match:
-        return c.match in self.gaz.demonyms
+      if a.pos in person_indicies:
+        a_per = person_indicies[a.pos]
+        if len(a_per.phrase) > len(c.match):
+          return False
       l = len(c.match)
       if l in [2, 3] and c.match.isupper():
         return True # abbreviations like 'US', 'UK', 'UAE'

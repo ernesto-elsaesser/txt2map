@@ -1,1 +1,1 @@
-{"ntk": [[0, "I", "stp", ""], [7, "Paris", "til", ""], [16, "Lamar", "til", ""], [22, "County", "til", ""], [30, "Texas", "til", ""]], "ner": [[7, "Paris", "loc", "en_core_web_lg"], [16, "Lamar County", "loc", "en_core_web_lg"], [30, "Texas", "loc", "en_core_web_lg"]]}
+{"ntk": [[0, "I", "stp", ""], [7, "Paris", "til", ""], [16, "Lamar", "til", ""], [22, "County", "til", ""], [30, "Texas", "til", ""]], "ner": [[7, "Paris", "loc", "spacy_lg"], [16, "Lamar County", "loc", "spacy_lg"], [30, "Texas", "loc", "spacy_lg"]]}

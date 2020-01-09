@@ -28,7 +28,8 @@ class Geoparser:
 
     clusters = self.resolver.annotate_clusters(doc)
     for cluster_key, geonames in clusters.items():
-      self.osm_loader.annotate_local_names(geonames, doc, cluster_key)
+      if len(geonames) > 0:
+        self.osm_loader.annotate_local_names(geonames, doc, cluster_key)
 
     self._annotate_confidences(doc, clusters)
     return doc
