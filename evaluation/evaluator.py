@@ -1,44 +1,21 @@
 from geoparser import GeoNamesCache, OSMLoader, GeoUtil, WikiUtil
-from .store import DocumentStore
 
+class Evaluator:
 
-class CorpusEvaluator:
-
-  def __init__(self, corpus_name, strict, tolerance_global=161, tolerance_local=1):
-    self.corpus_name = corpus_name
+  def __init__(self, strict=True, rec_only=False, tolerance_global=161, tolerance_local=1):
     self.strict = strict
+    self.rec_only = rec_only
     self.tol_global = tolerance_global
     self.tol_local = tolerance_local
+    self.total = Measurement()
     self.gns_cache = GeoNamesCache()
 
-  def evaluate_all(self, pipeline_id, target_pipeline_id='gold'):
-    paths = DocumentStore.doc_ids(self.corpus_name)
-    num_docs = len(paths)
-    total = Measurement()
-
-    print(f'---- START EVALUATION: {pipeline_id} / {target_pipeline_id} ----')
-    for i, doc_id in enumerate(paths):
-      print(f'-- {doc_id} ({i+1}/{num_docs}) --')
-      m = self.evaluate_one(doc_id, pipeline_id, target_pipeline_id)
-      total.add(m)
-
-    print(f'---- END EVALUATION ----')
-    self._print_metrics(total)
-
-  def evaluate_one(self, doc_id, pipeline_id, target_pipeline_id='gold'):
-    doc = DocumentStore.load_doc(self.corpus_name, doc_id, pipeline_id)
-    target_doc = DocumentStore.load_doc(self.corpus_name, doc_id, target_pipeline_id)
-
-    rec_anns = doc.annotations_by_position('rec')
-    res_anns = doc.annotations_by_position('res')
-    gold_anns = target_doc.get('gld')
-
+  def evaluate(self, rec_anns, res_anns, gold_anns):
     result = Measurement()
     result.false_pos = len(rec_anns)
     result.ann_count = len(gold_anns)
 
     for gold in gold_anns:
-
       recognized = False
       if gold.pos in rec_anns:
         rec_ann = rec_anns[gold.pos]
@@ -54,6 +31,9 @@ class CorpusEvaluator:
         result.false_neg += 1
         print(f'NOT RECOGNIZED: {gold}')
         continue
+
+      if self.rec_only:
+        return
 
       resolved_within = False
       if gold.pos in res_anns:
@@ -71,8 +51,31 @@ class CorpusEvaluator:
       else:
         print(f'NOT RESOLVED: {gold}')
 
-    self._print_metrics(result)
+    self.total.add(result)
     return result
+
+  def log_total(self):
+    self.log(self.total)
+
+  def log(self, m):
+    if m.ann_count == 0:
+      p = r = f1 = acc = acc_r = 1.0
+    elif m.true_pos == 0:
+      p = r = f1 = acc = acc_r = 0.0
+    else:
+      p = m.true_pos / (m.true_pos + m.false_pos)
+      r = m.true_pos / (m.true_pos + m.false_neg)
+      f1 = (2 * p * r) / (p + r)
+      acc = m.accurate / m.ann_count
+      acc_r = m.accurate / m.true_pos
+
+    result = f'P: {p: .3f} R: {r: .3f} F1: {f1: .3f}'
+    if not self.rec_only:
+      tg = self.tol_global
+      tl = self.tol_local
+      result += f' Acc({tg}|{tl}): {acc:.3f} ({acc_r:.3f} resol only)'
+
+    print(result)
 
   def _wiki_res_in_tolerance(self, a, gold):
     coords = WikiUtil.coordinates_for_url(a.data)
@@ -113,19 +116,6 @@ class CorpusEvaluator:
     else:
       return (gold.data[0], gold.data[1])
 
-  def _print_metrics(self, m):
-    if m.ann_count == 0:
-      p = r = f1 = acc = acc_r = 1.0
-    elif m.true_pos == 0:
-      p = r = f1 = acc = acc_r = 0.0
-    else:
-      p = m.true_pos / (m.true_pos + m.false_pos)
-      r = m.true_pos / (m.true_pos + m.false_neg)
-      f1 = (2 * p * r) / (p + r)
-      acc = m.accurate / m.ann_count
-      acc_r = m.accurate / m.true_pos
-
-    print(f'P: {p:.3f} R: {r:.3f} F1: {f1:.3f} Acc@Xkm: {acc:.3f} ({acc_r:.3f} for resol only)')
 
 
 class Measurement:

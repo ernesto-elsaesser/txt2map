@@ -1,3 +1,4 @@
 from .importer import GeoWebNewsImporter, LGLImporter
-from .annotator import CorpusAnnotator, SpacyPipeline, GCNLPipeline, CogCompPipeline, SpacyT2MPipeline, CogCompT2MPipeline, GCNLT2MPipeline
-from .evaluator import CorpusEvaluator
+from .corpus import Corpus
+from .annotator import SpacyAnnotator, GCNLAnnotator, CogCompAnnotator, T2MAnnotator
+from .evaluator import Evaluator

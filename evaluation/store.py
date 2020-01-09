@@ -12,12 +12,12 @@ class DocumentStore:
     return text_dir
 
   @staticmethod
-  def pipeline_dir(corpus_name, pipeline_id):
+  def annotations_dir(corpus_name, ann_key):
     corpus_dir = DocumentStore._corpus_dir(corpus_name)
-    pipe_dir = f'{corpus_dir}/{pipeline_id}'
-    if not os.path.exists(pipe_dir):
-      os.mkdir(pipe_dir)
-    return pipe_dir
+    ann_dir = f'{corpus_dir}/{ann_key}'
+    if not os.path.exists(ann_dir):
+      os.mkdir(ann_dir)
+    return ann_dir
 
   @staticmethod
   def doc_ids(corpus_name):
@@ -33,24 +33,24 @@ class DocumentStore:
       f.write(text)
 
   @staticmethod
-  def save_annotations(corpus_name, doc_id, pipeline_id, doc):
-    pipe_dir = DocumentStore.pipeline_dir(corpus_name, pipeline_id)
-    ann_path = f'{pipe_dir}/{doc_id}.json'
+  def save_annotations(corpus_name, doc_id, ann_key, doc):
+    ann_dir = DocumentStore.annotations_dir(corpus_name, ann_key)
+    ann_path = f'{ann_dir}/{doc_id}.json'
     json_str = doc.get_annotation_json()
     with open(ann_path, 'w') as f:
       f.write(json_str)
 
   @staticmethod
-  def load_doc(corpus_name, doc_id, pipeline_id=None):
+  def load_doc(corpus_name, doc_id, ann_key=None):
     text_dir = DocumentStore.text_dir(corpus_name)
     text_path = f'{text_dir}/{doc_id}.txt'
     with open(text_path, 'r') as f:
       text = f.read()
     doc = Document(text)
 
-    if pipeline_id != None:
-      pipe_dir = DocumentStore.pipeline_dir(corpus_name, pipeline_id)
-      ann_path = f'{pipe_dir}/{doc_id}.json'
+    if ann_key != None:
+      ann_dir = DocumentStore.annotations_dir(corpus_name, ann_key)
+      ann_path = f'{ann_dir}/{doc_id}.json'
       if os.path.exists(ann_path):
         with open(ann_path, 'r') as f:
           ann_json = f.read()

@@ -1,23 +1,19 @@
 from evaluation import *
 
-annotator = CorpusAnnotator('Tests')
-evaluator = CorpusEvaluator('Tests', True)
+corpus = Corpus('Tests')
 
-spacy = SpacyPipeline(use_server=True)
-gcnl = GCNLPipeline()
-cogcomp = CogCompPipeline()
-spacy_geo = SpacyT2MPipeline()
-cogcomp_geo = CogCompT2MPipeline()
+spacy = SpacyAnnotator(use_server=True)
+gcnl = GCNLAnnotator()
+cogcomp = CogCompAnnotator()
+t2m = T2MAnnotator('spacy')
 
-annotator.annotate_all(spacy)
-#annotator.annotate_all(gcnl)
-annotator.annotate_all(spacy_geo)
-#annotator.annotate_all(cogcomp)
-#annotator.annotate_all(cogcomp_geo)
+res_eval = Evaluator()
 
-#annotator.annotate_one(spacy, 'ancestors')
-#annotator.annotate_one(spacy_geo, 'global_abbrevs')
+corpus.annotate_all(spacy)
+#corpus.annotate_all(cogcomp)
+#corpus.annotate_all(gcnl)
+corpus.annotate_all(t2m)
 
-evaluator.evaluate_all(spacy_geo.id_)
-#evaluator.evaluate_all(gcnl.id_)
-#evaluator.evaluate_all(cogcomp_geo.id_)
+#corpus.annotate_one(spacy, 'ancestors')
+
+corpus.evaluate_all(t2m, res_eval)

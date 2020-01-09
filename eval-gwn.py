@@ -1,15 +1,18 @@
-from geoparser import Config
-from evaluation import GeoWebNewsImporter, CorpusAnnotator, SpacyPipeline, GCNLPipeline, GCNLT2MPipeline, SpacyT2MPipeline, CorpusEvaluator
+from evaluation import *
 
-importer = GeoWebNewsImporter()
-annotator = CorpusAnnotator('GeoWebNews')
-evaluator = CorpusEvaluator('GeoWebNews', True, 161)
+corpus = Corpus('GeoWebNews')
 
-spacy = SpacyPipeline(use_server=True)
-gcnl = GCNLPipeline()
-spacy_geo = SpacyT2MPipeline()
+spacy = SpacyAnnotator(use_server=True)
+gcnl = GCNLAnnotator()
+cogcomp = CogCompAnnotator()
+t2m = T2MAnnotator('spacy')
 
-#importer.import_documents()
-#annotator.annotate_all(ner)
-#annotator.annotate_all(spacy_geo)
-evaluator.evaluate_all(spacy_geo.id_)
+rec_eval = Evaluator(tolerance_global=161, tolerance_local=161, rec_only=True)
+res_eval = Evaluator(tolerance_global=161, tolerance_local=161)
+
+corpus.annotate_all(spacy)
+corpus.annotate_all(cogcomp)
+#corpus.annotate_all(gcnl)
+#corpus.annotate_all(t2m)
+
+#corpus.evaluate_all(t2m, res_eval)
