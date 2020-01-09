@@ -1,0 +1,1 @@
+{"rec": [[7, "Paris", "ner", "Paris"], [16, "Lamar County", "ner", "Lamar County"], [30, "Texas", "ner", "Texas"]], "res": [[7, "Paris", "heu", 4717560], [16, "Lamar County", "heu", 4705086], [30, "Texas", "top", 4736286]]}

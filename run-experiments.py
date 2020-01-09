@@ -19,6 +19,7 @@ ev = Evaluator()
 
 # pipelines
 std = Pipeline.standard()
+cc = Pipeline.standard(use_cogcomp=True, ner_port=8002)
 
 #imp_tests.import_documents(tests)
 tests.bulk_exectue(std, evaluator=ev)

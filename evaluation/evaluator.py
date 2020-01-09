@@ -32,19 +32,15 @@ class Evaluator:
     correct_indices = []
 
     for gold in gold_doc.get_all('rec'):
-      anns = doc.get(gold.pos)
 
-      if 'rec' in anns:
-        ann = anns['rec']
-        recognized = self._matches_phrase(ann, gold)
-      else:
-        cluster_anns = [a for l, a in anns.items() if l.startswith('clu-')]
-        recognized = False
-        for a in cluster_anns:
-          recognized = self._matches_phrase(a, gold)
-          if recognized:
-            ann = a
-            break
+      recognized = False
+      for layer, a in doc.get(gold.pos).items():
+        if layer != 'rec' and not layer.startswith('clu-'):
+          continue
+        if self._matches_phrase(a, gold):
+          recognized = True
+          ann = a
+          break
           
       if recognized:
         correct_indices += list(range(ann.pos, ann.end_pos()))
@@ -69,31 +65,27 @@ class Evaluator:
     missed = []
 
     for gold in gold_doc.get_all('res'):
-      anns = doc.get(gold.pos)
-      
-      if 'res' in anns:
-        ann = anns['res']
-        in_tolerance = self._global_res_in_tolerance(anns['res'], gold)
-      elif 'wik' in anns:
-        ann = anns['wik']
-        in_tolerance = self._wiki_res_in_tolerance(anns['wik'], gold)
-      else:
-        cluster_anns = [a for l, a in anns.items() if l.startswith('clu-')]
-        if len(cluster_anns) == 0:
-          missed.append(gold)
-          continue
-        ann = cluster_anns[0]
-        for a in cluster_anns:
+
+      is_missed = True
+      is_accurate = False
+      for layer, a in doc.get(gold.pos).items():
+        if layer.startswith('clu-'):
           in_tolerance = self._local_res_in_tolerance(a, gold)
+        elif layer == 'res':
+          in_tolerance = self._global_res_in_tolerance(a, gold)
+        elif layer == 'wik':
+          in_tolerance = self._wiki_res_in_tolerance(a, gold)
+        else:
+          continue
+        if self._matches_phrase(a, gold):
+          is_missed = False
           if in_tolerance:
-            ann = a
+            is_accurate = True
             break
       
-      if not self._matches_phrase(ann, gold):
+      if is_missed:
         missed.append(gold)
-        continue
-
-      if in_tolerance:
+      elif is_accurate:
         accurates.append(gold)
       else:
         inaccurates.append(gold)
