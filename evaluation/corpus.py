@@ -47,22 +47,22 @@ class Corpus:
 
     return doc
 
-  def bulk_exectue(self, pipeline, load_steps=[], doc_range=None, evaluator=None):
+  def bulk_exectue(self, pipeline, saved_steps=[], doc_range=None, evaluator=None):
     doc_ids = self.document_ids()
     num_docs = len(doc_ids)
     doc_range = doc_range or range(num_docs)
-    load_path = [s.key for s in load_steps]
 
     for i in doc_range:
       doc_id = doc_ids[i]
       print(f'-- {doc_id} ({i+1}/{num_docs}) --')
-      doc = self.get_document(doc_id, load_path)
+      doc = self.get_document(doc_id, saved_steps)
 
-      key_path = list(load_path)
+      key_path = []
       for step in pipeline.steps:
-        layers = step.annotate(doc)
         key_path.append(step.key)
-        self.annotate_document(doc_id, key_path, doc, layers)
+        if step.key not in saved_steps:
+          layers = step.annotate(doc)
+          self.annotate_document(doc_id, key_path, doc, layers)
 
       if evaluator != None:
         gold_doc = self.get_gold_document(doc_id)

@@ -12,6 +12,9 @@ class Pipeline:
   def add(self, step):
     self.steps.append(step)
 
+  def key_path(self):
+    return [s.key for s in self.steps]
+
   def annotate(self, doc):
     for step in self.steps:
       step.annotate(doc)

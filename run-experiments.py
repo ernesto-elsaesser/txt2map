@@ -18,11 +18,14 @@ ev_161 = Evaluator(tolerance_local=161)
 ev = Evaluator()
 
 # pipelines
-std = Pipeline.standard()
-cc = Pipeline.standard(use_cogcomp=True, ner_port=8002)
+spacy_full = Pipeline.standard()
+cc_full = Pipeline.standard(use_cogcomp=True, ner_port=8002)
+spacy_only = Pipeline.standard(global_resol=False, local_resol=False)
+cc_only = Pipeline.standard(use_cogcomp=True, ner_port=8002, global_resol=False, local_resol=False)
 
 #imp_tests.import_documents(tests)
-tests.bulk_exectue(std, evaluator=ev)
+#tests.bulk_exectue(spacy_full, evaluator=ev)
+gwn.bulk_exectue(cc_only, evaluator=ev_rec)
 
 '''
 tests.annotate_all(cogcomp)

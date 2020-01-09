@@ -48,7 +48,7 @@ class Evaluator:
       else:
         false_negatives.append(gold)
 
-    for rec_ann in doc.get_all('res'): # local matches not counted
+    for rec_ann in doc.get_all('rec'): # local matches not counted
       if rec_ann.pos not in correct_indices:
         false_positives.append(rec_ann)
 
