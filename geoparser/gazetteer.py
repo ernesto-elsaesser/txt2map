@@ -24,22 +24,6 @@ class Gazetteer:
     return Gazetteer._load('country_boxes')
 
   @staticmethod
-  def continent_name(geoname):
-    if geoname.is_continent:
-      return geoname.name
-
-    if geoname.cc in Gazetteer.continent_map:
-      return Gazetteer.continent_map[geoname.cc]
-
-    lat = geoname.lat
-    lon = geoname.lon
-    country_boxes = Gazetteer._load('country_boxes')
-    for name, box in country_boxes.items():
-      if box[1] < lat < box[3] and box[0] < lon < box[2]:  # [w, s, e, n]
-        return Gazetteer.continent_map[name]
-    return 'Nowhere'
-
-  @staticmethod
   def update_top_level():
     continents = {}
     countries = {}
@@ -128,11 +112,12 @@ class Gazetteer:
   def update_defaults():
 
     defaults = {}
+    demonyms = Gazetteer.demonyms()
 
     continents = Gazetteer._load('continents')
     for toponym in continents:
       defaults[toponym] = continents[toponym]
-      for demonym in Gazetteer.demonyms[toponym]:
+      for demonym in demonyms[toponym]:
         defaults[demonym] = continents[toponym]
 
     oceans = Gazetteer._load('oceans')
@@ -142,8 +127,8 @@ class Gazetteer:
     countries = Gazetteer._load('countries')
     for toponym in countries:
       defaults[toponym] = countries[toponym]
-      if toponym in Gazetteer.demonyms:
-        for demonym in Gazetteer.demonyms[toponym]:
+      if toponym in demonyms:
+        for demonym in demonyms[toponym]:
           defaults[demonym] = countries[toponym]
 
     class_order = Config.gazetteer_class_prio
@@ -152,8 +137,8 @@ class Gazetteer:
       for toponym in entries:
         if toponym not in defaults:
           defaults[toponym] = entries[toponym]
-          if toponym in Gazetteer.demonyms:
-            for demonym in Gazetteer.demonyms[toponym]:
+          if toponym in demonyms:
+            for demonym in demonyms[toponym]:
               defaults[demonym] = entries[toponym]
 
     # common abbreviations
