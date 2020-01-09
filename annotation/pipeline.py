@@ -19,45 +19,49 @@ class Pipeline:
     for step in self.steps:
       step.annotate(doc)
 
-  @staticmethod
-  def spacy(port=8001, use_gazetteer=True, global_resol=True, local_resol=True):
+
+class PipelineBuilder:
+
+  def __init__(self, spacy_port=8001, cogcomp_port=8001):
+    self.tok = SpacyTokenStep()
+    self.spacy = SpacyServerStep(spacy_port)
+    self.cogcomp = CogCompServerStep(cogcomp_port)
+    self.gcnl = None # lazy init
+    self.loc = LocationRecogStep()
+    self.gaz = GazetteerRecogStep()
+    self.geo = GeoNamesRecogResolStep()
+    self.clust = ClusterStep()
+
+  def build_no_gaz(self, ner_key):
     pipe = Pipeline()
-    pipe.add(SpacyServerStep(port))
-    pipe.add(LocationRecogStep())
-    if use_gazetteer:
-      pipe.add(GazetteerRecogStep())
-    if global_resol:
-      pipe.add(GeoNamesRecogResolStep())
-      if local_resol:
-        pipe.add(ClusterStep())
+    if ner_key == SpacyServerStep.key:
+      pipe.add(self.spacy)
+    else:
+      pipe.add(self.tok)
+      if ner_key == CogCompServerStep.key:
+        pipe.add(self.cogcomp)
+      elif ner_key == GCNLStep.key:
+        if self.gcnl == None:
+          self.gcnl = GCNLStep()
+        pipe.add(self.gcnl)
+      else:
+        raise Exception('Invalid key for NER step!')
+    pipe.add(self.loc)
     return pipe
 
-  @staticmethod
-  def cogcomp(port=8002, use_gazetteer=True, global_resol=True, local_resol=True):
-    pipe = Pipeline()
-    pipe.add(SpacyTokenStep())
-    pipe.add(CogCompServerStep(port))
-    pipe.add(LocationRecogStep())
-    if use_gazetteer:
-      pipe.add(GazetteerRecogStep())
-    if global_resol:
-      pipe.add(GeoNamesRecogResolStep())
-      if local_resol:
-        pipe.add(ClusterStep())
+  def build_no_glob(self, ner_key):
+    pipe = self.build_no_gaz(ner_key)
+    pipe.add(self.gaz)
     return pipe
 
-  @staticmethod
-  def gcnl(use_gazetteer=True, global_resol=True, local_resol=True):
-    pipe = Pipeline()
-    pipe.add(SpacyTokenStep())
-    pipe.add(GCNLStep())
-    pipe.add(LocationRecogStep())
-    if use_gazetteer:
-      pipe.add(GazetteerRecogStep())
-    if global_resol:
-      pipe.add(GeoNamesRecogResolStep())
-      if local_resol:
-        pipe.add(ClusterStep())
+  def build_no_clust(self, ner_key):
+    pipe = self.build_no_glob(ner_key)
+    pipe.add(self.geo)
+    return pipe
+
+  def build(self, ner_key):
+    pipe = self.build_no_clust(ner_key)
+    pipe.add(self.clust)
     return pipe
     
 

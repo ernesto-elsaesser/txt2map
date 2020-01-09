@@ -1,6 +1,7 @@
 from annotation import *
 from evaluation import *
 
+builder = PipelineBuilder()
 
 # corpora
 tests = Corpus('Tests')
@@ -18,24 +19,8 @@ ev = Evaluator()
 ev_161 = Evaluator(tolerance_local=161)
 ev_wiki = Evaluator(count_wiki=True)
 
-# pipelines
-spacy = Pipeline.spacy()
-spacy_noclust = Pipeline.spacy(local_resol=False)
-spacy_nores= Pipeline.spacy(global_resol=False, local_resol=False)
-spacy_nogaz = Pipeline.spacy(use_gazetteer=False, global_resol=False, local_resol=False)
-
-cc = Pipeline.cogcomp()
-cc_noclust = Pipeline.cogcomp(local_resol=False)
-cc_nores = Pipeline.cogcomp(global_resol=False, local_resol=False)
-cc_nogaz = Pipeline.cogcomp(use_gazetteer=False, global_resol=False, local_resol=False)
-
-gcnl = Pipeline.gcnl()
-gcnl_noclust = Pipeline.gcnl(local_resol=False)
-gcnl_nores = Pipeline.gcnl(global_resol=False, local_resol=False)
-gcnl_nogaz = Pipeline.gcnl(use_gazetteer=False, global_resol=False, local_resol=False)
-
-
-#imp_tests.import_documents(tests)
+pipe = builder.build('spacy')
+# imp_tests.import_documents(tests)
 #tests.bulk_process(cc_full, evaluator=ev)
 
 #tests.bulk_process(gcnl_gaz, evaluator=ev_rec)
