@@ -89,28 +89,23 @@ class GeoUtil:
 
   @staticmethod
   def coordinates_for_wiki_url(url):
-    dbpedia_url = url.replace('https://en.wikipedia.org/wiki',
-                         'http://dbpedia.org/page')
-    resp = requests.get(url=dbpedia_url)
-    html = resp.text
-    coords = []
+    title = url.replace('https://en.wikipedia.org/wiki/', '')
+    req_url = "https://en.wikipedia.org/w/api.php"
+    params = {
+        "action": "query",
+        "format": "json",
+        "titles": title,
+        "prop": "coordinates"
+    }
+    resp = requests.get(url=req_url, params=params)
+    data = resp.json()
+    pages = data['query']['pages']
 
-    for lat_pat, lon_pat in GeoUtil.dbpedia_patterns:
-      lat_matches = list(re.findall(lat_pat, html))
-      lon_matches = list(re.findall(lon_pat, html))
-      num = len(lat_matches)
-      assert num == len(lon_matches)
-      if num == 1:
-        lat = float(lat_matches[0])
-        lon = float(lon_matches[0])
-        coords.append((lat, lon))
-      elif num == 2:
-        min_lat = float(lat_matches[0])
-        min_lon = float(lon_matches[0])
-        max_lat = float(lat_matches[1])
-        max_lon = float(lon_matches[1])
-        lat = (min_lat + max_lat) / 2
-        lon = (min_lon + max_lon) / 2
+    coords = []
+    for page in pages.values():
+      if 'coordinates' in page:
+        lat = page['coordinates'][0]['lat']
+        lon = page['coordinates'][0]['lon']
         coords.append((lat, lon))
 
     return coords

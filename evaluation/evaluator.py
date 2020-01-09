@@ -56,8 +56,8 @@ class Evaluator:
     self.false_pos += len(false_positives)
     self.false_neg += len(false_negatives)
 
-    self._print_if_not_empty(false_positives, 'REC FALSE POS')
-    self._print_if_not_empty(false_negatives, 'REC FALSE NEG')
+    self._print_if_not_empty(false_positives, 'REC WRONG')
+    self._print_if_not_empty(false_negatives, 'REC MISSED')
 
   def _evaluate_res(self, doc, gold_doc):
     accurates = []
@@ -68,13 +68,19 @@ class Evaluator:
 
       is_missed = True
       is_accurate = False
-      for layer, a in doc.get(gold.pos).items():
+      anns = doc.get(gold.pos)
+      for layer, a in anns.items():
         if layer.startswith('clu-'):
           in_tolerance = self._local_res_in_tolerance(a, gold)
         elif layer == 'res':
           in_tolerance = self._global_res_in_tolerance(a, gold)
         elif layer == 'wik':
-          in_tolerance = self._wiki_res_in_tolerance(a, gold)
+          if 'rec' not in anns:
+            continue
+          ret_code = self._wiki_res_in_tolerance(a, gold)
+          if ret_code == 0:
+            continue # article not geo-annotated
+          in_tolerance = ret_code == 2
         else:
           continue
         if self._matches_phrase(a, gold):
@@ -146,15 +152,15 @@ class Evaluator:
     print(f'{msg}: {names}')
 
   def _wiki_res_in_tolerance(self, a, gold):
-    coords = WikiUtil.coordinates_for_url(a.data)
+    coords = GeoUtil.coordinates_for_wiki_url(a.data)
     if len(coords) == 0:
-      return False
+      return 0
     (gold_lat, gold_lon) = self._gold_coords(gold)
     for lat, lon in coords:
       dist = GeoUtil.distance(lat, lon, gold_lat, gold_lon)
       if dist < self.tol_global:
-        return True
-    return False
+        return 2
+    return 1
 
   def _global_res_in_tolerance(self, a, gold):
     if gold.data == a.data:

@@ -1,4 +1,4 @@
-from geoparser import GazetteerRecognizer, GeoNamesResolver, Clusterer, GeoUtil
+from geoparser import GazetteerRecognizer, GeoNamesResolver, Clusterer
 from .spacy import SpacyNLP, SpacyClient
 from .gcnl import GoogleCloudNL
 from .cogcomp import CogCompClient
@@ -20,13 +20,9 @@ class Pipeline:
       step.annotate(doc)
 
   @staticmethod
-  def standard(use_cogcomp=False, ner_port=8001, use_gazetteer=True, global_resol=True, local_resol=True):
+  def spacy(port=8001, use_gazetteer=True, global_resol=True, local_resol=True):
     pipe = Pipeline()
-    if use_cogcomp:
-      pipe.add(SpacyTokenStep())
-      pipe.add(CogCompServerStep(ner_port))
-    else:
-      pipe.add(SpacyServerStep(ner_port))
+    pipe.add(SpacyServerStep(port))
     pipe.add(LocationRecogStep())
     if use_gazetteer:
       pipe.add(GazetteerRecogStep())
@@ -37,10 +33,27 @@ class Pipeline:
     return pipe
 
   @staticmethod
-  def gcnl():
+  def cogcomp(port=8002, use_gazetteer=True, global_resol=True, local_resol=True):
     pipe = Pipeline()
+    pipe.add(SpacyTokenStep())
+    pipe.add(CogCompServerStep(port))
+    pipe.add(LocationRecogStep())
+    if use_gazetteer:
+      pipe.add(GazetteerRecogStep())
+    if global_resol:
+      pipe.add(GeoNamesRecogResolStep())
+      if local_resol:
+        pipe.add(ClusterStep())
+    return pipe
+
+  @staticmethod
+  def gcnl(use_gazetteer=True):
+    pipe = Pipeline()
+    pipe.add(SpacyTokenStep())
     pipe.add(GCNLStep())
-    pipe.add(WikiResolStep())
+    pipe.add(LocationRecogStep())
+    if use_gazetteer:
+      pipe.add(GazetteerRecogStep())
     return pipe
     
 
@@ -177,15 +190,3 @@ class GCNLStep:
   def annotate(self, doc):
     self.gncl.annotate_ner_wik(doc)
     return ['ner', 'wik']
-
-
-class WikiResolStep:
-
-  key = 'wikires'
-
-  def annotate(self, doc):
-    for a in doc.get_all('wik', 'loc'):
-      (lat, lon) = GeoUtil.coordinates_for_wiki_url(a.data)
-      doc.annotate('res', a.pos, a.phrase, 'wik', [lat, lon])
-    return ['res']
-
