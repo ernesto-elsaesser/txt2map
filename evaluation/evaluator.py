@@ -2,12 +2,13 @@ from geoparser import GeoNamesCache, OSMLoader, GeoUtil
 
 class Evaluator:
 
-  def __init__(self, strict=True, recog=True, resol=True, tolerance_global=161, tolerance_local=1):
+  def __init__(self, strict=True, recog=True, resol=True, tolerance_global=161, tolerance_local=1, count_wiki=False):
     self.strict = strict
     self.recog = recog
     self.resol = resol
     self.tol_global = tolerance_global
     self.tol_local = tolerance_local
+    self.count_wiki = count_wiki
     self.gns_cache = GeoNamesCache()
 
     self.true_pos = 0
@@ -74,7 +75,7 @@ class Evaluator:
           in_tolerance = self._local_res_in_tolerance(a, gold)
         elif layer == 'res':
           in_tolerance = self._global_res_in_tolerance(a, gold)
-        elif layer == 'wik':
+        elif layer == 'wik' and self.count_wiki:
           if 'rec' not in anns:
             continue
           ret_code = self._wiki_res_in_tolerance(a, gold)

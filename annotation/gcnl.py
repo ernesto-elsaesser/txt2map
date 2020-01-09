@@ -13,6 +13,7 @@ class GoogleCloudNL:
     api_doc = {'content': doc.text, 'type': type_, 'language': 'en'}
     enc = enums.EncodingType.UTF8
     response = self.client.analyze_entities(api_doc, encoding_type=enc)
+    byte_text = doc.text.encode('utf8')
 
     for entity in response.entities:
       if entity.type == enums.Entity.Type.LOCATION:
@@ -29,7 +30,10 @@ class GoogleCloudNL:
         wiki_url = entity.metadata['wikipedia_url']
       for mention in entity.mentions:
         if mention.type == enums.EntityMention.Type.PROPER:
-          pos = mention.text.begin_offset
+          byte_pos = mention.text.begin_offset
+          byte_substr = byte_text[:byte_pos]
+          substr = byte_substr.decode('utf8')
+          pos = len(substr)
           phrase = mention.text.content
           doc.annotate('ner', pos, phrase, group, 'gcnl')
           if wiki_url != None:

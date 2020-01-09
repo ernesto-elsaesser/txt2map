@@ -47,13 +47,17 @@ class Pipeline:
     return pipe
 
   @staticmethod
-  def gcnl(use_gazetteer=True):
+  def gcnl(use_gazetteer=True, global_resol=True, local_resol=True):
     pipe = Pipeline()
     pipe.add(SpacyTokenStep())
     pipe.add(GCNLStep())
     pipe.add(LocationRecogStep())
     if use_gazetteer:
       pipe.add(GazetteerRecogStep())
+    if global_resol:
+      pipe.add(GeoNamesRecogResolStep())
+      if local_resol:
+        pipe.add(ClusterStep())
     return pipe
     
 
@@ -190,3 +194,4 @@ class GCNLStep:
   def annotate(self, doc):
     self.gncl.annotate_ner_wik(doc)
     return ['ner', 'wik']
+
