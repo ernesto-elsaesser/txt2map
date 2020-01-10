@@ -27,7 +27,7 @@ pipe = builder.build('spacy')
 #tests.bulk_process(gcnl, saved_steps=['tok', 'gcnl', 'loc', 'gaz'], evaluator=ev)
 #tests.process(gcnl_gaz, 'global_demonyms_hard', saved_steps=['tok', 'gcnl'])
 
-#gwn.bulk_process(spacy_nogaz, saved_steps=['spacy', 'loc'], evaluator=ev_rec)
+gwn.bulk_process(pipe, saved_steps=['spacy', 'loc', 'gaz', 'geores'], evaluator=ev_161)
 #gwn.bulk_process(spacy_nores, saved_steps=['spacy', 'loc', 'gaz'], evaluator=ev_rec)
 #gwn.bulk_process(spacy_noclust, saved_steps=['spacy', 'loc', 'gaz', 'geores'], evaluator=ev_161)
 #gwn.bulk_process(spacy, saved_steps=['spacy', 'loc', 'gaz', 'geores', 'clust'], evaluator=ev_161)

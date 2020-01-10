@@ -1,1 +1,1 @@
-{"rec": [[47, "Nelson LINK", "ner", "Nelson LINK"]]}
+{"rec": [[1259, "Castlegar", "ner", "Castlegar"], [47, "Nelson LINK", "ner", "Nelson LINK"], [367, "Forests", "ner", "Forests"], [1163, "Victoria", "gaz", "Victoria"]], "res": [[1259, "Castlegar", "api", 5918118], [1163, "Victoria", "heu", 6174041]]}

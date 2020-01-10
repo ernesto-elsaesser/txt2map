@@ -1,1 +1,1 @@
-{"rec": [[109, "CALAMBA CITY", "ner", "CALAMBA CITY"], [123, "Laguna", "ner", "Laguna"], [1334, "Calamba", "ner", "Calamba"], [1352, "Barangay Paciano Rizal", "ner", "Barangay Paciano Rizal"], [1376, "Malinao", "ner", "Malinao"], [2099, "Malinao", "ner", "Malinao"], [2561, "Malinao", "ner", "Malinao"]]}
+{"rec": [[123, "Laguna", "ner", "Laguna"], [536, "us", "ner", "us"], [741, "us", "ner", "us"], [878, "us", "ner", "us"], [1346, "us", "ner", "us"], [1554, "us", "ner", "us"], [1677, "us", "ner", "us"], [1779, "us", "ner", "us"], [2392, "us", "ner", "us"]]}

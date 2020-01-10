@@ -1,1 +1,1 @@
-{"rec": [[300, "North", "ner", "North"], [310, "Chicago", "ner", "Chicago"], [658, "Chicago", "ner", "Chicago"], [153, "LOS ANGELES", "gaz", "Los Angeles"]], "res": [[300, "North", "api", 6255149], [310, "Chicago", "top", 4887398], [658, "Chicago", "top", 4887398], [153, "LOS ANGELES", "top", 5368361]]}
+{"rec": [[153, "LOS ANGELES", "ner", "LOS ANGELES"], [300, "North and Chicago", "ner", "North and Chicago"], [366, "Easter", "ner", "Easter"], [658, "Chicago", "ner", "Chicago"]], "res": [[366, "Easter", "api", 4030726], [658, "Chicago", "top", 4887398]]}
