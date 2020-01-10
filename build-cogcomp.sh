@@ -2,10 +2,10 @@ CC_DIR="annotation/cogcomp"
 CC_LIB_DIR="$CC_DIR/lib"
 mkdir tmp
 cd tmp
-curl http://cogcomp.seas.upenn.edu/software/illinois-ner-3.0.23.zip > ner.zip
+curl -L0 http://cogcomp.seas.upenn.edu/software/illinois-ner-3.0.23.zip > ner.zip
 unzip ner.zip
 cd ..
-mkdir $CC_LIB_DIR
+mkdir -p $CC_LIB_DIR
 mv tmp/illinois-ner/lib/* $CC_LIB_DIR
 mv tmp/illinois-ner/dist/* $CC_LIB_DIR
 rm -rf tmp
