@@ -1,5 +1,5 @@
 from geoparser import GazetteerRecognizer, GeoNamesResolver, Clusterer
-from .spacy import SpacyNLP, SpacyClient
+from .spacy import SpacyClient
 from .gcnl import GoogleCloudNL
 from .cogcomp import CogCompClient
 
@@ -28,16 +28,15 @@ class PipelineBuilder:
 
   def build_no_loc(self, ner_key):
     pipe = Pipeline()
-    if ner_key == SpacyServerStep.key:
-      pipe.add(SpacyServerStep(self.spacy_port))
+    pipe.add(SpacyTokenStep())
+    if ner_key == SpacyServerNERStep.key:
+      pipe.add(SpacyServerNERStep(self.spacy_port))
+    elif ner_key == CogCompServerNERStep.key:
+      pipe.add(CogCompServerNERStep(self.cogcomp_port))
+    elif ner_key == GCNLNERStep.key:
+      pipe.add(GCNLNERStep())
     else:
-      pipe.add(SpacyTokenStep())
-      if ner_key == CogCompServerStep.key:
-        pipe.add(CogCompServerStep(self.cogcomp_port))
-      elif ner_key == GCNLStep.key:
-        pipe.add(GCNLStep())
-      else:
-        raise Exception('Invalid key for NER step!')
+      raise Exception('Invalid key for NER step!')
     return pipe
 
   def build_no_gaz(self, ner_key):
@@ -66,14 +65,14 @@ class SpacyTokenStep:
   key = 'tok'
 
   def __init__(self):
-    self.spacy = SpacyNLP(False)
+    self.spacy = SpacyClient()
 
   def annotate(self, doc):
     self.spacy.annotate_ntk(doc)
     return ['ntk']
 
 
-class SpacyServerStep:
+class SpacyServerNERStep:
 
   key = 'spacy'
 
@@ -81,26 +80,11 @@ class SpacyServerStep:
     self.spacy = SpacyClient(port)
 
   def annotate(self, doc):
-    self.spacy.annotate_ntk_ner(doc)
-    return ['ntk', 'ner']
+    self.spacy.annotate_ner(doc)
+    return ['ner']
 
 
-class SpacyStep:
-
-  key = 'spacy'
-
-  def __init__(self):
-    self.spacy_sm = SpacyNLP(False)
-    self.spacy_lg = SpacyNLP(True)
-
-  def annotate(self, doc):
-    self.spacy_sm.annotate_ntk(doc)
-    self.spacy_lg.annotate_ner(doc)
-    self.spacy_sm.annotate_ner(doc)
-    return ['ntk', 'ner']
-
-
-class CogCompServerStep:
+class CogCompServerNERStep:
 
   key = 'cogcomp'
 
@@ -184,7 +168,7 @@ class ClusterConfidenceStep:
     return ['con']
 
 
-class GCNLStep:
+class GCNLNERStep:
 
   key = 'gcnl'
 

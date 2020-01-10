@@ -2,18 +2,18 @@ import re
 import requests
 import spacy
 
-class SpacyNLP:
 
-  label_map_lg = {'GPE': 'loc', 'LOC': 'loc', 'NORP': 'loc', 'FAC': 'fac', 'ORG': 'org', 
+class SpacyClient:
+
+  label_map_lg = {'GPE': 'loc', 'LOC': 'loc', 'NORP': 'loc', 'FAC': 'fac', 'ORG': 'org',
                   'PERSON': 'per', 'PRODUCT': 'msc', 'EVENT': 'msc', 'WORK_OF_ART': 'msc', 'LANGUAGE': 'msc'}
   label_map_sm = {'GPE': 'loc', 'LOC': 'loc', 'NORP': 'loc', 'FAC': 'msc', 'ORG': 'msc',
                   'PERSON': 'msc', 'PRODUCT': 'msc', 'EVENT': 'msc', 'WORK_OF_ART': 'msc', 'LANGUAGE': 'msc'}
 
-  def __init__(self, large_model):
-    model = 'en_core_web_lg' if large_model else 'en_core_web_sm'
-    self.nlp = spacy.load(model, disable=['parser'])
-    self.label_map = self.label_map_lg if large_model else self.label_map_sm
-    self.ann_data = 'spacy_lg' if large_model else 'spacy_sm'
+  def __init__(self, port=None):
+    if port != None:
+      self.server_url = f'http://localhost:{port}'
+    self.nlp = spacy.load('en_core_web_sm', disable=['parser'])
 
   def annotate_ntk(self, doc):
     spacy_doc = self.nlp(doc.text)
@@ -28,20 +28,35 @@ class SpacyNLP:
       doc.annotate('ntk', token.idx, token.text, group, '')
 
   def annotate_ner(self, doc):
-    spacy_doc = self.nlp(doc.text)
+    if self.server_url == None:
+      raise Exception('NER annotation requires spaCy server')
+
     unique_names = []
-    for ent in spacy_doc.ents:
-      if ent.label_ not in self.label_map:
+
+    req_data = doc.text.encode('utf-8')
+    response = requests.post(url=self.server_url, data=req_data)
+    response.encoding = 'utf-8'
+    lg_ents = response.json()
+    for name, label in lg_ents:
+      if label not in self.label_map_lg:
         continue
-      name = self._normalized_name(ent)
-      group = self.label_map[ent.label_]
+      phrase = self._normalized_name(name)
+      if phrase not in unique_names:
+        unique_names.append(name)
+        group = self.label_map_lg[label]
+        self._annotate_all_occurences(doc, phrase, group, 'spacy_lg')
+
+    spacy_doc = self.nlp(doc.text)
+    for ent in spacy_doc.ents:
+      if ent.label_ not in self.label_map_sm:
+        continue
+      phrase = self._normalized_name(ent.text)
       if name not in unique_names:
         unique_names.append(name)
-        self._annotate_all_occurences(doc, name, group)
+        group = self.label_map_sm[ent.label_]
+        self._annotate_all_occurences(doc, name, group, 'spacy_sm')
 
-
-  def _normalized_name(self, entity):
-    name = entity.text
+  def _normalized_name(self, name):
     if name.startswith('the ') or name.startswith('The '):
       name = name[4:]
     if name.endswith('\n'):
@@ -52,21 +67,9 @@ class SpacyNLP:
       name = name[:-1]
     return name
 
-  def _annotate_all_occurences(self, doc, name, group):
-    escaped_name = re.escape(name)
-    matches = re.finditer(escaped_name, doc.text)
-    phrase = name.rstrip('.')
+  def _annotate_all_occurences(self, doc, phrase, group, data):
+    escaped_phrase = re.escape(phrase)
+    matches = re.finditer(escaped_phrase, doc.text)
+    phrase = phrase.rstrip('.') # for consistency with CogComp
     for match in matches:
-      doc.annotate('ner', match.start(), phrase, group, self.ann_data)
-
-
-class SpacyClient:
-
-  def __init__(self, port):
-    self.url = f'http://localhost:{port}'
-
-  def annotate_ntk_ner(self, doc):
-    body = doc.text.encode('utf-8')
-    response = requests.post(url=self.url, data=body)
-    response.encoding = 'utf-8'
-    doc.import_layers(response.text)
+      doc.annotate('ner', match.start(), phrase, group, data)

@@ -16,7 +16,7 @@ public class CogCompServer {
   public static void main(String[] args) throws Exception {
 
     try {
-      Parameters.readConfigAndLoadExternalData("cogcomp.properties", false);
+      Parameters.readConfigAndLoadExternalData("ner.properties", false);
     } catch (IOException e) {
       System.out.println("Initialization failed!");
       return;
