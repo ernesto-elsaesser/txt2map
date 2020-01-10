@@ -17,10 +17,12 @@ class GeoNamesCache:
     if not os.path.exists(cache_dir):
       os.mkdir(cache_dir)
     db_path = cache_dir + '/geonames.db'
-    if not os.path.exists(db_path):
-      self.get_db().create_tables()
-    db = sqlite3.connect(db_path)
-    return GeoNamesDatabase(db)
+    exists = os.path.exists(db_path)
+    sqlite_db = sqlite3.connect(db_path)
+    db = GeoNamesDatabase(sqlite_db)
+    if not exists:
+      db.create_tables()
+    return db
 
   def get(self, geoname_id):
     if geoname_id in self.geonames:
