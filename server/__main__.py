@@ -5,34 +5,25 @@ from annotation import PipelineBuilder
 from .ui import UIServer
 from .spacy import SpacyServer
 
-ner_port = sys.argv[2]
-flask_port = 80
-
-if sys.argv[1] == 'spacy-ui':
-  print('Starting spaCy UI server ...')
-  builder = PipelineBuilder(spacy_port=ner_port)
-  pipe = builder.build('spacy')
-  server = UIServer(pipe)
-elif sys.argv[1] == 'cogcomp-ui':
-  print('Starting CogComp UI server ...')
-  builder = PipelineBuilder(cogcomp_port=ner_port)
-  pipe = builder.build('cogcomp')
-  server = UIServer(pipe)
-elif sys.argv[1] == 'gcnl-ui':
-  print('Starting GCNL UI server ...')
-  builder = PipelineBuilder(cogcomp_port=ner_port)
-  pipe = builder.build('cogcomp')
-  server = UIServer(pipe)
+port = sys.argv[2]
+  
+if sys.argv[1] == 'ui-spacy':
+  spacy_port = sys.argv[3]
+  print(f'Starting UI on port {port} using spaCy NER server on port {spacy_port} ...')
+  builder = PipelineBuilder(spacy_port=spacy_port)
+  server = UIServer(builder.build('spacy'))
+elif sys.argv[1] == 'ui-cogcomp':
+  cogcomp_port = sys.argv[3]
+  print(f'Starting UI on port {port} server using CogComp NER server on port {cogcomp_port} ...')
+  builder = PipelineBuilder(cogcomp_port=cogcomp_port)
+  server = UIServer(builder.build('cogcomp'))
+elif sys.argv[1] == 'ui-gcnl':
+  print(f'Starting UI on port {port} server using GCNL NER pipeline ...')
+  builder = PipelineBuilder()
+  server = UIServer(builder.build('gcnl'))
 elif sys.argv[1] == 'spacy':
-  print('Starting spaCy NLP server (might take some time) ...')
+  print(f'Starting spaCy NER server on port {port} (loading models takes some time) ...')
   server = SpacyServer()
-  flask_port = ner_port
-elif sys.argv[1] == 'cogcomp':
-  print('Starting CogComp NLP server (might take some time) ...')
-  t2m_dir = os.path.dirname(__file__)[:-6]
-  cp = f'{t2m_dir}annotation:{t2m_dir}illinois-ner/lib/*:{t2m_dir}illinois-ner/dist/*'
-  os.system(f'java -Xmx4g -classpath "{cp}" CogCompServer {ner_port}')
-  exit(0)
 else:
   print('Invalid argument')
   exit(0)
@@ -49,5 +40,4 @@ def post():
   return server.post(req_text)
 
 
-app.run(host='0.0.0.0', port=flask_port)
-  
+app.run(host='0.0.0.0', port=port)

@@ -1,0 +1,1 @@
+sudo python3 -m server ui-spacy 80 8001
