@@ -1,6 +1,7 @@
 import re
 import requests
 import spacy
+from .exception import PipelineException
 
 
 class SpacyClient:
@@ -10,9 +11,8 @@ class SpacyClient:
   label_map_sm = {'GPE': 'loc', 'LOC': 'loc', 'NORP': 'loc', 'FAC': 'msc', 'ORG': 'msc',
                   'PERSON': 'msc', 'PRODUCT': 'msc', 'EVENT': 'msc', 'WORK_OF_ART': 'msc', 'LANGUAGE': 'msc'}
 
-  def __init__(self, port=None):
-    if port != None:
-      self.server_url = f'http://localhost:{port}'
+  def __init__(self, url=None):
+    self.server_url = url
     self.nlp = spacy.load('en_core_web_sm', disable=['parser'])
 
   def annotate_ntk(self, doc):
@@ -29,15 +29,19 @@ class SpacyClient:
 
   def annotate_ner(self, doc):
     if self.server_url == None:
-      raise Exception('NER annotation requires spaCy server')
+      raise PipelineException('spaCy NER service not configured!')
+
+    req_data = doc.text.encode('utf-8')
+    try:
+      response = requests.post(url=self.server_url, data=req_data)
+    except:
+      raise PipelineException('spaCy NER service not running!')
+    response.encoding = 'utf-8'
 
     unique_names = []
 
-    req_data = doc.text.encode('utf-8')
-    response = requests.post(url=self.server_url, data=req_data)
-    response.encoding = 'utf-8'
     lg_ents = response.json()
-    for name, label in lg_ents:
+    for name, label in lg_ents.items():
       if label not in self.label_map_lg:
         continue
       phrase = self._normalized_name(name)

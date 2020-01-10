@@ -2,6 +2,7 @@ from geoparser import GazetteerRecognizer, GeoNamesResolver, Clusterer
 from .spacy import SpacyClient
 from .gcnl import GoogleCloudNL
 from .cogcomp import CogCompClient
+from .exception import PipelineException
 
 
 class Pipeline:
@@ -22,21 +23,21 @@ class Pipeline:
 
 class PipelineBuilder:
 
-  def __init__(self, spacy_port=8001, cogcomp_port=8002):
-    self.spacy_port = spacy_port
-    self.cogcomp_port = cogcomp_port
+  def __init__(self, spacy_url=None, cogcomp_url=None):
+    self.spacy_url = spacy_url
+    self.cogcomp_url = cogcomp_url
 
   def build_no_loc(self, ner_key):
     pipe = Pipeline()
     pipe.add(SpacyTokenStep())
     if ner_key == SpacyServerNERStep.key:
-      pipe.add(SpacyServerNERStep(self.spacy_port))
+      pipe.add(SpacyServerNERStep(self.spacy_url))
     elif ner_key == CogCompServerNERStep.key:
-      pipe.add(CogCompServerNERStep(self.cogcomp_port))
+      pipe.add(CogCompServerNERStep(self.cogcomp_url))
     elif ner_key == GCNLNERStep.key:
       pipe.add(GCNLNERStep())
     else:
-      raise Exception('Invalid key for NER step!')
+      raise PipelineException('Invalid key for NER step!')
     return pipe
 
   def build_no_gaz(self, ner_key):
@@ -76,8 +77,8 @@ class SpacyServerNERStep:
 
   key = 'spacy'
 
-  def __init__(self, port):
-    self.spacy = SpacyClient(port)
+  def __init__(self, url):
+    self.spacy = SpacyClient(url)
 
   def annotate(self, doc):
     self.spacy.annotate_ner(doc)
@@ -88,8 +89,8 @@ class CogCompServerNERStep:
 
   key = 'cogcomp'
 
-  def __init__(self, port):
-    self.cogcomp = CogCompClient(port)
+  def __init__(self, url):
+    self.cogcomp = CogCompClient(url)
 
   def annotate(self, doc):
     self.cogcomp.annotate_ner(doc)

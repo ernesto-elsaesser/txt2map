@@ -1,13 +1,13 @@
 import sys
 import os
 from flask import Flask, request
-from annotation import Document, PipelineBuilder
+from annotation import Document, PipelineBuilder, PipelineException
 
 port = sys.argv[1]
-spacy_port = os.getenv('SPACY_PORT')
-cogcomp_port = os.getenv('COGCOMP_PORT')
+spacy_url = os.getenv('SPACY_URL')
+cogcomp_url = os.getenv('COGCOMP_URL')
 
-builder = PipelineBuilder(spacy_port=spacy_port, cogcomp_port=cogcomp_port)
+builder = PipelineBuilder(spacy_url=spacy_url, cogcomp_url=cogcomp_url)
 spacy_pipe = builder.build('spacy')
 cogcomp_pipe = builder.build('cogcomp')
 
@@ -37,8 +37,6 @@ def post_cogcomp():
 
 @app.route('/gcnl', methods=['POST'])
 def post_gcnl():
-  if gcnl_pipe == None:
-    return 'No Google Cloud API credentials provided!', 500
   return process(gcnl_pipe)
 
 def process(pipe):
@@ -47,8 +45,8 @@ def process(pipe):
   try:
     pipe.annotate(doc)
     return doc.export_layers()
-  except:
-    return 'NER service not available!', 500
+  except PipelineException as e:
+    return str(e), 500
 
 
 print(f'UI server listening on port {port}')

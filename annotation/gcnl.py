@@ -1,14 +1,21 @@
 from google.cloud import language
 from google.cloud.language import enums
 from google.cloud.language import types
+from .exception import PipelineException
 
 
 class GoogleCloudNL:
 
   def __init__(self):
-    self.client = language.LanguageServiceClient()
+    try:
+      self.client = language.LanguageServiceClient()
+    except:
+      self.client = None
 
   def annotate_ner_wik(self, doc):
+    if self.client == None:
+      raise PipelineException('No Google Cloud API credentials provided!')
+
     type_ = enums.Document.Type.PLAIN_TEXT
     api_doc = {'content': doc.text, 'type': type_, 'language': 'en'}
     enc = enums.EncodingType.UTF8

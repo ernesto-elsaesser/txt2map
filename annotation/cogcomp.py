@@ -1,16 +1,23 @@
 import requests
+from .exception import PipelineException
 
 class CogCompClient:
 
-  def __init__(self, port):
-    self.url = f'http://localhost:{port}'
+  def __init__(self, url):
+    self.server_url = url
 
   def annotate_ner(self, doc):
+    if self.server_url == None:
+      raise PipelineException('CogComp NER service not configured!')
+
     text = doc.text
 
     esc_text = text.replace('[', '{').replace(']', '}')
-    body = esc_text.encode('utf-8')
-    response = requests.post(url=self.url, data=body)
+    req_data = esc_text.encode('utf-8')
+    try:
+      response = requests.post(url=self.server_url, data=req_data)
+    except:
+      raise PipelineException('CogComp NER service not running!')
     response.encoding = 'utf-8'
     cc_text = response.text
 

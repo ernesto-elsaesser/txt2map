@@ -1,0 +1,3 @@
+
+class PipelineException(Exception):
+  pass
