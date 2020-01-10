@@ -5,9 +5,7 @@ RUN ["python", "-m", "spacy", "download", "en_core_web_sm"]
 WORKDIR /map2txt
 ADD ./geoparser /map2txt/annotation
 ADD ./geoparser /map2txt/geoparser
-ADD ./server /map2txt/server
-ADD ./build-cogcomp.sh /map2txt/build.sh
-ADD ./start-servers.sh /map2txt/start.sh
-RUN ["/map2txt/build.sh"]
+ADD ./start-cogcomp-server.sh /map2txt/ner.sh
+ADD ./start-cogcomp-ui-server.sh /map2txt/ui.sh
 EXPOSE 80
-ENTRYPOINT ["/map2txt/start.sh"]
+ENTRYPOINT ["cd /map2txt; ./ner.sh & ./ui.sh"]
