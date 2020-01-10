@@ -25,7 +25,7 @@ public class CogCompServer {
     ParametersForLbjCode.currentParameters.forceNewSentenceOnLineBreaks = true;
     NETagPlain.init();
 
-    System.out.println("Starting server on port " + args[0]);
+    System.out.println("CogComp NER listening on port " + args[0]);
     int port = Integer.parseInt(args[0]);
     InetAddress addr = InetAddress.getByName(null);
     InetSocketAddress saddr = new InetSocketAddress(addr, port);

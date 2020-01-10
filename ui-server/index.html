@@ -4,6 +4,7 @@
     <style>
       a { cursor: pointer; font-weight: bold; }
       .container { margin: 20px auto 40px; text-align: center; }
+      label { font-weight: bold; }
       #input { width: 80%; height: 200px; margin: 0 auto 20px; }
       #button { font-size: 18px; color: blue; }
       #layers { width: 80%; margin: 0 auto 20px; }
@@ -16,7 +17,12 @@
   <body>
     <div class="container">
       <h1>Input</h1>
-      <textarea id="input">Paris is the county seat of Lamar County, Texas. It is only a 2h drive away from Dallas, the ninth most populous city in the US. Six hours west of Dallas lies Odessa, which has 2014 been ranked the third-fastest growing small city in the US. With a population of ~100,000 Odessa is about four times as large as Paris. The University of Texas of the Permian Basin is located in Odessa.</textarea><br/>
+      <textarea id="input">Paris is the county seat of Lamar County, Texas. It is only a 2h drive away from Dallas, the ninth most populous city in the US. Six hours west of Dallas lies Odessa, which has 2014 been ranked the third-fastest growing small city in the US. With a population of ~100,000 Odessa is about four times as large as Paris. The University of Texas of the Permian Basin is located in Odessa.</textarea><br/><br />
+      NER Tool: <select id="endpoint">
+        <option value="/spacy" selected>spaCy</option>
+        <option value="/cogcomp">CogComp (Illinois NER)</option>
+        <option value="/gcnl">Google Cloud Natural Language API</option>
+      </select><br /><br />
       <a onclick="post()" id="button">PARSE</a><br />
       <h1>Output</h1>
       <div id="layers"></div>
@@ -31,6 +37,7 @@
     groupNames = { 'loc': 'Location Entity', 'per': 'Person Entity', 'org': 'Organization Entity', 'msc': 'Misc Entity', 'ner': 'From NER', 'gaz': 'From Global Gazetteer', 'anc': 'From Ancestor Scan', 'top': 'Common Default Sense', 'api': 'GeoNames Default Sense', 'heu': 'Selected By Disambiguation Heuristic', 'low': 'Low Confidence', 'low': 'High Confidence' }
 
     var input = document.getElementById('input');
+    var endpoint = document.getElementById('endpoint');
     var button = document.getElementById('button');
     var layers = document.getElementById('layers');
     var output = document.getElementById('output');
@@ -47,25 +54,30 @@
       text = input.value;
       annotations = {};
 
+      var url = endpoint.options[endpoint.selectedIndex].value
+
       toggle(true);
-      fetch('/', {method: 'POST', body: input.value})
+      fetch(url, {method: 'POST', body: input.value})
       .then(function (res) {
-        res.json().then(finish);
-      }).catch(function (err) {
-        finish(err.toString(), true)
-      });
+        if (res.status == 200)
+          res.json().then(finish).catch(fail);
+        else
+          fail('NER failed! Is the server running?');
+      }).catch(fail);
     }
 
-    function finish(data, failed) {
-      if (failed) {
-        output.style.color = 'red';
-      } else {
-        hint.style.color = 'grey';
-        output.style.color = 'black';
-      }
-      annotations = data;
+    function finish(data) {
       toggle(false);
+      hint.style.color = 'grey';
+      output.style.color = 'black';
+      annotations = data;
       render();
+    }
+
+    function fail(err) {
+      toggle(false);
+      output.style.color = 'red';
+      output.innerHTML = err.toString();
     }
 
     function toggle(loading) {
