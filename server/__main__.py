@@ -1,19 +1,32 @@
 import sys
 import os
 from flask import Flask, request
+from annotation import PipelineBuilder
 from .ui import UIServer
 from .spacy import SpacyServer
 
 ner_port = sys.argv[2]
+flask_port = 80
 
-if sys.argv[1] == 'ui':
-  print('Starting txt2map UI server ...')
-  server = UIServer(ner_port)
-  port = 80
+if sys.argv[1] == 'spacy-ui':
+  print('Starting spaCy UI server ...')
+  builder = PipelineBuilder(spacy_port=ner_port)
+  pipe = builder.build('spacy')
+  server = UIServer(pipe)
+elif sys.argv[1] == 'cogcomp-ui':
+  print('Starting CogComp UI server ...')
+  builder = PipelineBuilder(cogcomp_port=ner_port)
+  pipe = builder.build('cogcomp')
+  server = UIServer(pipe)
+elif sys.argv[1] == 'gcnl-ui':
+  print('Starting GCNL UI server ...')
+  builder = PipelineBuilder(cogcomp_port=ner_port)
+  pipe = builder.build('cogcomp')
+  server = UIServer(pipe)
 elif sys.argv[1] == 'spacy':
   print('Starting spaCy NLP server (might take some time) ...')
   server = SpacyServer()
-  port = ner_port
+  flask_port = ner_port
 elif sys.argv[1] == 'cogcomp':
   print('Starting CogComp NLP server (might take some time) ...')
   t2m_dir = os.path.dirname(__file__)[:-6]
@@ -36,5 +49,5 @@ def post():
   return server.post(req_text)
 
 
-app.run(host='0.0.0.0', port=port)
+app.run(host='0.0.0.0', port=flask_port)
   

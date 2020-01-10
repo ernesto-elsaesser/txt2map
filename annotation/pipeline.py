@@ -22,46 +22,42 @@ class Pipeline:
 
 class PipelineBuilder:
 
-  def __init__(self, spacy_port=8001, cogcomp_port=8001):
-    self.tok = SpacyTokenStep()
-    self.spacy = SpacyServerStep(spacy_port)
-    self.cogcomp = CogCompServerStep(cogcomp_port)
-    self.gcnl = None # lazy init
-    self.loc = LocationRecogStep()
-    self.gaz = GazetteerRecogStep()
-    self.geo = GeoNamesRecogResolStep()
-    self.clust = ClusterStep()
+  def __init__(self, spacy_port=8001, cogcomp_port=8002):
+    self.spacy_port = spacy_port
+    self.cogcomp_port = cogcomp_port
 
-  def build_no_gaz(self, ner_key):
+  def build_no_loc(self, ner_key):
     pipe = Pipeline()
     if ner_key == SpacyServerStep.key:
-      pipe.add(self.spacy)
+      pipe.add(SpacyServerStep(self.spacy_port))
     else:
-      pipe.add(self.tok)
+      pipe.add(SpacyTokenStep())
       if ner_key == CogCompServerStep.key:
-        pipe.add(self.cogcomp)
+        pipe.add(CogCompServerStep(self.cogcomp_port))
       elif ner_key == GCNLStep.key:
-        if self.gcnl == None:
-          self.gcnl = GCNLStep()
-        pipe.add(self.gcnl)
+        pipe.add(GCNLStep())
       else:
         raise Exception('Invalid key for NER step!')
-    pipe.add(self.loc)
+    return pipe
+
+  def build_no_gaz(self, ner_key):
+    pipe = self.build_no_loc(ner_key)
+    pipe.add(LocationRecogStep())
     return pipe
 
   def build_no_glob(self, ner_key):
     pipe = self.build_no_gaz(ner_key)
-    pipe.add(self.gaz)
+    pipe.add(GazetteerRecogStep())
     return pipe
 
   def build_no_clust(self, ner_key):
     pipe = self.build_no_glob(ner_key)
-    pipe.add(self.geo)
+    pipe.add(GeoNamesRecogResolStep())
     return pipe
 
   def build(self, ner_key):
     pipe = self.build_no_clust(ner_key)
-    pipe.add(self.clust)
+    pipe.add(ClusterStep())
     return pipe
     
 

@@ -2,12 +2,15 @@
   <head>
     <title>txt2map</title>
     <style>
+      a { cursor: pointer; font-weight: bold; }
       .container { margin: 20px auto 40px; text-align: center; }
       #input { width: 80%; height: 200px; margin: 0 auto 20px; }
       #button { font-size: 18px; color: blue; }
-      #output { width: 80%; min-height: 100px; margin: 0 auto 40px; }
-      a { cursor: pointer; font-weight: bold; }
-      span { background-color: lightgreen; }
+      #layers { width: 80%; margin: 0 auto 20px; }
+      #layers a { display: inline-block; margin: 5px; color: blue; border: 1px solid blue; padding: 3px 5px; }
+      #output { width: 80%; min-height: 100px; margin: 0 auto 20px; }
+      #output span { background-color: lightgreen; }
+      #hint { color: white; margin-bottom: 40px; }
     </style>
   </head>
   <body>
@@ -16,38 +19,53 @@
       <textarea id="input">Paris is the county seat of Lamar County, Texas. It is only a 2h drive away from Dallas, the ninth most populous city in the US. Six hours west of Dallas lies Odessa, which has 2014 been ranked the third-fastest growing small city in the US. With a population of ~100,000 Odessa is about four times as large as Paris. The University of Texas of the Permian Basin is located in Odessa.</textarea><br/>
       <a onclick="post()" id="button">PARSE</a><br />
       <h1>Output</h1>
+      <div id="layers"></div>
       <div id="output"></div>
-      <p><span style="color: grey">Hover over annotations to see details.</span><br />
-        <br />
-        Source: <a href="https://github.com/ernesto-elsaesser/txt2map" target="_blank">https://github.com/ernesto-elsaesser/txt2map</a></p>
+      <div id="hint">Hover over annotations to see details.</div>
+      <p>Source: <a href="https://github.com/ernesto-elsaesser/txt2map" target="_blank">https://github.com/ernesto-elsaesser/txt2map</a></p>
     </div>
 
     <script>
+
+    layerNames = { 'ner': 'Named Entities', 'rec': 'Global Names', 'res': 'Global Entities', 'wik': 'Wikipedia Links', 'clu': 'Clusters', 'con': 'Confidences' }
+    groupNames = { 'loc': 'Location Entity', 'per': 'Person Entity', 'org': 'Organization Entity', 'msc': 'Misc Entity', 'ner': 'From NER', 'gaz': 'From Global Gazetteer', 'anc': 'From Ancestor Scan', 'top': 'Common Default Sense', 'api': 'GeoNames Default Sense', 'heu': 'Selected By Disambiguation Heuristic', 'low': 'Low Confidence', 'low': 'High Confidence' }
+
     var input = document.getElementById('input');
     var button = document.getElementById('button');
+    var layers = document.getElementById('layers');
     var output = document.getElementById('output');
+    var hint = document.getElementById('hint');
+
+    text = '';
+    annotations = {};
 
     function post() {
 
+      layers.innerHTML = '';
       output.innerHTML = '';
+
+      text = input.value;
+      annotations = {};
 
       toggle(true);
       fetch('/', {method: 'POST', body: input.value})
       .then(function (res) {
-        res.text().then(finish);
+        res.json().then(finish);
       }).catch(function (err) {
         finish(err.toString(), true)
       });
     }
 
-    function finish(html, failed) {
+    function finish(data, failed) {
       if (failed) {
         output.style.color = 'red';
       } else {
+        hint.style.color = 'grey';
         output.style.color = 'black';
       }
-      output.innerHTML = html;
+      annotations = data;
       toggle(false);
+      render();
     }
 
     function toggle(loading) {
@@ -61,6 +79,103 @@
         button.onclick = post;
       }
     }
+
+    selectedLayerButton = null;
+
+    function render() {
+      layers.innerHTML = '';
+      var namesButton = null;
+      for (layer in annotations) {
+        if (layer == 'ntk') {
+          continue;
+        }
+        var layerButton = document.createElement('a');
+        var layerName = '';
+        if (layer.startsWith('clu-')) {
+          layerName = 'Cluster ' + layer.substring(4);
+        } else {
+          layerName = layerNames[layer]
+        }
+        layerButton.innerHTML = layerName;
+        var theLayer = layer;
+        layerButton.onclick = makeClick(layer, layerButton);
+        layers.appendChild(layerButton);
+        if (layer == 'rec') {
+          namesButton = layerButton
+        }
+      }
+      selectLayer('rec', namesButton);
+    }
+
+    function makeClick(layer, layerButton) {
+      return function () { selectLayer(layer, layerButton); };
+    }
+
+    function selectLayer(layer, layerButton) {
+
+      if (selectedLayerButton != null) {
+        selectedLayerButton.style.color = 'blue';
+        selectedLayerButton.style.backgroundColor = 'white';
+      }
+      
+      layerButton.style.color = 'white';
+      layerButton.style.backgroundColor = 'blue';
+      selectedLayerButton = layerButton;
+      
+      var anns = annotations[layer];
+      var annsByPos = {};
+      for (i in anns)
+        annsByPos[anns[i][0]] = anns[i];
+
+      var i = 0;
+      var l = text.length;
+      var html = '';
+      while (i < l) {
+        var ann = annsByPos[i];
+
+        if (ann == null) {
+          html += text[i];
+          i += 1;
+          continue;
+        }
+
+        var phrase = ann[1];
+        var group = ann[2];
+        var data = ann[3];
+
+        var groupName = '';
+        if (group != '' && !group.startsWith('clu-')) 
+          groupName = groupNames[group];
+        var trailers = [];
+
+        if (layer == 'wik')
+          trailers.push('<a title="Wikipedia" href="' + data + '">WIKI</a>');
+        else if (layer == 'clu')
+          trailers.push(group.substring(4));
+        else if (layer == 'res')
+          trailers.push('<a title="GeoNames" href="https://www.geonames.org/' + data.toString() + '">GEO</a>');
+        else if (layer.startsWith('clu-')) {
+          var es = data;
+          es.sort(function(a, b) {
+            return a[0].length > b[0].length;
+          })
+          for (j = 0; j < 3 && j < es.length; j++) {
+            var et = es[j][0];
+            var eid = es[j][1].toString();
+            trailers.push('<a title="OpenStreetMap (' + et + ')" href="https://www.openstreetmap.org/' + et + '/' + eid + '">OSM</a>');
+          }
+        }
+
+        html += '<span title="' + groupName + '">' + phrase + '</span>';
+        if (trailers.length > 0) {
+          html += ' [' + trailers.join(', ') +  ']';
+        }
+        i += phrase.length;
+      }
+
+      output.innerHTML = html;
+    }
+
     </script>
   </body>
 </html>
