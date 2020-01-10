@@ -62,7 +62,7 @@
         if (res.status == 200)
           res.json().then(finish).catch(fail);
         else
-          fail('NER failed! Is the server running?');
+          res.text().then(fail).catch(fail);
       }).catch(fail);
     }
 
