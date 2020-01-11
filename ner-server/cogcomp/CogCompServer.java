@@ -25,13 +25,14 @@ public class CogCompServer {
     ParametersForLbjCode.currentParameters.forceNewSentenceOnLineBreaks = true;
     NETagPlain.init();
 
-    System.out.println("CogComp NER listening on port " + args[0]);
     int port = Integer.parseInt(args[0]);
-    InetAddress addr = InetAddress.getByName(null);
+    InetAddress addr = InetAddress.getLocalHost();
     InetSocketAddress saddr = new InetSocketAddress(addr, port);
     HttpServer server = HttpServer.create(saddr, 0);
     server.createContext("/", new PostHandler());
     server.setExecutor(null); // creates a default executor
+
+    System.out.println("CogComp NER server listening on port " + args[0]);
     server.start();
   }
 

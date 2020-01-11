@@ -21,5 +21,5 @@ def post():
   return json.dumps(ent_map)
 
 
-print(f'spaCy NER listening on port {port}')
+print(f'spaCy NER server listening on port {port}')
 app.run(host='0.0.0.0', port=port)
