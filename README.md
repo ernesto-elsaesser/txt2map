@@ -12,7 +12,7 @@ The txt2map geoparser recognizes place names (toponyms) in text documents and re
 4. For each cluster of resolved GeoName entries, load ALL named elements from OpenStreetMap
 5. Scan the text for any of the received names
 
-The output is a set of annotations, including layers for recognized names, linked GeoNames identifiers, matches local names and matches OSM references. These annotations can be visulaized using the included web server. Note that loading data from OSM for the first time might take some time. 
+The output is an annotated document with annotation layers for recognized names as well as GeoNames and OSM references. These annotations can be visulaized through the included UI server. 
 
 The thesis that presents the underlying algorithm will be published here are soon as it is through review.
 
@@ -38,7 +38,7 @@ The `run-xxx.sh` scripts in the root directory allow simple building and running
 
 ## OSM Data
 
-The geoparser dynamically loads substantial amounts of data from OSM. For every detected local cluster (usually city names), the parser will load any OSM element - nodes, ways and relations - within a radius of ~15km that has a name tag (distance configurable). The data is cached in local SQLite databases to avoid redundant loads. The size of these databases ranges from a few KB to ~20MB per cluster depending on the urban density of the requested area. The system uses the [Overpass API](https://wiki.openstreetmap.org/wiki/Overpass_API) to retrieve OSM data. The [Overpass QL](https://wiki.openstreetmap.org/wiki/Overpass_API/Overpass_QL) template can be found [here](geoparser/osm.py#L93).
+The geoparser dynamically loads substantial amounts of data from OSM. For every detected local cluster (usually city names), the parser will load any OSM element - nodes, ways and relations - within a radius of ~15km that has a name tag (distance configurable). The data is cached in local SQLite databases to avoid redundant loads. The size of these databases ranges from a few KB to ~20MB per cluster depending on the urban density of the requested area. Therefore the initial laod of a cluster can take some time. The system uses the [Overpass API](https://wiki.openstreetmap.org/wiki/Overpass_API) to retrieve OSM data. The [Overpass QL](https://wiki.openstreetmap.org/wiki/Overpass_API/Overpass_QL) template can be found [here](geoparser/osm.py#L93). 
 
 
 ## Evaluation
