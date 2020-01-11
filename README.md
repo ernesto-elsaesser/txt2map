@@ -29,16 +29,16 @@ For NER tagging - which is a required pre-processing step for geoparsing - the U
 
 The servers for spaCy and Illinois NET are located in the [ner-server](ner-server) directory. Illinois NET is part of the CogComp NLP suite and thus the server is called CogComp.
 
-The UI server as well as the two local NER servers come with Dockerfiles ([UI Server](Dockerfile), [spaCy NER Server](ner-server/spacy/Dockerfile), [CogComp NER Server](ner-server/cogcomp/Dockerfile)) for simple distribution.
+The UI server as well as the two stand-alone NER servers come with Dockerfiles ([UI](Dockerfile), [spaCy](ner-server/spacy/Dockerfile), [CogComp](ner-server/cogcomp/Dockerfile)) for simple distribution.
 
 The components that the UI server uses internally are structured as Python modules and can be used directly from code. The `annotaton` module contains the basic document model used for annotation throughout the system as well as processing pipelines. The `geoparser` module contains the geoparsing logic (everything after the NER step). The `evaluation` module contains code for corpus evaluation (used for the thesis, see below). The `ui-server` contains the actual web server.
 
-The `run-xxx.sh` scripts in the root directory allow simple building and running of the three Docker containers.
+The `run-docker-xxx.sh` scripts in the root directory allow simple building and running of the three Docker containers.
 
 
 ## OSM Data
 
-The geoparser dynamically loads substantial amounts of data from OSM. For every detected local cluster (usually city names), the parser will load any OSM element - nodes, ways and relations - within a radius of ~15km that has a name tag (distance configurable). The data is cached in local SQLite databases to avoid redundant loads. The size of these databases ranges from a few KB to ~20MB per cluster depending on the urban density of the requested area. Therefore the initial laod of a cluster can take some time. The system uses the [Overpass API](https://wiki.openstreetmap.org/wiki/Overpass_API) to retrieve OSM data. The [Overpass QL](https://wiki.openstreetmap.org/wiki/Overpass_API/Overpass_QL) template can be found [here](geoparser/osm.py#L93). 
+The geoparser dynamically loads substantial amounts of data from OSM. For every detected local cluster (usually city names), the parser will load any OSM element - nodes, ways and relations - within a radius of ~15km that has a name tag (distance configurable). The data is cached in local SQLite databases to avoid redundant loads. The size of these databases ranges from a few KB to ~20MB per cluster depending on the urban density of the requested area. Therefore the initial laod of a cluster can take some time. The system uses the [Overpass API](https://wiki.openstreetmap.org/wiki/Overpass_API) to retrieve OSM data. The [Overpass QL](https://wiki.openstreetmap.org/wiki/Overpass_API/Overpass_QL) template can be found [here](geoparser/osm.py#L84). 
 
 
 ## Evaluation
