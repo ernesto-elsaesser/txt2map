@@ -15,7 +15,7 @@ class CogCompClient:
     esc_text = text.replace('[', '{').replace(']', '}')
     req_data = esc_text.encode('utf-8')
     try:
-      response = requests.post(url=self.server_url, data=req_data)
+      response = requests.post(url=self.server_url, data=req_data, timeout=3)
     except:
       raise PipelineException('CogComp NER service not running!')
     response.encoding = 'utf-8'
