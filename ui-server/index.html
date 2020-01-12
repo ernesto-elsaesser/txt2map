@@ -158,29 +158,27 @@
         var groupName = '';
         if (group != '' && !group.startsWith('clu-')) 
           groupName = groupNames[group];
-        var trailers = [];
+        var trailer = null;
 
         if (layer == 'wik')
-          trailers.push('<a title="Wikipedia" href="' + data + '">WIKI</a>');
+          trailer = '<a title="Wikipedia" href="' + data + '">WIKI</a>';
         else if (layer == 'clu')
-          trailers.push(group.substring(4));
+          trailer = group.substring(4);
         else if (layer == 'res')
-          trailers.push('<a title="GeoNames" href="https://www.geonames.org/' + data.toString() + '">GEO</a>');
+          trailer = '<a title="GeoNames" href="https://www.geonames.org/' + data.toString() + '">GEO</a>';
         else if (layer.startsWith('clu-')) {
           var elements = data;
           elements.sort(function(a, b) {
             return b[0].length - a[0].length;
           });
-          for (j = 0; j < 3 && j < elements.length; j++) {
-            var et = elements[j][0];
-            var eid = elements[j][1].toString();
-            trailers.push('<a title="OpenStreetMap (' + et + ')" href="https://www.openstreetmap.org/' + et + '/' + eid + '">OSM</a>');
-          }
+          var et = elements[0][0];
+          var eid = elements[0][1].toString();
+          trailer = '<a title="OpenStreetMap (' + et + ')" href="https://www.openstreetmap.org/' + et + '/' + eid + '">OSM</a>';
         }
 
         html += '<span title="' + groupName + '">' + phrase + '</span>';
-        if (trailers.length > 0) {
-          html += ' [' + trailers.join(', ') +  ']';
+        if (trailer != null) {
+          html += ' [' + trailer + ']';
         }
         i += phrase.length;
       }

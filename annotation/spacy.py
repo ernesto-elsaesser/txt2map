@@ -33,7 +33,7 @@ class SpacyClient:
 
     req_data = doc.text.encode('utf-8')
     try:
-      response = requests.post(url=self.server_url, data=req_data, timeout=3)
+      response = requests.post(url=self.server_url, data=req_data, timeout=15)
     except:
       raise PipelineException('spaCy NER service not running!')
     response.encoding = 'utf-8'
