@@ -4,22 +4,21 @@ from flask import Flask, request
 from annotation import Document, PipelineBuilder, PipelineException
 
 port = sys.argv[1]
+
 spacy_url = os.getenv('SPACY_URL')
 if spacy_url == None:
   print('No spaCy NER server URL provided!')
 cogcomp_url = os.getenv('COGCOMP_URL')
 if spacy_url == None:
   print('No CogComp NER server URL provided!')
+gc_creds = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
+if gc_creds == None:
+  print('No Google Cloud API credentials provided!')
 
 builder = PipelineBuilder(spacy_url=spacy_url, cogcomp_url=cogcomp_url)
 spacy_pipe = builder.build('spacy')
 cogcomp_pipe = builder.build('cogcomp')
-
-try:
-  gcnl_pipe = builder.build('gcnl')
-except:
-  gcnl_pipe = None
-  print('No Google Cloud API credentials provided!')
+gcnl_pipe = builder.build('gcnl')
 
 dirname = os.path.dirname(__file__)
 with open(dirname + '/index.html', 'rb') as f:
