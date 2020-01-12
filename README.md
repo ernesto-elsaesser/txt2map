@@ -29,7 +29,7 @@ For NER tagging - which is a required pre-processing step for geoparsing - the U
 
 The servers for spaCy and Illinois NET are located in the [ner-server](ner-server) directory. Illinois NET is part of the CogComp NLP suite and thus the server is called CogComp.
 
-The UI server as well as the two stand-alone NER servers come with Dockerfiles ([UI](Dockerfile), [spaCy](ner-server/spacy/Dockerfile), [CogComp](ner-server/cogcomp/Dockerfile)) for simple distribution.
+The UI server as well as the two stand-alone NER servers come with Dockerfiles ([UI](Dockerfile), [spaCy](ner-server/spacy/Dockerfile), [CogComp](ner-server/cogcomp/Dockerfile)) for simple distribution. Automated builds are available from [DockerHub](https://hub.docker.com/repository/docker/ernestoelsaesser/txt2map/general).
 
 The components that the UI server uses internally are structured as Python modules and can be used directly from code. The `annotaton` module contains the basic document model used for annotation throughout the system as well as processing pipelines. The `geoparser` module contains the geoparsing logic (everything after the NER step). The `evaluation` module contains code for corpus evaluation (used for the thesis, see below). The `ui-server` contains the actual web server.
 
