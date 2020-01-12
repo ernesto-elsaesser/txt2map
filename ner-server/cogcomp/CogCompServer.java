@@ -44,19 +44,21 @@ public class CogCompServer {
       InputStream is = t.getRequestBody();
       String text = IOUtils.toString(is, "UTF-8");
 
-      String tagged_text = "";
+      String responseText = null;
+      int statusCode = 0;
+
       try {
-        tagged_text = NETagPlain.tagLine(text);
-        String in_len = Integer.toString(text.length());
-        String out_len = Integer.toString(tagged_text.length());
-        System.out.println("TAGGED " + in_len + " > " + out_len);
+        responseText = NETagPlain.tagLine(text);
+        statusCode = 200;
       } catch(Exception e) {
+        responseText = e.toString();
+        statusCode = 500;
         e.printStackTrace();
         System.out.println(e);
       } 
 
-      byte[] response = tagged_text.getBytes();
-      t.sendResponseHeaders(200, response.length);
+      byte[] response = responseText.getBytes();
+      t.sendResponseHeaders(statusCode, response.length);
       OutputStream os = t.getResponseBody();
       os.write(response);
       os.close();
