@@ -1,1 +1,0 @@
-{"rec": [[204, "LOS ANGELES", "ner", "LOS ANGELES"], [476, "Beverly Hills", "ner", "Beverly Hills"], [1397, "N. Bedford Drive", "ner", "N. Bedford Drive"], [1153, "Airport Courthouse", "ner", "Airport Courthouse"], [2635, "California", "gaz", "California"]], "res": [[476, "Beverly Hills", "api", 5328041], [2635, "California", "top", 5332921]]}

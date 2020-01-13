@@ -1,1 +1,0 @@
-{"ner": [[7, "Canadians", "msc", "ill_ner_conll"], [197, "Canadians", "msc", "ill_ner_conll"], [377, "National Public Alerting System", "org", "ill_ner_conll"], [777, "Amber Alert", "per", "ill_ner_conll"], [810, "Canada", "loc", "ill_ner_conll"], [844, "CRTC", "org", "ill_ner_conll"]]}

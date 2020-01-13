@@ -19,7 +19,7 @@ ev_res_noclu = ResolEvaluator(include_clusters=False)
 ev_res_161 = ResolEvaluator(tolerance_local=161)
 ev_res_wiki = ResolEvaluator(layer='wik')
 
-pipe = builder.build_no_glob('cogcomp')
+pipe = builder.build_gaz('spacy')
 # imp_tests.import_documents(tests)
 #tests.bulk_process(cc_full, evaluator=ev)
 
@@ -27,7 +27,7 @@ pipe = builder.build_no_glob('cogcomp')
 #tests.bulk_process(gcnl, saved_steps=['tok', 'gcnl', 'loc', 'gaz'], evaluator=ev)
 #tests.process(gcnl_gaz, 'global_demonyms_hard', saved_steps=['tok', 'gcnl'])
 
-gwn.bulk_process(pipe, saved_steps=['tok', 'cogcomp', 'loc', 'gaz'], evaluator=ev_rec_ner)
+gwn.bulk_process(pipe, saved_steps=['spacy', 'loc'], evaluator=ev_rec)
 #gwn.bulk_process(spacy_nores, saved_steps=['spacy', 'loc', 'gaz'], evaluator=ev_rec)
 #gwn.bulk_process(spacy_noclust, saved_steps=['spacy', 'loc', 'gaz', 'geores'], evaluator=ev_161)
 #gwn.bulk_process(spacy, saved_steps=['spacy', 'loc', 'gaz', 'geores', 'clust'], evaluator=ev_161)

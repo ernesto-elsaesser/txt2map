@@ -13,19 +13,6 @@ class SpacyClient:
 
   def __init__(self, url=None):
     self.server_url = url
-    self.nlp = spacy.load('en_core_web_sm', disable=['parser'])
-
-  def annotate_ntk(self, doc):
-    spacy_doc = self.nlp(doc.text)
-    for token in spacy_doc:
-      first = token.text[0]
-      if first.isdigit():
-        group = 'num'
-      elif first.isupper():
-        group = 'stp' if token.is_stop else 'til'
-      else:
-        continue
-      doc.annotate('ntk', token.idx, token.text, group, '')
 
   def annotate_ner(self, doc):
     if self.server_url == None:
@@ -38,27 +25,31 @@ class SpacyClient:
       raise PipelineException('spaCy NER service not running!')
     response.encoding = 'utf-8'
 
-    unique_names = []
-
-    lg_ents = response.json()
+    ent_map = response.json()
+    lg_ents = ent_map['lg']
     for name, label in lg_ents.items():
       if label not in self.label_map_lg:
         continue
       phrase = self._normalized_name(name)
-      if phrase not in unique_names:
-        unique_names.append(name)
-        group = self.label_map_lg[label]
-        self._annotate_all_occurences(doc, phrase, group, 'spacy_lg')
+      group = self.label_map_lg[label]
+      self._annotate_all_occurences(doc, name, group, 'spacy_lg')
 
-    spacy_doc = self.nlp(doc.text)
-    for ent in spacy_doc.ents:
-      if ent.label_ not in self.label_map_sm:
+    sm_ents = ent_map['sm']
+    for name, label in sm_ents.items():
+      if name in lg_ents:
         continue
-      phrase = self._normalized_name(ent.text)
-      if name not in unique_names:
-        unique_names.append(name)
-        group = self.label_map_sm[ent.label_]
-        self._annotate_all_occurences(doc, name, group, 'spacy_sm')
+      if label not in self.label_map_sm:
+        continue
+      group = self.label_map_sm[label]
+      self._annotate_all_occurences(doc, name, group, 'spacy_sm')
+
+  def _annotate_all_occurences(self, doc, name, group, data):
+    phrase = self._normalized_name(name)
+    escaped_phrase = re.escape(phrase)
+    matches = re.finditer(escaped_phrase, doc.text)
+    phrase = phrase.rstrip('.') # for consistency with CogComp
+    for match in matches:
+      doc.annotate('ner', match.start(), phrase, group, data)
 
   def _normalized_name(self, name):
     if name.startswith('the ') or name.startswith('The '):
@@ -70,10 +61,3 @@ class SpacyClient:
     elif name.endswith('\''):
       name = name[:-1]
     return name
-
-  def _annotate_all_occurences(self, doc, phrase, group, data):
-    escaped_phrase = re.escape(phrase)
-    matches = re.finditer(escaped_phrase, doc.text)
-    phrase = phrase.rstrip('.') # for consistency with CogComp
-    for match in matches:
-      doc.annotate('ner', match.start(), phrase, group, data)

@@ -27,9 +27,8 @@ class PipelineBuilder:
     self.spacy_url = spacy_url
     self.cogcomp_url = cogcomp_url
 
-  def build_no_loc(self, ner_key):
+  def build_ner(self, ner_key):
     pipe = Pipeline()
-    pipe.add(SpacyTokenStep())
     if ner_key == SpacyServerNERStep.key:
       pipe.add(SpacyServerNERStep(self.spacy_url))
     elif ner_key == CogCompServerNERStep.key:
@@ -40,37 +39,25 @@ class PipelineBuilder:
       raise PipelineException('Invalid key for NER step!')
     return pipe
 
-  def build_no_gaz(self, ner_key):
-    pipe = self.build_no_loc(ner_key)
+  def build_loc(self, ner_key):
+    pipe = self.build_ner(ner_key)
     pipe.add(LocationRecogStep())
     return pipe
 
-  def build_no_glob(self, ner_key):
-    pipe = self.build_no_gaz(ner_key)
+  def build_gaz(self, ner_key):
+    pipe = self.build_loc(ner_key)
     pipe.add(GazetteerRecogStep())
     return pipe
 
-  def build_no_clust(self, ner_key):
-    pipe = self.build_no_glob(ner_key)
+  def build_glob(self, ner_key):
+    pipe = self.build_gaz(ner_key)
     pipe.add(GeoNamesRecogResolStep())
     return pipe
 
   def build(self, ner_key):
-    pipe = self.build_no_clust(ner_key)
+    pipe = self.build_glob(ner_key)
     pipe.add(ClusterStep())
     return pipe
-    
-
-class SpacyTokenStep:
-
-  key = 'tok'
-
-  def __init__(self):
-    self.spacy = SpacyClient()
-
-  def annotate(self, doc):
-    self.spacy.annotate_ntk(doc)
-    return ['ntk']
 
 
 class SpacyServerNERStep:

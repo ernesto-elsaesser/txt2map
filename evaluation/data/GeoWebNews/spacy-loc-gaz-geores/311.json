@@ -1,1 +1,0 @@
-{"rec": [[693, "Hindu", "ner", "Hindu"], [7, "Delhi", "gaz", "Delhi"], [453, "NEW DELHI", "gaz", "New Delhi"], [468, "Delhi", "gaz", "Delhi"]], "res": [[693, "Hindu", "api", 592122], [7, "Delhi", "top", 1273294], [453, "NEW DELHI", "top", 1261481], [468, "Delhi", "top", 1273294]]}

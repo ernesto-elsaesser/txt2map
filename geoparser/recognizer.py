@@ -15,19 +15,13 @@ class GazetteerRecognizer:
   def annotate_rec(self, doc):
     person_indicies = doc.annotations_by_index('ner', 'per')
 
-    def commit_match(a, c):
-      if a.pos in person_indicies:
-        a_per = person_indicies[a.pos]
+    def commit_match(c):
+      if c.pos in person_indicies:
+        a_per = person_indicies[c.pos]
         if len(a_per.phrase) > len(c.match):
           return False
-      l = len(c.match)
-      if 1 < l <= 3:
-        is_match = c.match.isupper() # abbreviation
-      elif l != 1:
-        is_match = a.group == 'til'
-      if is_match:
-        doc.annotate('rec', a.pos, c.match, 'gaz', c.db_name)
-      return is_match
+      doc.annotate('rec', c.pos, c.match, 'gaz', c.lookup_phrase)
+      return True
 
     self.matcher.find_matches(doc, self.lookup_prefix, commit_match)
 

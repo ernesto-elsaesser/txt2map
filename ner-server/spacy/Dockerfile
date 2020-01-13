@@ -2,6 +2,7 @@ FROM python:3.8-slim
 
 RUN pip install flask spacy
 RUN python -m spacy download en_core_web_lg
+RUN python -m spacy download en_core_web_sm
  
 WORKDIR /t2msp
 ADD ./server.py server.py

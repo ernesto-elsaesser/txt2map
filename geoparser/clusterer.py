@@ -68,17 +68,14 @@ class Clusterer:
   def _annotate_local_names(self, doc, geonames, layer):
     db = OSMLoader.load_database(geonames)
 
-    def lookup_prefix(p):
-      return db.find_names(p)
+    def lookup_prefix(prefix):
+      return db.find_names(prefix)
 
-    def commit_match(a, c):
-      if a.group == 'stp' and ' ' not in c.match:
-        return False
+    def commit_match(c):
       if len(c.match) < Config.local_match_min_len:
         return False
-
-      osm_refs = db.get_elements(c.db_name)
-      doc.annotate(layer, a.pos, c.match, 'clu', osm_refs)
+      osm_refs = db.get_elements(c.lookup_phrase)
+      doc.annotate(layer, c.pos, c.match, 'clu', osm_refs)
       return True
 
     self.matcher.find_matches(doc, lookup_prefix, commit_match)

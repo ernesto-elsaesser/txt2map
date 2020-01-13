@@ -40,6 +40,7 @@ class NameMatcher:
   }
 
   def __init__(self):
+    self.starts = re.compile('\\b[A-Z0-9]\w*')
     self.abbreviations = []
     for s, l in self.abbr.items():
       self.abbreviations.append((re.compile(l), s))
@@ -49,33 +50,40 @@ class NameMatcher:
   def find_matches(self, doc, lookup_prefix, commit_match):
     text = doc.text + ' '  # allow matching of last token
     text_len = len(text)
+
+    tokens = {}
+    for m in self.starts.finditer(doc.text):
+      tokens[m.start()] = m.group()
+
     prev_match_end = 0
     saved = {}
 
-    for a in doc.get_all('ntk'):
-      if a.pos < prev_match_end: continue
+    for m in self.starts.finditer(doc.text):
+      start = m.start()
+      if start < prev_match_end:
+        continue
 
-      if a.phrase in saved:
-        completions = [c.clone(a.pos) for c in saved[a.phrase]]
+      token = m.group()
+      if token in saved:
+        completions = [c.clone(start) for c in saved[token]]
       else:
-        completions = self._get_completions(a.phrase, lookup_prefix, a.pos)
-        saved[a.phrase] = completions
+        completions = self._get_completions(token, lookup_prefix, start)
+        saved[token] = completions
 
-      text_pos = a.pos + len(a.phrase)
-      longest_completion = None
+      text_pos = start + len(token)
+      longest_compl = None
       while text_pos < text_len and len(completions) > 0:
         next_char = text[text_pos]
         for c in completions:
           complete = c.trim(next_char)
           if complete:
-            longest_completion = c
+            longest_compl = c
         completions = [c for c in completions if c.active]
         text_pos += 1
 
-      if longest_completion != None:
-        c = longest_completion
-        if commit_match(a, c):
-          prev_match_end = c.end
+      if longest_compl != None:
+        if commit_match(longest_compl):
+          prev_match_end = longest_compl.end
 
   def _get_completions(self, prefix, lookup_prefix, pos):
     found_names = lookup_prefix(prefix)
@@ -109,10 +117,10 @@ class NameMatcher:
 
 class Completion:
 
-  def __init__(self, phrase, prefix, db_name, pos):
+  def __init__(self, phrase, prefix, lookup_phrase, pos):
     self.phrase = phrase
     self.prefix = prefix
-    self.db_name = db_name
+    self.lookup_phrase = lookup_phrase
     self.pos = pos
 
     self.suffix = phrase[len(prefix):]
@@ -124,7 +132,7 @@ class Completion:
     return self.suffix if self.active else self.match
 
   def clone(self, pos):
-    return Completion(self.phrase, self.prefix, self.db_name, pos)
+    return Completion(self.phrase, self.prefix, self.lookup_phrase, pos)
 
   def trim(self, char):
 
