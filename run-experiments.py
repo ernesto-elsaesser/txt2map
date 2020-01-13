@@ -17,10 +17,10 @@ ev_rec_ner = RecogEvaluator(layer='ner', include_clusters=False)
 ev_res = ResolEvaluator()
 ev_res_noclu = ResolEvaluator(include_clusters=False)
 ev_res_161 = ResolEvaluator(tolerance_local=161)
-ev_res_wiki = ResolEvaluator(layer='wik')
+ev_res_street = ResolEvaluator(gold_group='raw', tolerance_local=1)
 count = Counter('res', 'raw', count_gold=True)
 
-pipe = builder.build_empty()
+pipe = builder.build_wiki()
 # imp_tests.import_documents(tests)
 #tests.bulk_process(cc_full, evaluator=ev)
 
@@ -28,7 +28,8 @@ pipe = builder.build_empty()
 #tests.bulk_process(gcnl, saved_steps=['tok', 'gcnl', 'loc', 'gaz'], evaluator=ev)
 #tests.process(gcnl_gaz, 'global_demonyms_hard', saved_steps=['tok', 'gcnl'])
 
-gwn.bulk_process(pipe, evaluator=count)
+gwn.bulk_process(pipe, saved_steps=[
+                 'gcnl', 'wiki'], evaluator=ev_res_street)
 #gwn.bulk_process(spacy_nores, saved_steps=['spacy', 'loc', 'gaz'], evaluator=ev_rec)
 #gwn.bulk_process(spacy_noclust, saved_steps=['spacy', 'loc', 'gaz', 'geores'], evaluator=ev_161)
 #gwn.bulk_process(spacy, saved_steps=['spacy', 'loc', 'gaz', 'geores', 'clust'], evaluator=ev_161)

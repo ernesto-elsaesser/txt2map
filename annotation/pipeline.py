@@ -62,6 +62,12 @@ class PipelineBuilder:
     pipe.add(ClusterStep())
     return pipe
 
+  def build_wiki(self):
+    pipe = self.build_ner(GCNLNERStep.key)
+    pipe.add(WikiResolStep())
+    return pipe
+
+  
 
 class SpacyServerNERStep:
 
@@ -176,12 +182,17 @@ class WikiResolStep:
   key = 'wiki'
 
   def annotate(self, doc):
-    wik_anns = doc.annotations_by_index('wik')
+    wik_anns = doc.annotations_by_position('wik')
+    cache = {}
     for a in doc.get_all('ner', 'loc'):
       if a.pos not in wik_anns:
         continue
       url = wik_anns[a.pos].data
-      coords = GeoUtil.coordinates_for_wiki_url(url)
+      if url in cache:
+        coords = cache[url]
+      else:
+        coords = GeoUtil.coordinates_for_wiki_url(url)
+        cache[url] = coords
       if len(coords) > 0:
         doc.annotate('res', a.pos, a.phrase, 'wik', coords)
     return ['res']
