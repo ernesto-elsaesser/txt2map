@@ -1,1 +1,0 @@
-{"ntk": [[0, "We", "stp", ""], [10, "Checkpoint", "til", ""], [21, "Charlie", "til", ""], [32, "Berlin", "til", ""]], "ner": [[10, "Checkpoint Charlie", "org", "spacy_lg"], [32, "Berlin", "loc", "spacy_lg"]]}

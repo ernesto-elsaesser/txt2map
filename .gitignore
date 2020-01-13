@@ -1,5 +1,6 @@
 **/__pycache__/
 *.pyc
 cache/
+evaluation/data/
 ner-server/cogcomp/lib/
 *.class

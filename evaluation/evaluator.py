@@ -8,7 +8,7 @@ class Evaluator:
     print(', '.join(values))
 
   def _matches(self, a, gold):
-    return a.pos == gold.pos and len(a.phrase) >= len(gold.phrase) - 1
+    return a.pos == gold.pos #and len(a.phrase) >= len(gold.phrase) - 1
 
   def _print_if_not_empty(self, anns, msg):
     if len(anns) > 0:

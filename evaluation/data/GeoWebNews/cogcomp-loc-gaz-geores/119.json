@@ -1,1 +1,0 @@
-{"rec": [[202, "SAN ANTONIO", "ner", "SAN ANTONIO"], [816, "Arizona", "ner", "Arizona"], [1205, "Arizona", "ner", "Arizona"], [2257, "Russia", "ner", "Russia"], [631, "Louisville", "gaz", "Louisville"]], "res": [[816, "Arizona", "top", 5551752], [1205, "Arizona", "top", 5551752], [2257, "Russia", "top", 2017370], [631, "Louisville", "top", 4299276]]}

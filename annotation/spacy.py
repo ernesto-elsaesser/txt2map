@@ -6,10 +6,8 @@ from .exception import PipelineException
 
 class SpacyClient:
 
-  label_map_lg = {'GPE': 'loc', 'LOC': 'loc', 'NORP': 'loc', 'FAC': 'fac', 'ORG': 'org',
-                  'PERSON': 'per', 'PRODUCT': 'msc', 'EVENT': 'msc', 'WORK_OF_ART': 'msc', 'LANGUAGE': 'msc'}
-  label_map_sm = {'GPE': 'loc', 'LOC': 'loc', 'NORP': 'loc', 'FAC': 'msc', 'ORG': 'msc',
-                  'PERSON': 'msc', 'PRODUCT': 'msc', 'EVENT': 'msc', 'WORK_OF_ART': 'msc', 'LANGUAGE': 'msc'}
+  label_map_lg = {'GPE': 'loc', 'LOC': 'loc', 'NORP': 'loc', 'FAC': 'loc', 'ORG': 'org', 'PERSON': 'per', 'PRODUCT': 'msc', 'EVENT': 'msc', 'WORK_OF_ART': 'msc', 'LANGUAGE': 'msc'}
+  label_map_sm = {'GPE': 'loc', 'LOC': 'loc', 'NORP': 'loc', 'FAC': 'loc', 'ORG': 'msc', 'PERSON': 'msc', 'PRODUCT': 'msc', 'EVENT': 'msc', 'WORK_OF_ART': 'msc', 'LANGUAGE': 'msc'}
 
   def __init__(self, url=None):
     self.server_url = url
@@ -30,18 +28,17 @@ class SpacyClient:
     for name, label in lg_ents.items():
       if label not in self.label_map_lg:
         continue
-      phrase = self._normalized_name(name)
       group = self.label_map_lg[label]
       self._annotate_all_occurences(doc, name, group, 'spacy_lg')
 
-    sm_ents = ent_map['sm']
-    for name, label in sm_ents.items():
-      if name in lg_ents:
-        continue
-      if label not in self.label_map_sm:
-        continue
-      group = self.label_map_sm[label]
-      self._annotate_all_occurences(doc, name, group, 'spacy_sm')
+    #sm_ents = ent_map['sm']
+    #for name, label in sm_ents.items():
+    #  if name in lg_ents:
+    #    continue
+    #  if label not in self.label_map_sm:
+    #    continue
+    #  group = self.label_map_sm[label]
+    #  self._annotate_all_occurences(doc, name, group, 'spacy_sm')
 
   def _annotate_all_occurences(self, doc, name, group, data):
     phrase = self._normalized_name(name)

@@ -1,1 +1,0 @@
-{"rec": [[306, "Atlantic Avenue", "ner", "Atlantic Avenue"], [325, "Garden City", "ner", "Garden City"], [602, "Charlotte", "ner", "Charlotte"], [200, "HORRY COUNTY", "ner", "HORRY COUNTY"], [214, "SC", "ner", "SC"], [643, "America", "gaz", "America"]], "res": [[325, "Garden City", "api", 1690666], [602, "Charlotte", "top", 4460243], [643, "America", "top", 6252001]]}

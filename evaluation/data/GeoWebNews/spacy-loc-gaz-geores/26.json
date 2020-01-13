@@ -1,1 +1,0 @@
-{"rec": [[210, "Ohio", "ner", "Ohio"], [337, "Valley", "ner", "Valley"], [736, "Valley", "ner", "Valley"], [395, "Poland", "ner", "Poland"]], "res": [[210, "Ohio", "top", 5165418], [337, "Valley", "api", 400744], [736, "Valley", "api", 400744], [395, "Poland", "top", 798544]]}

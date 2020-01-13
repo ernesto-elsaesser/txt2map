@@ -1,1 +1,0 @@
-{"rec": [[223, "WASHINGTON", "ner", "WASHINGTON"], [361, "Wyoming", "ner", "Wyoming"], [7, "Obama", "ner", "Obama"], [513, "Obama", "ner", "Obama"], [927, "Obama", "ner", "Obama"]], "res": [[361, "Wyoming", "top", 5843591], [7, "Obama", "heu", 1854848], [513, "Obama", "heu", 1854848], [927, "Obama", "heu", 1854848]]}
