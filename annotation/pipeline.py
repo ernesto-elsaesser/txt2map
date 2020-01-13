@@ -27,8 +27,11 @@ class PipelineBuilder:
     self.spacy_url = spacy_url
     self.cogcomp_url = cogcomp_url
 
+  def build_empty(self):
+    return Pipeline()
+
   def build_ner(self, ner_key):
-    pipe = Pipeline()
+    pipe = self.build_empty()
     if ner_key == SpacyServerNERStep.key:
       pipe.add(SpacyServerNERStep(self.spacy_url))
     elif ner_key == CogCompServerNERStep.key:

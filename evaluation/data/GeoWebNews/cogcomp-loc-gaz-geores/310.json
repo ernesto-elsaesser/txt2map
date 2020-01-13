@@ -1,0 +1,1 @@
+{"rec": [[364, "B\u00e9ziers", "ner", "B\u00e9ziers"], [7, "Man", "gaz", "Man"], [573, "Montpellier", "gaz", "Montpellier"]], "res": [[364, "B\u00e9ziers", "top", 3032832], [7, "Man", "top", 2284646], [573, "Montpellier", "top", 2992166]]}

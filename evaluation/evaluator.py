@@ -16,6 +16,31 @@ class Evaluator:
       print(f'{msg}: {names}')
 
 
+class Counter(Evaluator):
+
+  def __init__(self, layer, group=None, count_gold=False):
+    self.layer = layer
+    self.group = group
+    self.count_gold = count_gold
+    self.layer_count = 0
+    self.group_count = 0
+
+  def evaluate(self, doc, gold_doc):
+    d = gold_doc if self.count_gold else doc
+    anns = d.get_all(self.layer)
+    self.layer_count += len(anns)
+    if self.group != None:
+      group_anns = [a for a in anns if a.group == self.group]
+      self.group_count += len(group_anns)
+      print([a.phrase for a in group_anns])
+
+  def _metrics(self):
+    metrics = {self.layer: self.layer_count}
+    if self.group != None:
+      metrics[self.group] = self.group_count
+    return metrics
+
+
 class RecogEvaluator(Evaluator):
 
   def __init__(self, layer='rec', gold_layer='rec', include_clusters=True):

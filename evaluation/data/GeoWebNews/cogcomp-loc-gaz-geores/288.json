@@ -1,0 +1,1 @@
+{"rec": [[77, "New York", "ner", "New York"], [435, "NYPD", "ner", "NYPD"], [174, "Brooklyn", "gaz", "Brooklyn"]], "res": [[77, "New York", "top", 5128581], [174, "Brooklyn", "top", 5110302]]}

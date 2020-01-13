@@ -1,0 +1,1 @@
+{"rec": [[335, "U.S", "ner", "U.S"], [774, "Washington", "ner", "Washington"], [272, "Cambridge", "gaz", "Cambridge"]], "res": [[335, "U.S", "top", 6252001], [774, "Washington", "top", 5815135], [272, "Cambridge", "top", 2653941]]}

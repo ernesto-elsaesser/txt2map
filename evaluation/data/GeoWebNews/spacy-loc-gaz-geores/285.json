@@ -1,0 +1,1 @@
+{"rec": [[431, "Miami-Dade County", "ner", "Miami-Dade County"], [546, "Miami-Dade", "ner", "Miami-Dade"], [571, "South Florida", "ner", "South Florida"], [1033, "Miami-Dade Schools", "ner", "Miami-Dade Schools"], [509, "Lakes", "gaz", "Lakes"]], "res": [[431, "Miami-Dade County", "top", 4164238], [546, "Miami-Dade", "top", 4164238], [509, "Lakes", "top", 408647]]}

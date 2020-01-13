@@ -1,0 +1,1 @@
+{"rec": [[52, "New York City", "ner", "New York City"], [180, "NEW YORK", "ner", "NEW YORK"], [560, "Brooklyn", "ner", "Brooklyn"], [592, "New York", "ner", "New York"], [1055, "New York", "ner", "New York"]], "res": [[52, "New York City", "top", 5128581], [560, "Brooklyn", "top", 5110302], [592, "New York", "top", 5128581], [1055, "New York", "top", 5128581]]}

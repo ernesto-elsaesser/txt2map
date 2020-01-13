@@ -1,0 +1,1 @@
+{"rec": [[382, "Harare", "ner", "Harare"], [1833, "Zimbabwe", "ner", "Zimbabwe"], [243, "Harare", "gaz", "Harare"], [1070, "Harare", "gaz", "Harare"], [1320, "Zimbabwean", "gaz", "Zimbabwean"]], "res": [[382, "Harare", "top", 890299], [1833, "Zimbabwe", "top", 878675], [243, "Harare", "top", 890299], [1070, "Harare", "top", 890299], [1320, "Zimbabwean", "top", 878675]]}
