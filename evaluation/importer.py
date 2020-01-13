@@ -24,13 +24,15 @@ class GeoWebNewsImporter:
       annotation_path = f'{corpus_dir}/{doc_id}.ann'
 
       with open(text_path, encoding='utf-8') as f:
+        meta = next(f)
+        meta_len = len(meta)
         text = f.read()
 
       gold_doc = Document(text)
-      self._annotate_gold_coords(gold_doc, annotation_path)
+      self._annotate_gold_coords(gold_doc, annotation_path, meta_len)
       corpus.add_document(doc_id, gold_doc)
 
-  def _annotate_gold_coords(self, doc, path):
+  def _annotate_gold_coords(self, doc, path, meta_len):
     res_tags = {}
 
     with open(path, encoding='utf-8') as f:
@@ -43,7 +45,7 @@ class GeoWebNewsImporter:
           ann_type = data[0]
           if ann_type in self.non_topo_types:
             continue
-          pos = int(data[1])
+          pos = int(data[1]) - meta_len
           phrase = row[2]
           doc.annotate('rec', pos, phrase, 'gld', phrase)
 

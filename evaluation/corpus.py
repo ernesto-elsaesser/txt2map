@@ -6,7 +6,10 @@ class Corpus:
   def __init__(self, corpus_name):
     self.corpus_name = corpus_name
     dirname = os.path.dirname(__file__)
-    self.corpus_dir = f'{dirname}/data/{corpus_name}'
+    data_dir = f'{dirname}/data'
+    if not os.path.exists(data_dir):
+      os.mkdir(data_dir)
+    self.corpus_dir = f'{data_dir}/{corpus_name}'
     self.text_dir = f'{self.corpus_dir}/text'
     if not os.path.exists(self.corpus_dir):
       os.mkdir(self.corpus_dir)
