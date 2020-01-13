@@ -80,10 +80,12 @@ class RecogEvaluator(Evaluator):
     metrics = {}
     recognized = self.true_pos + self.false_pos
     if recognized > 0:
-      metrics['P'] = self.true_pos / recognized
+      p = self.true_pos / recognized
+      metrics['P'] = p
     wookie = self.true_pos + self.false_neg
     if wookie > 0:
-      metrics['R'] = self.true_pos / wookie
+      r = self.true_pos / wookie
+      metrics['R'] = r
     if self.true_pos > 0:
       metrics['F1'] = (2 * p * r) / (p + r)
     return metrics
