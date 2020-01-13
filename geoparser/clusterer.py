@@ -78,7 +78,7 @@ class Clusterer:
         return False
 
       osm_refs = db.get_elements(c.db_name)
-      doc.annotate(layer, a.pos, c.match, '', osm_refs)
+      doc.annotate(layer, a.pos, c.match, 'clu', osm_refs)
       return True
 
     self.matcher.find_matches(doc, lookup_prefix, commit_match)

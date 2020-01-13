@@ -1,4 +1,4 @@
-from geoparser import GazetteerRecognizer, GeoNamesResolver, Clusterer
+from geoparser import GazetteerRecognizer, GeoNamesResolver, Clusterer, GeoUtil
 from .spacy import SpacyClient
 from .gcnl import GoogleCloudNL
 from .cogcomp import CogCompClient
@@ -180,3 +180,18 @@ class GCNLNERStep:
     self.gncl.annotate_ner_wik(doc)
     return ['ner', 'wik']
 
+
+class WikiResolStep:
+
+  key = 'wiki'
+
+  def annotate(self, doc):
+    wik_anns = doc.annotations_by_index('wik')
+    for a in doc.get_all('ner', 'loc'):
+      if a.pos not in wik_anns:
+        continue
+      url = wik_anns[a.pos].data
+      coords = GeoUtil.coordinates_for_wiki_url(url)
+      if len(coords) > 0:
+        doc.annotate('res', a.pos, a.phrase, 'wik', coords)
+    return ['res']

@@ -1,25 +1,25 @@
 from annotation import *
 from evaluation import *
 
-builder = PipelineBuilder()
+spacy_url = 'http://localhost:8001'
+cogcomp_url = 'http://localhost:8002'
+builder = PipelineBuilder(spacy_url=spacy_url, cogcomp_url=cogcomp_url)
 
 # corpora
 tests = Corpus('Tests')
 gwn = Corpus('GeoWebNews')
 lgl = Corpus('LGL')
 
-# importers
-imp_tests = TestsImporter()
-imp_gwn = GeoWebNewsImporter()
-imp_lgl = LGLImporter()
-
 # evaluators
-ev_rec = Evaluator(resol=False)
-ev = Evaluator()
-ev_161 = Evaluator(tolerance_local=161)
-ev_wiki = Evaluator(count_wiki=True)
+ev_rec = RecogEvaluator()
+ev_rec_noclu = RecogEvaluator(include_clusters=False)
+ev_rec_ner = RecogEvaluator(layer='ner', include_clusters=False)
+ev_res = ResolEvaluator()
+ev_res_noclu = ResolEvaluator(include_clusters=False)
+ev_res_161 = ResolEvaluator(tolerance_local=161)
+ev_res_wiki = ResolEvaluator(layer='wik')
 
-pipe = builder.build('spacy')
+pipe = builder.build_no_glob('cogcomp')
 # imp_tests.import_documents(tests)
 #tests.bulk_process(cc_full, evaluator=ev)
 
@@ -27,7 +27,7 @@ pipe = builder.build('spacy')
 #tests.bulk_process(gcnl, saved_steps=['tok', 'gcnl', 'loc', 'gaz'], evaluator=ev)
 #tests.process(gcnl_gaz, 'global_demonyms_hard', saved_steps=['tok', 'gcnl'])
 
-gwn.bulk_process(pipe, saved_steps=['spacy', 'loc', 'gaz', 'geores'], evaluator=ev_161)
+gwn.bulk_process(pipe, saved_steps=['tok', 'cogcomp', 'loc', 'gaz'], evaluator=ev_rec_ner)
 #gwn.bulk_process(spacy_nores, saved_steps=['spacy', 'loc', 'gaz'], evaluator=ev_rec)
 #gwn.bulk_process(spacy_noclust, saved_steps=['spacy', 'loc', 'gaz', 'geores'], evaluator=ev_161)
 #gwn.bulk_process(spacy, saved_steps=['spacy', 'loc', 'gaz', 'geores', 'clust'], evaluator=ev_161)

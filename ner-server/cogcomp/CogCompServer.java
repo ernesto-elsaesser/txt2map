@@ -26,11 +26,11 @@ public class CogCompServer {
     NETagPlain.init();
 
     int port = Integer.parseInt(args[0]);
-    InetAddress addr = InetAddress.getLocalHost();
+    InetAddress addr = InetAddress.getByName("0.0.0.0");
     InetSocketAddress saddr = new InetSocketAddress(addr, port);
     HttpServer server = HttpServer.create(saddr, 0);
     server.createContext("/", new PostHandler());
-    server.setExecutor(null); // creates a default executor
+    server.setExecutor(null); // default executor
 
     System.out.println("CogComp NER server listening on port " + args[0]);
     server.start();
