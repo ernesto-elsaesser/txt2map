@@ -70,7 +70,7 @@ class GeoWebNewsImporter:
 
 class LGLImporter:
 
-  def import_documents(self, corpus):
+  def import_documents(self, corpus, exclude_geo):
     dirname = os.path.dirname(__file__)
     corpus_file = dirname + '/corpora/lgl.xml'
     tree = etree.parse(corpus_file)
@@ -80,26 +80,28 @@ class LGLImporter:
       text = article.find('text').text
 
       gold_doc = Document(text)
-      self._annotate_gold_coords(gold_doc, article)
-      corpus.add_document(doc_id, gold_doc)
+      self._annotate_gold_coords(gold_doc, article, exclude_geo)
+      if len(gold_doc.get_all('rec')) > 0:
+        corpus.add_document(doc_id, gold_doc)
 
-  def _annotate_gold_coords(self, doc, article):
+  def _annotate_gold_coords(self, doc, article, exclude_geo):
     toponyms = article.find('toponyms')
 
     for toponym in toponyms:
       pos = int(toponym.find('start').text)
       phrase = toponym.find('phrase').text
+      tag = toponym.find('gaztag')
+
+      if tag != None and exclude_geo:
+        continue
 
       doc.annotate('rec', pos, phrase, 'gld', phrase)
 
-      tag = toponym.find('gaztag')
-      if tag == None:
-        continue
-
-      geoname_id = tag.get('geonameid')
-      #lat = float(tag.find('lat').text)
-      #lon = float(tag.find('lon').text)
-      doc.annotate('res', pos, phrase, 'gns', geoname_id)
+      if tag != None:
+        geoname_id = tag.get('geonameid')
+        #lat = float(tag.find('lat').text)
+        #lon = float(tag.find('lon').text)
+        doc.annotate('res', pos, phrase, 'gns', geoname_id)
 
 
 class TestsImporter:

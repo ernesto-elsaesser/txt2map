@@ -1,6 +1,5 @@
 import re
 import requests
-import spacy
 from .exception import PipelineException
 
 

@@ -15,7 +15,9 @@ gc_creds = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
 if gc_creds == None:
   print('No Google Cloud API credentials provided!')
 
-builder = PipelineBuilder(spacy_url=spacy_url, cogcomp_url=cogcomp_url)
+builder = PipelineBuilder()
+builder.spacy_url = spacy_url
+builder.cogcomp_url = cogcomp_url
 spacy_pipe = builder.build('spacy')
 cogcomp_pipe = builder.build('cogcomp')
 gcnl_pipe = builder.build('gcnl')

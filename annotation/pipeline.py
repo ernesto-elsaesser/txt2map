@@ -2,6 +2,7 @@ from geoparser import GazetteerRecognizer, GeoNamesResolver, Clusterer, GeoUtil
 from .spacy import SpacyClient
 from .gcnl import GoogleCloudNL
 from .cogcomp import CogCompClient
+from .topores import TopoResolverClient
 from .exception import PipelineException
 
 
@@ -23,9 +24,10 @@ class Pipeline:
 
 class PipelineBuilder:
 
-  def __init__(self, spacy_url=None, cogcomp_url=None):
-    self.spacy_url = spacy_url
-    self.cogcomp_url = cogcomp_url
+  def __init__(self):
+    self.spacy_url = None
+    self.cogcomp_url = None
+    self.topores_url = None
 
   def build_empty(self):
     return Pipeline()
@@ -67,6 +69,10 @@ class PipelineBuilder:
     pipe.add(WikiResolStep())
     return pipe
 
+  def build_topo(self):
+    pipe = self.build_empty()
+    pipe.add(TopoResolverServerStep(self.topores_url))
+    return pipe
   
 
 class SpacyServerNERStep:
@@ -196,3 +202,16 @@ class WikiResolStep:
       if len(coords) > 0:
         doc.annotate('res', a.pos, a.phrase, 'wik', coords)
     return ['res']
+
+
+class TopoResolverServerStep:
+
+  key = 'topores'
+
+  def __init__(self, url):
+    self.topo = TopoResolverClient(url)
+
+  def annotate(self, doc):
+    self.topo.annotate_res(doc)
+    return ['res']
+  

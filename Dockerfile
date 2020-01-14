@@ -1,7 +1,6 @@
 FROM python:3.8-slim
 
-RUN pip install flask requests spacy google-cloud-language pylev unidecode geojson_utils
-RUN python -m spacy download en_core_web_sm
+RUN pip install flask requests google-cloud-language pylev unidecode geojson_utils
  
 WORKDIR /t2mui
 ADD ./annotation annotation
