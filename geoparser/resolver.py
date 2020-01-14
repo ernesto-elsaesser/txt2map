@@ -1,5 +1,4 @@
 import re
-import pylev
 from .geonames import GeoNamesCache
 from .gazetteer import Gazetteer
 from .tree import GeoNamesTree
