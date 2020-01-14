@@ -31,7 +31,7 @@ class OSMLoader:
       def bbox(g): return GeoUtil.bounding_box(g.lat, g.lon, search_dist)
       boxes = [bbox(g) for g in geonames]
       csv_reader = OverpassAPI.load_names_in_bounding_boxes(boxes)
-      name_count = OSMLoader._store_data(osm_db, csv_reader, 1, [2, 3, 4, 5])
+      name_count = OSMLoader._store_data(osm_db, csv_reader, 1, [2, 3, 4, 5, 6])
       print(f'created database with {name_count} names.')
 
     return osm_db
@@ -82,7 +82,7 @@ class OverpassAPI:
 
   @staticmethod
   def load_names_in_bounding_boxes(bounding_boxes):
-    query = '[out:csv(::id, ::type, "name", "name:en", "alt_name", "ref"; false)]; ('
+    query = '[out:csv(::id, ::type, "name", "name:en", "alt_name", "short_name", "ref"; false)]; ('
     excl_keys = Config.local_osm_exclusions
     exclusions = ''.join('[!"' + e + '"]' for e in excl_keys)
     for bounding_box in bounding_boxes:
