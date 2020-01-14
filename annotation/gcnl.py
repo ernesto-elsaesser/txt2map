@@ -4,7 +4,7 @@ from google.cloud.language import types
 from .exception import PipelineException
 
 
-class GoogleCloudNL:
+class GoogleCloudNLClient:
 
   def __init__(self):
     try:

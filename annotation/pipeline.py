@@ -1,6 +1,6 @@
 from geoparser import GazetteerRecognizer, GeoNamesResolver, Clusterer, GeoUtil
 from .spacy import SpacyClient
-from .gcnl import GoogleCloudNL
+from .gcnl import GoogleCloudNLClient
 from .cogcomp import CogCompClient
 from .topores import TopoResolverClient
 from .exception import PipelineException
@@ -28,6 +28,7 @@ class PipelineBuilder:
     self.spacy_url = None
     self.cogcomp_url = None
     self.topores_url = None
+    self.reocgnize_fac_ents = False
 
   def build_empty(self):
     return Pipeline()
@@ -46,7 +47,7 @@ class PipelineBuilder:
 
   def build_loc(self, ner_key):
     pipe = self.build_ner(ner_key)
-    pipe.add(LocationRecogStep())
+    pipe.add(LocationRecogStep(self.reocgnize_fac_ents))
     return pipe
 
   def build_gaz(self, ner_key):
@@ -103,8 +104,14 @@ class LocationRecogStep:
 
   key = 'loc'
 
+  def __init__(self, include_fac):
+    self.include_fac = include_fac
+
   def annotate(self, doc):
-    for a in doc.get_all('ner', 'loc'):
+    anns = doc.get_all('ner', 'loc')
+    if self.include_fac:
+      anns += doc.get_all('ner', 'fac')
+    for a in anns:
       doc.annotate('rec', a.pos, a.phrase, 'ner', a.phrase)
     return ['rec']
 
@@ -176,7 +183,7 @@ class GCNLNERStep:
   key = 'gcnl'
 
   def __init__(self):
-    self.gncl = GoogleCloudNL()
+    self.gncl = GoogleCloudNLClient()
 
   def annotate(self, doc):
     self.gncl.annotate_ner_wik(doc)
