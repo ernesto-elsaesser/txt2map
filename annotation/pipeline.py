@@ -1,4 +1,4 @@
-from geoparser import GazetteerRecognizer, GeoNamesResolver, Clusterer
+from geoparser import GeoNamesResolver, Clusterer
 from .spacy import SpacyClient
 from .gcnl import GoogleCloudNLClient
 from .cogcomp import CogCompClient
@@ -45,23 +45,13 @@ class PipelineBuilder:
       raise PipelineException('Invalid key for NER step!')
     return pipe
 
-  def build_loc(self, ner_key):
+  def build_res(self, ner_key):
     pipe = self.build_ner(ner_key)
-    pipe.add(LocationRecogStep(self.reocgnize_fac_ents))
-    return pipe
-
-  def build_gaz(self, ner_key):
-    pipe = self.build_loc(ner_key)
-    pipe.add(GazetteerRecogStep())
-    return pipe
-
-  def build_glob(self, ner_key):
-    pipe = self.build_gaz(ner_key)
     pipe.add(GeoNamesRecogResolStep())
     return pipe
 
   def build(self, ner_key):
-    pipe = self.build_glob(ner_key)
+    pipe = self.build_res(ner_key)
     pipe.add(ClusterStep())
     return pipe
 
@@ -100,23 +90,6 @@ class CogCompServerNERStep:
     return ['ner']
 
 
-class LocationRecogStep:
-
-  key = 'loc'
-
-  def __init__(self, include_fac):
-    self.include_fac = include_fac
-
-  def annotate(self, doc):
-    anns = doc.get_all('ner', 'loc')
-    anns += doc.get_all('ner', 'gpe')
-    if self.include_fac:
-      anns += doc.get_all('ner', 'fac')
-    for a in anns:
-      doc.annotate('rec', a.pos, a.phrase, 'ner', a.phrase)
-    return ['rec']
-
-
 class GazetteerRecogStep:
 
   key = 'gaz'
@@ -125,8 +98,8 @@ class GazetteerRecogStep:
     self.gazrec = GazetteerRecognizer()
 
   def annotate(self, doc):
-    self.gazrec.annotate_rec(doc)
-    return ['rec']
+    self.gazrec.annotate_rec_evi(doc)
+    return ['rec', 'evi']
 
 
 class GeoNamesRecogResolStep:
@@ -137,8 +110,8 @@ class GeoNamesRecogResolStep:
     self.geores = GeoNamesResolver()
 
   def annotate(self, doc):
-    self.geores.annotate_rec_res(doc)
-    return ['rec', 'res']
+    self.geores.annotate_rec_evi_res(doc)
+    return ['rec', 'evi', 'res']
 
 
 class GeoNamesDefaultRecogResolStep:

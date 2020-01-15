@@ -1,11 +1,11 @@
-import re
 import requests
+import csv
 from .exception import PipelineException
 
 
 class SpacyClient:
 
-  label_map = {'GPE': 'gpe', 'LOC': 'loc', 'FAC': 'fac', 'ORG': 'org', 'PERSON': 'per', 
+  label_map = {'GPE': 'loc', 'LOC': 'loc', 'FAC': 'loc', 'ORG': 'org', 'PERSON': 'per', 
                'NORP': 'dem', 'LANGUAGE': 'lan', 'PRODUCT': 'msc', 'EVENT': 'msc', 'WORK_OF_ART': 'msc', 'LAW': 'msc'}
 
   def __init__(self, url=None):
@@ -21,19 +21,18 @@ class SpacyClient:
     except:
       raise PipelineException('spaCy NER service not running!')
     response.encoding = 'utf-8'
-
-    ent_map = response.json()
-    lg_ents = ent_map['lg']
-    for name, label in lg_ents.items():
+    rows = response.text.split('\n')
+    for row in rows:
+      columns = row.split('\t')
+      if len(row) == 0:
+        continue
+      label = columns[2]
       if label not in self.label_map:
         continue
+      pos = int(columns[0])
+      phrase = self._normalized_name(columns[1])
       group = self.label_map[label]
-      phrase = self._normalized_name(name)
-      escaped_phrase = re.escape(phrase)
-      matches = re.finditer(escaped_phrase, doc.text)
-      phrase = phrase.rstrip('.') # for consistency with CogComp
-      for match in matches:
-        doc.annotate('ner', match.start(), phrase, group, 'spacy_lg')
+      doc.annotate('ner', pos, phrase, group, 'spacy_lg')
 
   def _normalized_name(self, name):
     if name.startswith('the ') or name.startswith('The '):

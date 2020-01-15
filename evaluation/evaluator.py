@@ -8,7 +8,13 @@ class Evaluator:
     print(', '.join(values))
 
   def _matches(self, a, gold):
-    return a.pos == gold.pos #and len(a.phrase) >= len(gold.phrase) - 1
+    if a.pos != gold.pos:
+      return False
+    if a.phrase == gold.phrase:
+      return True
+    if a.phrase == gold.phrase + '.':
+      return True
+    return False
 
   def _print_if_not_empty(self, anns, msg):
     if len(anns) > 0:
@@ -42,10 +48,52 @@ class Counter(Evaluator):
     return metrics
 
 
+class NEREvaluator(Evaluator):
+
+  def __init__(self):
+    self.true_pos = 0
+    self.false_neg = 0
+    self.false_pos = 0
+
+  def evaluate(self, doc, gold_doc):
+    correct = []
+    missed = []
+    pending = doc.get_all('ner', 'loc')
+
+    for g in gold_doc.get_all('gld'):
+      prev_len = len(pending)
+      pending = [a for a in pending if not self._matches(a, g)]
+      if len(pending) < prev_len:
+        correct.append(g)
+      else:
+        missed.append(g)
+
+    self.true_pos += len(correct)
+    self.false_pos += len(pending)
+    self.false_neg += len(missed)
+
+    self._print_if_not_empty(pending, 'REC FALSE POS')
+    self._print_if_not_empty(missed, 'REC FALSE NEG')
+
+  def _metrics(self):
+    metrics = {}
+    recognized = self.true_pos + self.false_pos
+    if recognized > 0:
+      p = self.true_pos / recognized
+      metrics['P'] = p
+    wookie = self.true_pos + self.false_neg
+    if wookie > 0:
+      r = self.true_pos / wookie
+      metrics['R'] = r
+    if self.true_pos > 0:
+      metrics['F1'] = (2 * p * r) / (p + r)
+    return metrics
+
+
+
 class RecogEvaluator(Evaluator):
 
-  def __init__(self, layer='rec', include_osm=True):
-    self.layer = layer
+  def __init__(self, include_osm=True):
     self.include_osm = include_osm
     self.true_pos = 0
     self.false_neg = 0
@@ -54,7 +102,7 @@ class RecogEvaluator(Evaluator):
   def evaluate(self, doc, gold_doc):
     correct = []
     missed = []
-    pending = doc.get_all(self.layer)
+    pending = doc.get_all('rec')
     if self.include_osm:
       for l in doc.layers():
         if l.startswith('clu-'):

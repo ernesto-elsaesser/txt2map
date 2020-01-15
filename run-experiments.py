@@ -5,6 +5,7 @@ builder = PipelineBuilder()
 builder.spacy_url = 'http://localhost:8001'
 builder.cogcomp_url = 'http://localhost:8002'
 builder.topores_url = 'http://localhost:8003'
+builder.reocgnize_fac_ents = True
 
 # corpora
 tests = Corpus('Tests')
@@ -12,19 +13,17 @@ gwn = Corpus('GeoWebNews')
 lgls = Corpus('LGL-Street')
 
 # evaluators
+ev_ner = NEREvaluator()
 ev_rec = RecogEvaluator()
-ev_rec_noclu = RecogEvaluator(include_osm=False)
-ev_rec_ner = RecogEvaluator(layer='ner', include_osm=False)
 ev_res = ResolEvaluator()
-ev_res_no_osm = ResolEvaluator(tolerance_osm=None)
 ev_res_glob = ResolEvaluator(gold_group='gns')
 ev_res_street = ResolEvaluator(gold_group='raw')
 eval_wiki = WikiResolEvaluator()
 eval_wiki_glob = WikiResolEvaluator(gold_group='gns')
 eval_wiki_street = WikiResolEvaluator(gold_group='raw')
 
-pipe = builder.build_wiki()
-imp = LGLImporter()
-
-imp.import_documents(lgls, True)
-#gwn.bulk_process(pipe, saved_steps=['gcnl', 'wikires'], evaluator=eval_wiki_street)
+pipe = builder.build_res('spacy')
+#mp = GeoWebNewsImporter()
+#imp.import_documents(gwn)
+gwn.bulk_process(pipe, saved_steps=['spacy'], evaluator=ev_rec)
+#gwn.process(pipe, '191', saved_steps=['spacy'])

@@ -70,9 +70,9 @@ class GeoWebNewsImporter:
     for key, pos in positions.items():
       phrase = phrases[key]
       category = categories[key]
-      if category not in ["Literal", "Mixed", "Literal_Modifier", "Non_Literal_Modifier"]:
+      if category not in ["Literal", "Mixed", "Metonym", "Literal_Modifier"]:
         continue
-      if category in ["Literal_Modifier", "Non_Literal_Modifier"] and key not in noun_mods:
+      if category == "Literal_Modifier" and key not in noun_mods:
         continue
       if key in geoname_ids:
         doc.annotate('gld', pos, phrase, 'gns', geoname_ids[key])
@@ -80,6 +80,8 @@ class GeoWebNewsImporter:
       elif key in coords:
         doc.annotate('gld', pos, phrase, 'raw', coords[key])
         self.raw_count += 1
+      else:
+        assert False
 
 
 

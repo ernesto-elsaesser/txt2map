@@ -34,7 +34,7 @@
     <script>
 
     layerNames = { 'ner': 'Named Entities', 'rec': 'Global Names', 'res': 'Global Entities', 'wik': 'Wikipedia Links', 'clu': 'Clusters', 'con': 'Confidences' }
-    groupNames = { 'loc': 'Location Entity', 'per': 'Person Entity', 'org': 'Organization Entity', 'msc': 'Misc Entity', 'ner': 'From NER', 'gaz': 'From Global Gazetteer', 'anc': 'From Ancestor Scan', 'top': 'Common Default Sense', 'api': 'GeoNames Default Sense', 'heu': 'Selected By Disambiguation Heuristic', 'low': 'Low Confidence', 'low': 'High Confidence' }
+    groupNames = { 'loc': 'Location Entity', 'per': 'Person Entity', 'org': 'Organization Entity', 'msc': 'Misc Entity', 'ner': 'From NER', 'gaz': 'From Global Gazetteer', 'anc': 'From Ancestor Scan', 'dem': 'From Demonym List', 'non': 'Not in Global Gazetteer', 'glo': 'Selected By Disambiguation Heuristic', 'low': 'Low Confidence', 'low': 'High Confidence' }
 
     var input = document.getElementById('input');
     var endpoint = document.getElementById('endpoint');
@@ -98,7 +98,7 @@
       layers.innerHTML = '';
       var namesButton = null;
       for (layer in annotations) {
-        if (layer == 'ntk') {
+        if (layer == 'evi') {
           continue;
         }
         var layerButton = document.createElement('a');

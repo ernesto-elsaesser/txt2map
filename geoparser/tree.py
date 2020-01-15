@@ -7,15 +7,13 @@ class GeoNamesTree:
   continent_map = Gazetteer.continent_map()
   country_boxes = Gazetteer.country_boxes()
 
-  def __init__(self, doc):
+  def __init__(self, resolutions):
     self.root = TreeNode(None, None)
     self.adm1s = []
-    gns_cache = GeoNamesCache()
-    for a in doc.get_all('res'):
-      geoname = gns_cache.get(a.data)
+    for toponym, geoname in resolutions.items():
       key_path = self.key_path(geoname)
       node = self.root.get(key_path, True)
-      node.add(a.phrase, geoname, a.pos)
+      node.add(toponym, geoname)
       if len(key_path) == 3 and node not in self.adm1s:
         self.adm1s.append(node)
 
@@ -74,8 +72,7 @@ class TreeNode:
     self.key = key
     self.parent = parent
     self.children = {}  # key: TreeNode
-    self.geonames = {}  # phrase: GeoName
-    self.positions = {}  # phrase: [pos]
+    self.geonames = {}  # toponym: GeoName
 
   def __repr__(self):
     return self.key
@@ -94,12 +91,8 @@ class TreeNode:
       child = self.children[key]
     return child.get(key_path[1:], create)
 
-  def add(self, phrase, geoname, position):
-    if phrase not in self.geonames:
-      self.geonames[phrase] = geoname
-      self.positions[phrase] = [position]
-    else:
-      self.positions[phrase].append(position)
+  def add(self, toponym, geoname):
+    self.geonames[toponym] = geoname
 
   def iter(self):
     node = self

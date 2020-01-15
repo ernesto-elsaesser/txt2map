@@ -1,4 +1,3 @@
-import os
 from .gazetteer import Gazetteer
 from .geonames import GeoNamesCache
 from .osm import OSMLoader
@@ -15,9 +14,18 @@ class Clusterer:
     self.top_names = Gazetteer.defaults().keys()
 
   def annotate_clu(self, doc):
-    tree = GeoNamesTree(doc)
+    resolutions = {}
+    res_by_phrase = {}
+    for a in doc.get_all('res'):
+      resolutions[a.phrase] = a.data
+      if a.phrase not in res_by_phrase:
+        res_by_phrase[a.phrase] = []
+      res_by_phrase[a.phrase].append(a)
+
+    tree = GeoNamesTree(resolutions)
     leafs = tree.leafs()
 
+    entity_indicies = doc.annotations_by_index('ner')
     cluster_keys = []
     for idx, leaf in enumerate(leafs):
 
@@ -32,14 +40,14 @@ class Clusterer:
       cluster_key = f'clu-{idx+1}'
       geoname_ids = [g.id for _, g in tupels]
       for node in leaf.iter():
-        for phrase, positions in node.positions.items():
-          for pos in positions:
-            doc.annotate('clu', pos, phrase, cluster_key, geoname_ids)
+        for toponym in node.geonames:
+          for a in res_by_phrase[toponym]:
+            doc.annotate('clu', a.pos, toponym, cluster_key, geoname_ids)
 
       cluster_keys.append(cluster_key)
 
       if len(anchors) > 0:
-        self._annotate_local_names(doc, anchors, cluster_key)
+        self._annotate_local_names(doc, anchors, cluster_key, entity_indicies)
 
     return cluster_keys
 
@@ -65,7 +73,7 @@ class Clusterer:
 
       return None
 
-  def _annotate_local_names(self, doc, geonames, layer):
+  def _annotate_local_names(self, doc, geonames, layer, entity_indicies):
     db = OSMLoader.load_database(geonames)
 
     def lookup_prefix(prefix):
@@ -74,12 +82,17 @@ class Clusterer:
     def commit_match(c):
       if len(c.match) < Config.local_match_min_len:
         return False
+      if c.pos in entity_indicies:
+        ent_ann = entity_indicies[c.pos]
+        if len(ent_ann.phrase) > len(c.match):
+          return False
       osm_refs = db.get_elements(c.lookup_phrase)
       doc.annotate(layer, c.pos, c.match, 'clu', osm_refs)
       return True
 
     self.matcher.find_matches(doc, lookup_prefix, commit_match)
 
+  # TODO: merge into annotate_clu
   def annotate_con(self, doc):
     clust_keys = [l for l in doc.layers() if l.startswith('clu-')]
     clust_count = len(clust_keys)

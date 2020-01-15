@@ -112,13 +112,10 @@ class Gazetteer:
   def update_defaults():
 
     defaults = {}
-    demonyms = Gazetteer.demonyms()
 
     continents = Gazetteer._load('continents')
     for toponym in continents:
       defaults[toponym] = continents[toponym]
-      for demonym in demonyms[toponym]:
-        defaults[demonym] = continents[toponym]
 
     oceans = Gazetteer._load('oceans')
     for toponym in oceans:
@@ -127,9 +124,6 @@ class Gazetteer:
     countries = Gazetteer._load('countries')
     for toponym in countries:
       defaults[toponym] = countries[toponym]
-      if toponym in demonyms:
-        for demonym in demonyms[toponym]:
-          defaults[demonym] = countries[toponym]
 
     class_order = Config.gazetteer_class_prio
     for fcl in class_order:
@@ -137,9 +131,6 @@ class Gazetteer:
       for toponym in entries:
         if toponym not in defaults:
           defaults[toponym] = entries[toponym]
-          if toponym in demonyms:
-            for demonym in demonyms[toponym]:
-              defaults[demonym] = entries[toponym]
 
     # common abbreviations
     defaults['U.S.'] = 6252001
