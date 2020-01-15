@@ -40,7 +40,7 @@ class NameMatcher:
   }
 
   def __init__(self):
-    self.starts = re.compile('\\b[A-Z0-9]\w*')
+    self.starts = re.compile('\\b[A-Z0-9]')
     self.abbreviations = []
     for s, l in self.abbr.items():
       self.abbreviations.append((re.compile(l), s))
@@ -51,27 +51,24 @@ class NameMatcher:
     text = doc.text + ' '  # allow matching of last token
     text_len = len(text)
 
-    prev_match_end = 0
+    prev_end = 0
     saved = {}
 
     for m in self.starts.finditer(doc.text):
       start = m.start()
-      if start < prev_match_end:
+      if start < prev_end:
         continue
 
-      token = m.group()
-      end = start + len(token)
-      if token in self.abbr and text[end] == '.':
-        token += '.'
-        end += 1
+      prefix = text[start:start+4].split(' ')[0]
 
-      if token in saved:
-        completions = [c.clone(start) for c in saved[token]]
+      if prefix in saved:
+        completions = [c.clone(start) for c in saved[prefix]]
       else:
-        completions = self._get_completions(token, lookup_prefix, start)
-        saved[token] = completions
+        completions = self._get_completions(prefix, lookup_prefix, start)
+        saved[prefix] = completions
 
-      text_pos = end
+      text_pos = start + len(prefix)
+      prev_end = text_pos
       longest_compl = None
       while text_pos < text_len and len(completions) > 0:
         next_char = text[text_pos]
@@ -84,7 +81,7 @@ class NameMatcher:
 
       if longest_compl != None:
         if commit_match(longest_compl):
-          prev_match_end = longest_compl.end
+          prev_end = longest_compl.end
 
   def _get_completions(self, prefix, lookup_prefix, pos):
     found_names = lookup_prefix(prefix)

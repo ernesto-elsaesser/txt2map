@@ -93,8 +93,7 @@ class NEREvaluator(Evaluator):
 
 class RecogEvaluator(Evaluator):
 
-  def __init__(self, include_osm=True):
-    self.include_osm = include_osm
+  def __init__(self):
     self.true_pos = 0
     self.false_neg = 0
     self.false_pos = 0
@@ -103,18 +102,12 @@ class RecogEvaluator(Evaluator):
     correct = []
     missed = []
     pending = doc.get_all('rec')
-    rec_clust = []
-    if self.include_osm:
-      for l in doc.layers():
-        if l.startswith('clu-'):
-          rec_clust += doc.get_all(l)
 
     for g in gold_doc.get_all('gld'):
       matches = [a for a in pending if self._matches(a, g)]
-      matches_clust = [a for a in rec_clust if self._matches(a, g)]
       pending = [a for a in pending if a not in matches]
 
-      if len(matches + matches_clust) > 0:
+      if len(matches) > 0:
         correct.append(g)
       else:
         missed.append(g)
@@ -143,7 +136,6 @@ class RecogEvaluator(Evaluator):
 
 class ResolEvaluator(Evaluator):
 
-  # tolerance_osm=None to ignore OSM results
   def __init__(self, gold_group=None, tolerance_osm=0.2):
     self.gold_group = gold_group
     self.tol_osm = tolerance_osm
@@ -158,23 +150,17 @@ class ResolEvaluator(Evaluator):
     incorrects = []
     missed = []
     pending = doc.get_all('res')
-    rec_clust = []
-    if self.tol_osm != None:
-      for l in doc.layers():
-        if l.startswith('clu-'):
-          rec_clust += doc.get_all(l)
 
     for g in gold_doc.get_all('gld', self.gold_group):
       matches = [a for a in pending if self._matches(a, g)]
-      matches_clust = [a for a in rec_clust if self._matches(a, g)]
       pending = [a for a in pending if a not in matches]
 
-      if len(matches + matches_clust) == 0:
+      if len(matches) == 0:
         missed.append(g)
         continue
 
-      geo_ids = [a.data for a in matches]
-      osm_refs = [a.data for a in matches_clust]
+      geo_ids = [a.data for a in matches if a.group == 'glo']
+      osm_refs = [a.data for a in matches if a.group.startswith('clu-')]
       resolved = False
       if g.group == 'gns':
         resolved = self._global_hit(g.data, geo_ids)
