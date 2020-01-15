@@ -112,6 +112,7 @@ class Gazetteer:
   def update_defaults():
 
     defaults = {}
+    stopwords = Gazetteer._load('stopwords')
 
     continents = Gazetteer._load('continents')
     for toponym in continents:
@@ -129,7 +130,7 @@ class Gazetteer:
     for fcl in class_order:
       entries = Gazetteer._load(fcl)
       for toponym in entries:
-        if toponym not in defaults:
+        if toponym not in defaults and toponym not in stopwords:
           defaults[toponym] = entries[toponym]
 
     # common abbreviations
