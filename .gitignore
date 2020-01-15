@@ -3,4 +3,5 @@
 cache/
 evaluation/data/
 ner-server/cogcomp/lib/
+ner-server/stanford/lib/
 *.class

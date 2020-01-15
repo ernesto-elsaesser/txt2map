@@ -2,6 +2,7 @@ from geoparser import GeoNamesResolver, Clusterer
 from .spacy import SpacyClient
 from .gcnl import GoogleCloudNLClient
 from .cogcomp import CogCompClient
+from .stanford import StanfordClient
 from .topores import TopoResolverClient
 from .exception import PipelineException
 
@@ -28,6 +29,7 @@ class PipelineBuilder:
     self.spacy_url = None
     self.cogcomp_url = None
     self.topores_url = None
+    self.stanford_url = None
 
   def build_empty(self):
     return Pipeline()
@@ -38,6 +40,8 @@ class PipelineBuilder:
       pipe.add(SpacyServerNERStep(self.spacy_url))
     elif ner_key == CogCompServerNERStep.key:
       pipe.add(CogCompServerNERStep(self.cogcomp_url))
+    elif ner_key == StanfordServerNERStep.key:
+      pipe.add(StanfordServerNERStep(self.stanford_url))
     elif ner_key == GCNLNERStep.key:
       pipe.add(GCNLNERStep())
     else:
@@ -82,6 +86,18 @@ class CogCompServerNERStep:
 
   def annotate(self, doc):
     self.cogcomp.annotate_ner(doc)
+    return ['ner']
+
+
+class StanfordServerNERStep:
+
+  key = 'stanford'
+
+  def __init__(self, url):
+    self.stanford = StanfordClient(url)
+
+  def annotate(self, doc):
+    self.stanford.annotate_ner(doc)
     return ['ner']
 
 
@@ -170,6 +186,7 @@ class WikiResolStep:
       if a.pos not in wik_anns:
         continue
       url = wik_anns[a.pos].data
+      doc.annotate('rec', a.pos, a.phrase, 'wik', '')
       doc.annotate('res', a.pos, a.phrase, 'wik', url)
     return ['res']
 

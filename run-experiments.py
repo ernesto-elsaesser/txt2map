@@ -4,7 +4,8 @@ from evaluation import *
 builder = PipelineBuilder()
 builder.spacy_url = 'http://localhost:8001'
 builder.cogcomp_url = 'http://localhost:8002'
-builder.topores_url = 'http://localhost:8003'
+builder.stanford_url = 'http://localhost:8003'
+builder.topores_url = 'http://localhost:8004'
 
 # corpora
 tests = Corpus('Tests')
@@ -21,7 +22,6 @@ eval_wiki = WikiResolEvaluator()
 eval_wiki_glob = WikiResolEvaluator(gold_group='gns')
 eval_wiki_street = WikiResolEvaluator(gold_group='raw')
 
-pipe = builder.build('cogcomp')
-gwn.bulk_process(pipe, saved_steps=[
-                 'cogcomp', 'geores', 'clust'], evaluator=ev_res_street)
-#tests.process(pipe, 'global_d_c') 
+pipe = builder.build_topo()
+gwn.bulk_process(pipe, saved_steps=['topores'], evaluator=ev_res_street)
+#tests.process(pipe, 'global_d_c') , 'geores', 'clust'

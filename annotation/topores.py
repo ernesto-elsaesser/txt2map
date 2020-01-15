@@ -26,5 +26,6 @@ class TopoResolverClient:
       pos = int(columns[1])
       phrase = columns[0]
       geoname_id = int(columns[2])
-      doc.annotate('res', pos, phrase, 'ext', geoname_id)
+      doc.annotate('rec', pos, phrase, 'glo', '')
+      doc.annotate('res', pos, phrase, 'glo', geoname_id)
 
