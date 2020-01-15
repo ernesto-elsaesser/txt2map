@@ -135,10 +135,9 @@ class TestsImporter:
       for arr in anns:
         phrase = arr[0]
         pos = text.find(phrase)
-        gold_doc.annotate('rec', pos, phrase, 'gld', phrase)
         if len(arr) == 3:
-          gold_doc.annotate('res', pos, phrase, 'raw', arr[1:3])
+          gold_doc.annotate('gld', pos, phrase, 'raw', arr[1:3])
         else:
-          gold_doc.annotate('res', pos, phrase, 'gns', arr[1])
+          gold_doc.annotate('gld', pos, phrase, 'gns', arr[1])
 
       corpus.add_document(doc_id, gold_doc)

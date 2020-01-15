@@ -39,19 +39,28 @@ class Document:
   def layers(self):
     return list(self.anns.keys())
 
-  def annotate(self, layer, pos, phrase, group, data, allow_overlap=False):
+  def annotate(self, layer, pos, phrase, group, data, allow_overlap=False, overwrite=False):
     if layer not in self.anns:
       self.anns[layer] = []
 
     end = pos + len(phrase)
     ann = [pos, phrase, group, data]
 
-    if not allow_overlap:
-      anns_by_index = self.annotations_by_index(layer)
-      for i in range(pos, end):
-        if i in anns_by_index:
-          print(f'Annotation {ann} not added due to existing {anns_by_index[i]}')
+    anns_by_index = self.annotations_by_index(layer)
+    deleted = []
+    for i in range(pos, end):
+      if i in anns_by_index:
+        overlap = anns_by_index[i]
+        if overwrite:
+          if overlap.pos in deleted:
+            continue
+          print(f'Annotation {phrase} [{group}] overwrites {overlap}')
+          self.delete_annotation(layer, overlap.pos)
+          deleted.append(overlap.pos)
+        elif not allow_overlap:
+          print(f'Annotation {phrase} [{group}] blocked by {overlap}')
           return
+    
 
     self.anns[layer].append(ann)
 
@@ -101,5 +110,5 @@ class Document:
         anns_by_index[i] = a
     return anns_by_index
 
-  def annotations_by_position(self, layer):
-    return {a.pos: a for a in self.get_all(layer)}
+  def annotations_by_position(self, layer, group=None):
+    return {a.pos: a for a in self.get_all(layer, group)}

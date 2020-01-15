@@ -131,9 +131,9 @@ class ClusterStep:
     self.clusterer = Clusterer()
 
   def annotate(self, doc):
-    layers = self.clusterer.annotate_clu(doc)
-    layers.append('clu')
-    return layers
+    self.clusterer.annotate_clu(doc)
+    self.clusterer.annotate_rec_res(doc)
+    return ['clu', 'rec', 'res']
 
 
 class ClusterConfidenceStep:

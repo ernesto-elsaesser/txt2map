@@ -25,16 +25,12 @@ class GeoNamesResolver:
     for toponym, geoname_id in tops.items():
       resolutions[toponym] = self.gns_cache.get(geoname_id)
 
-    ner_topos = set()
-    ner_topos_new = set()
-    for a in doc.get_all('ner'):
-      if a.group == 'loc':
-        doc.annotate('rec', a.pos, a.phrase, 'ner', '')
-        ner_topos.add(a.phrase)
-        if a.phrase not in resolutions:
-          ner_topos_new.add(a.phrase)
+    unresolved = set()
+    for a in doc.get_all('ner', 'loc'):
+      if a.phrase not in resolutions:
+        unresolved.add(a.phrase)
     
-    for toponym in ner_topos_new:
+    for toponym in unresolved:
       candidates = self._select_candidates(toponym)
       if len(candidates) == 0:
         continue
@@ -60,17 +56,18 @@ class GeoNamesResolver:
           print(f'Chose {city} over {geoname} for {toponym}')
           break
     
-    ner_anns = doc.annotations_by_position('ner')
-    resolved = [t for t in resolutions if t in ner_topos]
-    resolved = sorted(resolved, key=lambda t: -len(t)) # longer first
+    ner_anns = doc.annotations_by_position('ner', 'loc')
+    resolved = sorted(resolutions.keys(), key=lambda t: -len(t))  # longer first
     for toponym in resolved:
       geoname_id = resolutions[toponym].id
       for match in re.finditer(f'\\b{toponym}\\b', doc.text):
         pos = match.start()
-        end = pos + len(toponym)
         doc.annotate('evi', pos, toponym, 'evi', geoname_id, allow_overlap=True)
-        if pos in ner_anns and ner_anns[pos].phrase == toponym:
-          doc.annotate('res', pos, toponym, 'glo', geoname_id)
+        if pos in ner_anns:
+          ann = ner_anns[pos]
+          if len(toponym) >= len(ann.phrase):
+            doc.annotate('rec', pos, toponym, 'glo', '')
+            doc.annotate('res', pos, toponym, 'glo', geoname_id)
 
   def _select_candidates(self, toponym):
     if toponym in self.candidates:

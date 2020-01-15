@@ -25,10 +25,7 @@ class Clusterer:
     tree = GeoNamesTree(resolutions)
     leafs = tree.leafs()
 
-    entity_indicies = doc.annotations_by_index('ner')
-    cluster_keys = []
     for idx, leaf in enumerate(leafs):
-
       tupels = list(leaf.geonames.items())
       anchors = [g for _, g in tupels if g.is_city]
       if len(anchors) == 0:
@@ -38,17 +35,10 @@ class Clusterer:
           anchors.append(anchor)
 
       cluster_key = f'clu-{idx+1}'
-      geoname_ids = [g.id for _, g in tupels]
+      anchors_ids = [g.id for g in anchors]
       for toponym in leaf.geonames:
         for a in res_by_phrase[toponym]:
-          doc.annotate('clu', a.pos, toponym, cluster_key, geoname_ids)
-
-      cluster_keys.append(cluster_key)
-
-      if len(anchors) > 0:
-        self._annotate_local_names(doc, anchors, cluster_key, entity_indicies)
-
-    return cluster_keys
+          doc.annotate('clu', a.pos, toponym, cluster_key, anchors_ids)
 
   def _find_anchor(self, toponym, geoname):
     hierarchy = self.gns_cache.get_hierarchy(geoname.id)
@@ -72,26 +62,36 @@ class Clusterer:
 
       return None
 
-  def _annotate_local_names(self, doc, geonames, layer, entity_indicies):
-    db = OSMLoader.load_database(geonames)
+  def annotate_rec_res(self, doc):
+    clust_keys = {}
+    for a in doc.get_all('clu'):
+      clust_keys[a.group] = a.data
 
-    def lookup_prefix(prefix):
-      return db.find_names(prefix)
+    entity_indicies = doc.annotations_by_index('ner')
+    rec_positions = doc.annotations_by_position('rec')
 
-    def commit_match(c):
-      if len(c.match) < Config.local_match_min_len:
-        return False
-      if c.pos in entity_indicies:
-        ent_ann = entity_indicies[c.pos]
-        if len(ent_ann.phrase) > len(c.match):
+    for cluster_key, anchor_ids in clust_keys.items():
+      geonames = [self.gns_cache.get(gid) for gid in anchor_ids]
+      db = OSMLoader.load_database(geonames)
+
+      def lookup_prefix(prefix):
+        return db.find_names(prefix)
+
+      def commit_match(c):
+        if ' ' not in c.match:
+          if len(c.match) < Config.local_match_min_len:
+            return False
+          if c.pos in entity_indicies:
+            return False
+        if c.pos in rec_positions and rec_positions[c.pos].phrase == c.match:
           return False
-      osm_refs = db.get_elements(c.lookup_phrase)
-      doc.annotate(layer, c.pos, c.match, 'clu', osm_refs)
-      return True
+        osm_refs = db.get_elements(c.lookup_phrase)
+        doc.annotate('rec', c.pos, c.match, cluster_key, '', overwrite=True)
+        doc.annotate('res', c.pos, c.match, cluster_key, osm_refs, overwrite=True)
+        return True
 
-    self.matcher.find_matches(doc, lookup_prefix, commit_match)
+      self.matcher.find_matches(doc, lookup_prefix, commit_match)
 
-  # TODO: merge into annotate_clu
   def annotate_con(self, doc):
     clust_keys = [l for l in doc.layers() if l.startswith('clu-')]
     clust_count = len(clust_keys)

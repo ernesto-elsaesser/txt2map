@@ -144,7 +144,7 @@ class RecogEvaluator(Evaluator):
 class ResolEvaluator(Evaluator):
 
   # tolerance_osm=None to ignore OSM results
-  def __init__(self, gold_group=None, tolerance_osm=1):
+  def __init__(self, gold_group=None, tolerance_osm=0.2):
     self.gold_group = gold_group
     self.tol_osm = tolerance_osm
     self.gns_cache = GeoNamesCache()
@@ -158,18 +158,16 @@ class ResolEvaluator(Evaluator):
     incorrects = []
     missed = []
     pending = doc.get_all('res')
-    pending_clust = []
+    rec_clust = []
     if self.tol_osm != None:
       for l in doc.layers():
         if l.startswith('clu-'):
-          pending_clust += doc.get_all(l)
+          rec_clust += doc.get_all(l)
 
     for g in gold_doc.get_all('gld', self.gold_group):
       matches = [a for a in pending if self._matches(a, g)]
+      matches_clust = [a for a in rec_clust if self._matches(a, g)]
       pending = [a for a in pending if a not in matches]
-
-      matches_clust = [a for a in pending_clust if self._matches(a, g)]
-      pending_clust = [a for a in pending_clust if a not in matches_clust]
 
       if len(matches + matches_clust) == 0:
         missed.append(g)
@@ -193,10 +191,10 @@ class ResolEvaluator(Evaluator):
 
     self.incorrect += len(incorrects)
     self.correct += len(corrects)
-    self.false_pos += len(pending + pending_clust)
+    self.false_pos += len(pending)
     self.false_neg += len(missed)
 
-    self._print_if_not_empty(pending + pending_clust, 'RES FALSE POS')
+    self._print_if_not_empty(pending, 'RES FALSE POS')
     self._print_if_not_empty(missed, 'RES FALSE NEG')
     self._print_if_not_empty(incorrects, 'RES INCORRECT')
 
@@ -211,7 +209,7 @@ class ResolEvaluator(Evaluator):
     return False
 
   def _related_ids(self, geoname_id):
-    hierarchy = self.gns_cache.get_hierarchy(gold_id)
+    hierarchy = self.gns_cache.get_hierarchy(geoname_id)
     name = hierarchy[-1].name
     related = [g for g in hierarchy][-3:]  # accept up to two levels above
     return [g.id for g in related if name in g.name or g.name in name]
@@ -222,7 +220,7 @@ class ResolEvaluator(Evaluator):
       dist = GeoUtil.osm_element_distance(gold_lat, gold_lon, elements[0])
       if dist < self.tol_osm:
         return True
-      elif dist < self.tol_local + 30.0:  # max dist between two elements
+      elif dist < self.tol_osm + 30.0:  # max dist between two elements
         for e in elements[1:]:
           d = GeoUtil.osm_element_distance(gold_lat, gold_lon, e)
           if d < self.tol_osm:
