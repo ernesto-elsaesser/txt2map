@@ -188,7 +188,7 @@ class WikiResolStep:
       url = wik_anns[a.pos].data
       doc.annotate('rec', a.pos, a.phrase, 'wik', '')
       doc.annotate('res', a.pos, a.phrase, 'wik', url)
-    return ['res']
+    return ['rec','res']
 
 
 class TopoResolverServerStep:

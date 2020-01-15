@@ -229,7 +229,7 @@ class ResolEvaluator(Evaluator):
 
 class WikiResolEvaluator(Evaluator):
 
-  def __init__(self, gold_group=None, tolerance=1):
+  def __init__(self, gold_group=None, tolerance=0.2):
     self.gold_group = gold_group
     self.tolerance = tolerance
     self.gns_cache = {}
@@ -245,7 +245,7 @@ class WikiResolEvaluator(Evaluator):
     missed = []
     pending = doc.get_all('res')
 
-    for g in gold_doc.get_all('gls', self.gold_group):
+    for g in gold_doc.get_all('gld', self.gold_group):
       matches = [a for a in pending if self._matches(a, g)]
       pending = [a for a in pending if a not in matches]
 
