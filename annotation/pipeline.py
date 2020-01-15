@@ -45,13 +45,9 @@ class PipelineBuilder:
       raise PipelineException('Invalid key for NER step!')
     return pipe
 
-  def build_res(self, ner_key):
+  def build(self, ner_key):
     pipe = self.build_ner(ner_key)
     pipe.add(GeoNamesRecogResolStep())
-    return pipe
-
-  def build(self, ner_key):
-    pipe = self.build_res(ner_key)
     pipe.add(ClusterStep())
     return pipe
 

@@ -17,7 +17,7 @@ class Clusterer:
     resolutions = {}
     res_by_phrase = {}
     for a in doc.get_all('res'):
-      resolutions[a.phrase] = a.data
+      resolutions[a.phrase] = self.gns_cache.get(a.data)
       if a.phrase not in res_by_phrase:
         res_by_phrase[a.phrase] = []
       res_by_phrase[a.phrase].append(a)
@@ -39,10 +39,9 @@ class Clusterer:
 
       cluster_key = f'clu-{idx+1}'
       geoname_ids = [g.id for _, g in tupels]
-      for node in leaf.iter():
-        for toponym in node.geonames:
-          for a in res_by_phrase[toponym]:
-            doc.annotate('clu', a.pos, toponym, cluster_key, geoname_ids)
+      for toponym in leaf.geonames:
+        for a in res_by_phrase[toponym]:
+          doc.annotate('clu', a.pos, toponym, cluster_key, geoname_ids)
 
       cluster_keys.append(cluster_key)
 

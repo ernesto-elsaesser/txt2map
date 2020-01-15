@@ -70,7 +70,7 @@ class GeoWebNewsImporter:
     for key, pos in positions.items():
       phrase = phrases[key]
       category = categories[key]
-      if category not in ["Literal", "Mixed", "Metonym", "Literal_Modifier"]:
+      if category not in ["Literal", "Mixed", "Metonymic", "Literal_Modifier"]:
         continue
       if category == "Literal_Modifier" and key not in noun_mods:
         continue

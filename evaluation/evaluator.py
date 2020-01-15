@@ -103,15 +103,18 @@ class RecogEvaluator(Evaluator):
     correct = []
     missed = []
     pending = doc.get_all('rec')
+    rec_clust = []
     if self.include_osm:
       for l in doc.layers():
         if l.startswith('clu-'):
-          pending += doc.get_all(l)
+          rec_clust += doc.get_all(l)
 
     for g in gold_doc.get_all('gld'):
-      prev_len = len(pending)
-      pending = [a for a in pending if not self._matches(a, g)]
-      if len(pending) < prev_len:
+      matches = [a for a in pending if self._matches(a, g)]
+      matches_clust = [a for a in rec_clust if self._matches(a, g)]
+      pending = [a for a in pending if a not in matches]
+
+      if len(matches + matches_clust) > 0:
         correct.append(g)
       else:
         missed.append(g)
