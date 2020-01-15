@@ -24,7 +24,7 @@ eval_wiki_glob = WikiResolEvaluator(gold_group='gns')
 eval_wiki_street = WikiResolEvaluator(gold_group='raw')
 
 pipe = builder.build_wiki()
-imp = GeoWebNewsImporter()
+imp = LGLImporter()
 
-imp.import_documents(gwn)
+imp.import_documents(lgls, True)
 #gwn.bulk_process(pipe, saved_steps=['gcnl', 'wikires'], evaluator=eval_wiki_street)

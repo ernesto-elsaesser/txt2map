@@ -96,7 +96,7 @@ class LGLImporter:
 
       gold_doc = Document(text)
       self._annotate_gold_coords(gold_doc, article, exclude_geo)
-      if len(gold_doc.get_all('rec')) > 0:
+      if len(gold_doc.get_all('gld')) > 0:
         corpus.add_document(doc_id, gold_doc)
 
   def _annotate_gold_coords(self, doc, article, exclude_geo):
