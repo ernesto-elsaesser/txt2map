@@ -1,6 +1,7 @@
 import edu.stanford.nlp.ie.AbstractSequenceClassifier;
 import edu.stanford.nlp.ie.crf.*;
 import edu.stanford.nlp.ling.CoreLabel;
+import edu.stanford.nlp.util.Triple;
 
 import org.apache.commons.io.IOUtils;
 
@@ -56,12 +57,9 @@ public class StanfordServer {
       String text = IOUtils.toString(is, "UTF-8");
 
       String responseText = "";
-      for (List<CoreLabel> lcl : classifier.classify(text)) {
-        for (CoreLabel cl : lcl) {
-          responseText += cl.originalText() + "\t";
-          responseText += Integer.toString(cl.beginPosition()) + "\t";
-          responseText += cl.ner() + "\n";
-        }
+      List<Triple<String,Integer,Integer>> triples = classifier.classifyToCharacterOffsets(text);
+      for (Triple<String,Integer,Integer> trip : triples) {
+        responseText += trip.first() + "\t" + Integer.toString(trip.second()) + "\t" + Integer.toString(trip.third) + "\n";
       }
 
       byte[] response = responseText.getBytes();

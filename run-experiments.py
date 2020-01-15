@@ -22,6 +22,6 @@ eval_wiki = WikiResolEvaluator()
 eval_wiki_glob = WikiResolEvaluator(gold_group='gns')
 eval_wiki_street = WikiResolEvaluator(gold_group='raw')
 
-pipe = builder.build_topo()
-gwn.bulk_process(pipe, saved_steps=['topores'], evaluator=ev_res_street)
+pipe = builder.build_ner('stanford')
+gwn.bulk_process(pipe, evaluator=ev_ner)
 #tests.process(pipe, 'global_d_c') , 'geores', 'clust'

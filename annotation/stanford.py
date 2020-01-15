@@ -25,9 +25,10 @@ class StanfordClient:
       columns = row.split('\t')
       if len(row) == 0:
         continue
-      phrase = columns[0]
+      label = columns[0]
       pos = int(columns[1])
-      label = columns[2]
+      end = int(columns[2])
+      phrase = doc.text[pos:end]
       group = self.label_map[label]
       doc.annotate('ner', pos, phrase, group, 'stanford_conll')
 
