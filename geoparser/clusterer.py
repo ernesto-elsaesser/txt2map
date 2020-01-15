@@ -84,7 +84,7 @@ class Clusterer:
         if ' ' not in c.match:
           if len(c.match) < Config.local_match_min_len:
             return False
-          if c.pos in entity_indicies:
+          if c.pos in entity_indicies and entity_indicies[c.pos].phrase != c.match:
             return False
         if c.pos in rec_positions and rec_positions[c.pos].phrase == c.match:
           return False
