@@ -51,10 +51,6 @@
           "anns": [["Paris", 2988507], ["France", 3017382],
                    ["Los Angeles", 5368361], ["California", 5332921]]
       },
-      "ancestors": {
-          "text": "Avoyelles task force arrests 14. They live in Cottonport, US.",
-          "anns": [["Avoyelles", 4315243], ["Cottonport", 4320874], ["US", 6252001]]
-      },
       "embedded": {
           "text": "He is from South Africa.",
           "anns": [["South Africa", 953987]]

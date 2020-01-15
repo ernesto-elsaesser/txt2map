@@ -51,10 +51,6 @@ class NameMatcher:
     text = doc.text + ' '  # allow matching of last token
     text_len = len(text)
 
-    tokens = {}
-    for m in self.starts.finditer(doc.text):
-      tokens[m.start()] = m.group()
-
     prev_match_end = 0
     saved = {}
 
@@ -64,13 +60,18 @@ class NameMatcher:
         continue
 
       token = m.group()
+      end = start + len(token)
+      if token in self.abbr and text[end] == '.':
+        token += '.'
+        end += 1
+
       if token in saved:
         completions = [c.clone(start) for c in saved[token]]
       else:
         completions = self._get_completions(token, lookup_prefix, start)
         saved[token] = completions
 
-      text_pos = start + len(token)
+      text_pos = end
       longest_compl = None
       while text_pos < text_len and len(completions) > 0:
         next_char = text[text_pos]

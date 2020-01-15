@@ -71,6 +71,9 @@ class Clusterer:
     rec_positions = doc.annotations_by_position('rec')
 
     for cluster_key, anchor_ids in clust_keys.items():
+      if len(anchor_ids) == 0:
+        continue
+
       geonames = [self.gns_cache.get(gid) for gid in anchor_ids]
       db = OSMLoader.load_database(geonames)
 
