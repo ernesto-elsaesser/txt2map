@@ -29,6 +29,10 @@ class GeoNamesTree:
           leafs.append(adm1)
     return leafs
 
+  def node_for(self, g, create):
+    key_path = self.key_path(g)
+    return self.root.get(key_path, create)
+
   def key_path(self, g):
     if g.is_continent:
       cont_name = g.name
@@ -48,22 +52,19 @@ class GeoNamesTree:
         key_path.append(g.adm1)
     return key_path
 
-  def find_unsupported_adm1s(self):
-    if len(self.adm1s) < 2:
-      return []
-
-    unsupported = []
-    for node in self.adm1s:
-      support = [len(n.geonames) for n in node.iter()]
-      if sum(support) > 2 or support[0] > 1:
-        continue  # multiple support or siblings
+  def is_supported(self, node):
+    support = [len(n.geonames) for n in node.iter()]
+    if len(support) == 1:
+      return True # continents are always supported
+    
+    if sum(support) > 2 or support[0] > 1:
+      return True  # multiple support or siblings
+    if support[1] == 1 and len(node.parent.children) == 1:
+      return True  # exclusive parent
+    
+    elif len(support) > 2:
       if support[2] == 1 and len(node.parent.parent.children) == 1:
-        continue  # exclusive continent
-      if support[1] == 1 and len(node.parent.children) == 1:
-        continue  # exclusive country
-      unsupported.append(node)
-
-    return unsupported
+        return True  # exclusive grandparent
 
 
 class TreeNode:

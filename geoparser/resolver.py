@@ -37,16 +37,19 @@ class GeoNamesResolver:
       city = self._city_result(toponym, candidates[0])
       resolutions[toponym] = city
 
-    should_continue = not self.keep_defaults
+    should_continue = True
     rounds = 0
     while should_continue:
       rounds += 1
       should_continue = False
 
       tree = GeoNamesTree(resolutions)
-      unsupported = tree.find_unsupported_adm1s()
+      if self.keep_defaults or len(tree.adm1s) < 2:
+        break
 
-      for adm1 in unsupported:
+      for adm1 in tree.adm1s:
+        if tree.is_supported(adm1):
+          continue
         (toponym, geoname) = list(adm1.geonames.items())[0]
         new = self._select_heuristically(toponym, geoname, tree)
         if new != None:
@@ -59,16 +62,23 @@ class GeoNamesResolver:
     ner_anns = doc.annotations_by_position('ner', 'loc')
     resolved = sorted(resolutions.keys(), key=lambda t: -len(t))  # longer first
     for toponym in resolved:
-      geoname_id = resolutions[toponym].id
+      geoname = resolutions[toponym]
       esc_topo = re.escape(toponym)
       for match in re.finditer(f'\\b{esc_topo}', doc.text):
         pos = match.start()
-        doc.annotate('evi', pos, toponym, 'evi', geoname_id, allow_overlap=True)
+        doc.annotate('evi', pos, toponym, 'evi', geoname.id, allow_overlap=True)
         if pos in ner_anns:
           ann = ner_anns[pos]
           if len(toponym) >= len(ann.phrase):
             doc.annotate('rec', pos, toponym, 'glo', '')
-            doc.annotate('res', pos, toponym, 'glo', geoname_id)
+            doc.annotate('res', pos, toponym, 'glo', geoname.id)
+        else:
+          node = tree.node_for(geoname, False)
+          if tree.is_supported(node):
+            print("ADDING NON-NER TOPO: " + toponym)
+            doc.annotate('rec', pos, toponym, 'glo', '')
+            doc.annotate('res', pos, toponym, 'glo', geoname.id)
+
 
   def _select_candidates(self, toponym):
     if toponym in self.candidates:
@@ -101,9 +111,7 @@ class GeoNamesResolver:
       return None
 
     for g in candidates[:10]:
-
-      key_path = tree.key_path(g)
-      node = tree.root.get(key_path, False)
+      node = tree.node_for(g, False)
       if node != None and toponym not in node.geonames:
         return g
 

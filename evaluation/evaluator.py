@@ -14,6 +14,8 @@ class Evaluator:
       return True
     if a.phrase == gold.phrase + '.':
       return True
+    if a.phrase + '.' == gold.phrase:
+      return True
     return False
 
   def _print_if_not_empty(self, anns, msg):
