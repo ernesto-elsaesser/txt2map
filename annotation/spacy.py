@@ -5,7 +5,8 @@ from .exception import PipelineException
 
 class SpacyClient:
 
-  label_map = {'GPE': 'loc', 'LOC': 'loc', 'NORP': 'loc', 'FAC': 'fac', 'ORG': 'org', 'PERSON': 'per', 'PRODUCT': 'msc', 'EVENT': 'msc', 'WORK_OF_ART': 'msc', 'LANGUAGE': 'msc'}
+  label_map = {'GPE': 'gpe', 'LOC': 'loc', 'FAC': 'fac', 'ORG': 'org', 'PERSON': 'per', 
+               'NORP': 'dem', 'LANGUAGE': 'lan', 'PRODUCT': 'msc', 'EVENT': 'msc', 'WORK_OF_ART': 'msc', 'LAW': 'msc'}
 
   def __init__(self, url=None):
     self.server_url = url

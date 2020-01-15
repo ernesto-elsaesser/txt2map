@@ -9,10 +9,10 @@ from .corpus import Corpus
 
 class GeoWebNewsImporter:
 
-  non_topo_types = ["Non_Toponym", "Non_Lit_Expression", "Literal_Expression"]
-  rec_only_types = ["Demonym", "Homonym", "Language"]
-
   def import_documents(self, corpus):
+    self.gns_count = 0
+    self.raw_count = 0
+
     dirname = os.path.dirname(__file__)
     corpus_dir = dirname + '/corpora/GeoWebNews'
 
@@ -32,8 +32,15 @@ class GeoWebNewsImporter:
       self._annotate_gold_coords(gold_doc, annotation_path, meta_len)
       corpus.add_document(doc_id, gold_doc)
 
+    print(f'Imported {self.gns_count + self.raw_count} toponyms ({self.gns_count}/{self.raw_count}).')
+
   def _annotate_gold_coords(self, doc, path, meta_len):
-    res_tags = {}
+    positions = {}
+    phrases = {}
+    coords = {}
+    geoname_ids = {}
+    categories = {}
+    noun_mods = []
 
     with open(path, encoding='utf-8') as f:
       reader = csv.reader(f, delimiter='\t')
@@ -42,30 +49,38 @@ class GeoWebNewsImporter:
         data = row[1].split(' ')
 
         if tag_id.startswith('T'):  # BRAT token
-          ann_type = data[0]
-          if ann_type in self.non_topo_types:
-            continue
-          pos = int(data[1]) - meta_len
-          phrase = row[2]
-          doc.annotate('rec', pos, phrase, 'gld', phrase)
-
-          if ann_type not in self.rec_only_types:
-            res_tags[tag_id] = (pos, phrase)
+          key = tag_id
+          categories[key] = data[0]
+          positions[key] = int(data[1]) - meta_len
+          phrases[key] = row[2]
 
         elif tag_id.startswith('#'):  # BRAT annotator note
-          tag_id = data[1]
-          if tag_id not in res_tags:
-              continue
-
-          (pos, phrase) = res_tags[tag_id]
+          key = data[1]
           if ',' in row[2]:
-            coords = row[2].split(',')
-            lat = float(coords[0].strip())
-            lon = float(coords[1].strip())
-            doc.annotate('res', pos, phrase, 'raw', [lat, lon])
+            arr = row[2].split(',')
+            coords[key] = [float(s.strip()) for s in arr]
           elif row[2] != 'N/A':
-            geoname_id = int(row[2])
-            doc.annotate('res', pos, phrase, 'gns', geoname_id)
+            geoname_ids[key] = int(row[2])
+
+        elif tag_id.startswith('A'):  # BRAT annotation
+          if data[0] == "Modifier_Type" and data[2] == "Noun":
+            key = data[1]
+            noun_mods.append(key)
+
+    for key, pos in positions.items():
+      phrase = phrases[key]
+      category = categories[key]
+      if category not in ["Literal", "Mixed", "Literal_Modifier", "Non_Literal_Modifier"]:
+        continue
+      if category in ["Literal_Modifier", "Non_Literal_Modifier"] and key not in noun_mods:
+        continue
+      if key in geoname_ids:
+        doc.annotate('gld', pos, phrase, 'gns', geoname_ids[key])
+        self.gns_count += 1
+      elif key in coords:
+        doc.annotate('gld', pos, phrase, 'raw', coords[key])
+        self.raw_count += 1
+
 
 
 class LGLImporter:
@@ -88,20 +103,18 @@ class LGLImporter:
     toponyms = article.find('toponyms')
 
     for toponym in toponyms:
-      pos = int(toponym.find('start').text)
-      phrase = toponym.find('phrase').text
       tag = toponym.find('gaztag')
-
-      if tag != None and exclude_geo:
+      if exclude_geo and tag != None:
         continue
 
-      doc.annotate('rec', pos, phrase, 'gld', phrase)
+      pos = int(toponym.find('start').text)
+      phrase = toponym.find('phrase').text
 
-      if tag != None:
+      if tag == None:
+        doc.annotate('gld', pos, phrase, 'non', '')
+      else:
         geoname_id = tag.get('geonameid')
-        #lat = float(tag.find('lat').text)
-        #lon = float(tag.find('lon').text)
-        doc.annotate('res', pos, phrase, 'gns', geoname_id)
+        doc.annotate('gld', pos, phrase, 'gns', geoname_id)
 
 
 class TestsImporter:

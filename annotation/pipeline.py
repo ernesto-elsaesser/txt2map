@@ -28,7 +28,7 @@ class PipelineBuilder:
     self.spacy_url = None
     self.cogcomp_url = None
     self.topores_url = None
-    self.reocgnize_fac_ents = False
+    self.reocgnize_fac_ents = True
 
   def build_empty(self):
     return Pipeline()
@@ -109,6 +109,7 @@ class LocationRecogStep:
 
   def annotate(self, doc):
     anns = doc.get_all('ner', 'loc')
+    anns += doc.get_all('ner', 'gpe')
     if self.include_fac:
       anns += doc.get_all('ner', 'fac')
     for a in anns:

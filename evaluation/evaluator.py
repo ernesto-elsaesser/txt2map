@@ -44,9 +44,8 @@ class Counter(Evaluator):
 
 class RecogEvaluator(Evaluator):
 
-  def __init__(self, layer='rec', gold_layer='rec', include_osm=True):
+  def __init__(self, layer='rec', include_osm=True):
     self.layer = layer
-    self.gold_layer = gold_layer
     self.include_osm = include_osm
     self.true_pos = 0
     self.false_neg = 0
@@ -61,7 +60,7 @@ class RecogEvaluator(Evaluator):
         if l.startswith('clu-'):
           pending += doc.get_all(l)
 
-    for g in gold_doc.get_all(self.gold_layer):
+    for g in gold_doc.get_all('gld'):
       prev_len = len(pending)
       pending = [a for a in pending if not self._matches(a, g)]
       if len(pending) < prev_len:
@@ -114,7 +113,7 @@ class ResolEvaluator(Evaluator):
         if l.startswith('clu-'):
           pending_clust += doc.get_all(l)
 
-    for g in gold_doc.get_all('res', self.gold_group):
+    for g in gold_doc.get_all('gld', self.gold_group):
       matches = [a for a in pending if self._matches(a, g)]
       pending = [a for a in pending if a not in matches]
 
@@ -151,16 +150,20 @@ class ResolEvaluator(Evaluator):
     self._print_if_not_empty(incorrects, 'RES INCORRECT')
 
   def _global_hit(self, gold_id, geoname_ids):
-    gold_hierarchy = self.gns_cache.get_hierarchy(gold_id)
-    gold_ids = [g.id for g in gold_hierarchy][-3:] # accept up to two levels above
+    gold_ids = self._related_ids(gold_id)
     for gid in geoname_ids:
       if gid in gold_ids:
         return True
-      hierarchy = self.gns_cache.get_hierarchy(gid)
-      ids = [g.id for g in hierarchy]
+      ids = self._related_ids(gid)
       if gold_id in ids:
         return True
     return False
+
+  def _related_ids(self, geoname_id):
+    hierarchy = self.gns_cache.get_hierarchy(gold_id)
+    name = hierarchy[-1].name
+    related = [g for g in hierarchy][-3:]  # accept up to two levels above
+    return [g.id for g in related if name in g.name or g.name in name]
 
   def _local_hit(self, gold_lat, gold_lon, osm_refs):
     for refs in osm_refs:
@@ -205,7 +208,7 @@ class WikiResolEvaluator(Evaluator):
     missed = []
     pending = doc.get_all('res')
 
-    for g in gold_doc.get_all('res', self.gold_group):
+    for g in gold_doc.get_all('gls', self.gold_group):
       matches = [a for a in pending if self._matches(a, g)]
       pending = [a for a in pending if a not in matches]
 
@@ -258,6 +261,7 @@ class WikiResolEvaluator(Evaluator):
       for lat, lon in coords:
         dist = GeoUtil.distance(lat, lon, gold_lat, gold_lon)
         if dist < self.tolerance:
+          print('COORD HIT: ' + url)
           return True
       return False
 
