@@ -86,7 +86,6 @@ class GeoUtil:
         return float('inf')
       return min(distances)
 
-
   @staticmethod
   def coordinates_for_wiki_url(url):
     title = url.replace('https://en.wikipedia.org/wiki/', '')

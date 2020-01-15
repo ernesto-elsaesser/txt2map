@@ -1,4 +1,4 @@
-from geoparser import GeoNamesCache, OSMLoader, GeoUtil
+from geoparser import GeoNamesCache, OSMLoader, GeoUtil, GeoNamesAPI
 
 class Evaluator:
 
@@ -44,10 +44,10 @@ class Counter(Evaluator):
 
 class RecogEvaluator(Evaluator):
 
-  def __init__(self, layer='rec', gold_layer='rec', include_clusters=True):
+  def __init__(self, layer='rec', gold_layer='rec', include_osm=True):
     self.layer = layer
     self.gold_layer = gold_layer
-    self.incl_clusters = include_clusters
+    self.include_osm = include_osm
     self.true_pos = 0
     self.false_neg = 0
     self.false_pos = 0
@@ -56,7 +56,7 @@ class RecogEvaluator(Evaluator):
     correct = []
     missed = []
     pending = doc.get_all(self.layer)
-    if self.incl_clusters:
+    if self.include_osm:
       for l in doc.layers():
         if l.startswith('clu-'):
           pending += doc.get_all(l)
@@ -93,106 +93,181 @@ class RecogEvaluator(Evaluator):
 
 class ResolEvaluator(Evaluator):
 
-  def __init__(self, layer='res', gold_layer='res', gold_group=None, tolerance_global=161, tolerance_local=1, include_clusters=True):
-    self.layer = layer
-    self.gold_layer = gold_layer
+  # tolerance_osm=None to ignore OSM results
+  def __init__(self, gold_group=None, tolerance_osm=1):
     self.gold_group = gold_group
-    self.tol_global = tolerance_global
-    self.incl_clusters = include_clusters
-    self.tol_local = tolerance_local
+    self.tol_osm = tolerance_osm
     self.gns_cache = GeoNamesCache()
-    self.accurate = 0
-    self.inaccurate = 0
+    self.correct = 0
+    self.incorrect = 0
     self.false_neg = 0
     self.false_pos = 0
 
   def evaluate(self, doc, gold_doc):
-    accurates = []
-    inaccurates = []
+    corrects = []
+    incorrects = []
     missed = []
-    pending = doc.get_all(self.layer)
-    if self.incl_clusters:
+    pending = doc.get_all('res')
+    pending_clust = []
+    if self.tol_osm != None:
       for l in doc.layers():
         if l.startswith('clu-'):
-          pending += doc.get_all(l)
+          pending_clust += doc.get_all(l)
 
-    for g in gold_doc.get_all(self.gold_layer, self.gold_group):
-      resolved = [a for a in pending if self._matches(a, g)]
-      pending = [a for a in pending if not self._matches(a, g)]
+    for g in gold_doc.get_all('res', self.gold_group):
+      matches = [a for a in pending if self._matches(a, g)]
+      pending = [a for a in pending if a not in matches]
 
-      if len(resolved) == 0:
+      matches_clust = [a for a in pending_clust if self._matches(a, g)]
+      pending_clust = [a for a in pending_clust if a not in matches_clust]
+
+      if len(matches + matches_clust) == 0:
         missed.append(g)
         continue
 
-      in_tolerance = False
-      for a in resolved:
-        if a.layer.startswith('clu-'):
-          in_tolerance = self._local_res_in_tolerance(a, g)
-        elif a.group == 'wik':
-          in_tolerance = self._wiki_res_in_tolerance(a, g)
-        else:
-          in_tolerance = self._global_res_in_tolerance(a, g)
-        if in_tolerance:
-          break
-
-      if in_tolerance:
-        accurates.append(g)
+      geo_ids = [a.data for a in matches]
+      osm_refs = [a.data for a in matches_clust]
+      resolved = False
+      if g.group == 'gns':
+        resolved = self._global_hit(g.data, geo_ids)
+        if not resolved:
+          gold_geo = self.gns_cache.get(g.data)
+          resolved = self._local_hit(gold_geo.lat, gold_geo.lon, osm_refs)
       else:
-        inaccurates.append(g)
+        resolved = self._local_hit(g.data[0], g.data[1], osm_refs)
 
-    self.inaccurate += len(inaccurates)
-    self.accurate += len(accurates)
+      if resolved:
+        corrects.append(g)
+      else:
+        incorrects.append(g)
+
+    self.incorrect += len(incorrects)
+    self.correct += len(corrects)
+    self.false_pos += len(pending + pending_clust)
+    self.false_neg += len(missed)
+
+    self._print_if_not_empty(pending + pending_clust, 'RES FALSE POS')
+    self._print_if_not_empty(missed, 'RES FALSE NEG')
+    self._print_if_not_empty(incorrects, 'RES INCORRECT')
+
+  def _global_hit(self, gold_id, geoname_ids):
+    gold_hierarchy = self.gns_cache.get_hierarchy(gold_id)
+    gold_ids = [g.id for g in gold_hierarchy][-3:] # accept up to two levels above
+    for gid in geoname_ids:
+      if gid in gold_ids:
+        return True
+      hierarchy = self.gns_cache.get_hierarchy(gid)
+      ids = [g.id for g in hierarchy]
+      if gold_id in ids:
+        return True
+    return False
+
+  def _local_hit(self, gold_lat, gold_lon, osm_refs):
+    for refs in osm_refs:
+      elements = OSMLoader.load_geometries(refs)
+      dist = GeoUtil.osm_element_distance(gold_lat, gold_lon, elements[0])
+      if dist < self.tol_osm:
+        return True
+      elif dist < self.tol_local + 30.0:  # max dist between two elements
+        for e in elements[1:]:
+          d = GeoUtil.osm_element_distance(gold_lat, gold_lon, e)
+          if d < self.tol_osm:
+            return True
+      return False
+
+  def _metrics(self):
+    metrics = {'TolOSM': self.tol_osm}
+    total = self.correct + self.incorrect + self.false_neg
+    if total > 0:
+      metrics['Acc'] = self.correct / total
+      resolved = self.correct + self.incorrect
+      if resolved > 0:
+        metrics['AccResol'] = self.correct / resolved
+        metrics['Resol%'] = resolved / total
+    return metrics
+
+
+class WikiResolEvaluator(Evaluator):
+
+  def __init__(self, gold_group=None, tolerance=1):
+    self.gold_group = gold_group
+    self.tolerance = tolerance
+    self.gns_cache = {}
+    self.coords_cache = {}
+    self.correct = 0
+    self.incorrect = 0
+    self.false_neg = 0
+    self.false_pos = 0
+
+  def evaluate(self, doc, gold_doc):
+    corrects = []
+    incorrects = []
+    missed = []
+    pending = doc.get_all('res')
+
+    for g in gold_doc.get_all('res', self.gold_group):
+      matches = [a for a in pending if self._matches(a, g)]
+      pending = [a for a in pending if a not in matches]
+
+      if len(matches) == 0:
+        missed.append(g)
+        continue
+
+      urls = [a.data for a in matches]
+      resolved = False
+      if g.group == 'gns':
+        resolved = self._url_hit(g.data, urls)
+        if not resolved:
+          gold_geo = self.gns_cache[g.data]
+          resolved = self._coord_hit(gold_geo.lat, gold_geo.lon, urls)
+      else:
+        resolved = self._coord_hit(g.data[0], g.data[1], urls)
+
+      if resolved:
+        corrects.append(g)
+      else:
+        incorrects.append(g)
+
+    self.correct += len(corrects)
+    self.incorrect += len(incorrects)
     self.false_pos += len(pending)
     self.false_neg += len(missed)
 
     self._print_if_not_empty(pending, 'RES FALSE POS')
     self._print_if_not_empty(missed, 'RES FALSE NEG')
-    self._print_if_not_empty(inaccurates, 'RES INACC')
+    self._print_if_not_empty(incorrects, 'RES INCORRECT')
+
+  def _url_hit(self, gold_id, urls):
+    if gold_id in self.gns_cache:
+      gold_url = self.gns_cache[gold_id].wiki_url
+    else:
+      full_geo = GeoNamesAPI.get_geoname(gold_id)
+      self.gns_cache[gold_id] = full_geo
+      if full_geo.wiki_url == None:
+        return False
+      gold_url = 'https://' + full_geo.wiki_url
+    return gold_url in urls
+
+  def _coord_hit(self, gold_lat, gold_lon, urls):
+    for url in urls:
+      if url in self.coords_cache:
+        coords = self.coords_cache[url]
+      else:
+        coords = GeoUtil.coordinates_for_wiki_url(url)
+        self.coords_cache[url] = coords
+      for lat, lon in coords:
+        dist = GeoUtil.distance(lat, lon, gold_lat, gold_lon)
+        if dist < self.tolerance:
+          return True
+      return False
 
   def _metrics(self):
-    ts = f'<{self.tol_global}/{self.tol_local}>'
-    metrics = {}
-    total = self.accurate + self.inaccurate + self.false_neg
+    metrics = {'Tol': self.tolerance}
+    total = self.correct + self.incorrect + self.false_neg
     if total > 0:
-      metrics['Acc'+ts] = self.accurate / total
-      resolved = self.accurate + self.inaccurate
+      metrics['Acc'] = self.correct / total
+      resolved = self.correct + self.incorrect
       if resolved > 0:
-        metrics['AccResol'+ts] = self.accurate / resolved
+        metrics['AccResol'] = self.correct / resolved
         metrics['Resol%'] = resolved / total
     return metrics
-
-  def _wiki_res_in_tolerance(self, a, gold):
-    (gold_lat, gold_lon) = self._gold_coords(gold)
-    for arr in a.data:
-      dist = GeoUtil.distance(arr[0], arr[1], gold_lat, gold_lon)
-      if dist < self.tol_global:
-        return True
-    return False
-
-  def _global_res_in_tolerance(self, a, gold):
-    if gold.data == a.data:
-      return True
-    g = self.gns_cache.get(a.data)
-    (gold_lat, gold_lon) = self._gold_coords(gold)
-    dist = GeoUtil.distance(g.lat, g.lon, gold_lat, gold_lon)
-    return dist < self.tol_global
-
-  def _local_res_in_tolerance(self, a, gold):
-    elements = OSMLoader.load_geometries(a.data)
-    (gold_lat, gold_lon) = self._gold_coords(gold)
-    dist = GeoUtil.osm_element_distance(gold_lat, gold_lon, elements[0])
-    if dist < self.tol_local:
-      return True
-    elif dist < self.tol_local + 30.0:  # max dist between two elements
-      for e in elements[1:]:
-        d = GeoUtil.osm_element_distance(gold_lat, gold_lon, e)
-        if d < self.tol_local:
-          return True
-    return False
-
-  def _gold_coords(self, gold):
-    if gold.group == 'gns':
-      g = self.gns_cache.get(gold.data)
-      return (g.lat, g.lon)
-    else:
-      return (gold.data[0], gold.data[1])

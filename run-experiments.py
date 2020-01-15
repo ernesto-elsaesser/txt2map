@@ -13,16 +13,16 @@ lgls = Corpus('LGL-Street')
 
 # evaluators
 ev_rec = RecogEvaluator()
-ev_rec_noclu = RecogEvaluator(include_clusters=False)
-ev_rec_ner = RecogEvaluator(layer='ner', include_clusters=False)
+ev_rec_noclu = RecogEvaluator(include_osm=False)
+ev_rec_ner = RecogEvaluator(layer='ner', include_osm=False)
 ev_res = ResolEvaluator()
-ev_res_noclu = ResolEvaluator(include_clusters=False)
-ev_res_161 = ResolEvaluator(tolerance_local=161)
-ev_res_glob = ResolEvaluator(gold_group='gns', tolerance_local=161)
-ev_res_street = ResolEvaluator(gold_group='raw', tolerance_local=161)
+ev_res_no_osm = ResolEvaluator(tolerance_osm=None)
+ev_res_glob = ResolEvaluator(gold_group='gns')
+ev_res_osm = ResolEvaluator(gold_group='raw')
+eval_wiki = WikiResolEvaluator()
+eval_wiki_glob = WikiResolEvaluator(gold_group='gns')
+eval_wiki_osm = WikiResolEvaluator(gold_group='raw')
 
-pipe = builder.build_empty()
+pipe = builder.build_wiki()
 
-print(len(lgls.document_ids()))
-
-#gwn.bulk_process(pipe, saved_steps=['topores'], evaluator=ev_res_street)
+gwn.bulk_process(pipe, saved_steps=['gcnl'], evaluator=eval_wiki)

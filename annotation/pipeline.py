@@ -1,4 +1,4 @@
-from geoparser import GazetteerRecognizer, GeoNamesResolver, Clusterer, GeoUtil
+from geoparser import GazetteerRecognizer, GeoNamesResolver, Clusterer
 from .spacy import SpacyClient
 from .gcnl import GoogleCloudNLClient
 from .cogcomp import CogCompClient
@@ -192,7 +192,7 @@ class GCNLNERStep:
 
 class WikiResolStep:
 
-  key = 'wiki'
+  key = 'wikires'
 
   def annotate(self, doc):
     wik_anns = doc.annotations_by_position('wik')
@@ -201,13 +201,7 @@ class WikiResolStep:
       if a.pos not in wik_anns:
         continue
       url = wik_anns[a.pos].data
-      if url in cache:
-        coords = cache[url]
-      else:
-        coords = GeoUtil.coordinates_for_wiki_url(url)
-        cache[url] = coords
-      if len(coords) > 0:
-        doc.annotate('res', a.pos, a.phrase, 'wik', coords)
+      doc.annotate('res', a.pos, a.phrase, 'wik', url)
     return ['res']
 
 

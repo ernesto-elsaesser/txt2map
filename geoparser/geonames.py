@@ -222,6 +222,10 @@ class GeoName:
         self.asciiname = data['asciiName']
       if 'alternateNames' in data:
         self.altnames = data['alternateNames']
+      if 'wikipediaURL' in data:
+        self.wiki_url = data['wikipediaURL']
+      else:
+        self.wiki_url = None
     else:
       self.id = row[0]
       self.name = row[1]
