@@ -48,7 +48,7 @@ class GeoNamesResolver:
         break
 
       for adm1 in tree.adm1s:
-        if tree.is_supported(adm1):
+        if tree.adm1_supported(adm1):
           continue
         (toponym, geoname) = list(adm1.geonames.items())[0]
         new = self._select_heuristically(toponym, geoname, tree)
@@ -59,7 +59,8 @@ class GeoNamesResolver:
           print(f'Chose {city} over {geoname} for {toponym}')
           break
     
-    ner_anns = doc.annotations_by_position('ner', 'loc')
+    loc_anns = doc.annotations_by_position('ner', 'loc')
+    ner_positions = doc.annotations_by_position('ner')
     resolved = sorted(resolutions.keys(), key=lambda t: -len(t))  # longer first
     for toponym in resolved:
       geoname = resolutions[toponym]
@@ -67,14 +68,14 @@ class GeoNamesResolver:
       for match in re.finditer(f'\\b{esc_topo}', doc.text):
         pos = match.start()
         doc.annotate('evi', pos, toponym, 'evi', geoname.id, allow_overlap=True)
-        if pos in ner_anns:
-          ann = ner_anns[pos]
+        if pos in loc_anns:
+          ann = loc_anns[pos]
           if len(toponym) >= len(ann.phrase):
             doc.annotate('rec', pos, toponym, 'glo', '')
             doc.annotate('res', pos, toponym, 'glo', geoname.id)
-        else:
+        elif pos not in ner_positions and toponym not in demonyms and geoname.is_city:
           node = tree.node_for(geoname, False)
-          if tree.is_supported(node):
+          if tree.adm1_supported(node):
             print("ADDING NON-NER TOPO: " + toponym)
             doc.annotate('rec', pos, toponym, 'glo', '')
             doc.annotate('res', pos, toponym, 'glo', geoname.id)

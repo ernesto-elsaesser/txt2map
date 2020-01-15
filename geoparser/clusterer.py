@@ -89,8 +89,8 @@ class Clusterer:
         if c.pos in rec_positions and rec_positions[c.pos].phrase == c.match:
           return False
         osm_refs = db.get_elements(c.lookup_phrase)
-        doc.annotate('rec', c.pos, c.match, cluster_key, '', overwrite=True)
-        doc.annotate('res', c.pos, c.match, cluster_key, osm_refs, overwrite=True)
+        doc.annotate('rec', c.pos, c.match, cluster_key, '', replace_shorter=True)
+        doc.annotate('res', c.pos, c.match, cluster_key, osm_refs, replace_shorter=True)
         return True
 
       self.matcher.find_matches(doc, lookup_prefix, commit_match)

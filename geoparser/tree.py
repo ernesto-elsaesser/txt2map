@@ -52,19 +52,14 @@ class GeoNamesTree:
         key_path.append(g.adm1)
     return key_path
 
-  def is_supported(self, node):
+  def adm1_supported(self, node):
     support = [len(n.geonames) for n in node.iter()]
-    if len(support) == 1:
-      return True # continents are always supported
-    
     if sum(support) > 2 or support[0] > 1:
       return True  # multiple support or siblings
+    if support[2] == 1 and len(node.parent.parent.children) == 1:
+      return True  # exclusive continent
     if support[1] == 1 and len(node.parent.children) == 1:
-      return True  # exclusive parent
-    
-    elif len(support) > 2:
-      if support[2] == 1 and len(node.parent.parent.children) == 1:
-        return True  # exclusive grandparent
+      return True  # exclusive country
 
 
 class TreeNode:

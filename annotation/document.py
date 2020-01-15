@@ -39,7 +39,7 @@ class Document:
   def layers(self):
     return list(self.anns.keys())
 
-  def annotate(self, layer, pos, phrase, group, data, allow_overlap=False, overwrite=False):
+  def annotate(self, layer, pos, phrase, group, data, allow_overlap=False, replace_shorter=False):
     if layer not in self.anns:
       self.anns[layer] = []
 
@@ -51,10 +51,10 @@ class Document:
     for i in range(pos, end):
       if i in anns_by_index:
         overlap = anns_by_index[i]
-        if overwrite:
+        if replace_shorter and len(overlap.phrase) < len(phrase):
           if overlap.pos in deleted:
             continue
-          print(f'Annotation {phrase} [{group}] overwrites {overlap}')
+          print(f'Annotation {phrase} [{group}] replaces {overlap}')
           self.delete_annotation(layer, overlap.pos)
           deleted.append(overlap.pos)
         elif not allow_overlap:
