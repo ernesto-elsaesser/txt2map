@@ -60,7 +60,8 @@ class GeoNamesResolver:
     resolved = sorted(resolutions.keys(), key=lambda t: -len(t))  # longer first
     for toponym in resolved:
       geoname_id = resolutions[toponym].id
-      for match in re.finditer(f'\\b{toponym}\\b', doc.text):
+      esc_topo = re.escape(toponym)
+      for match in re.finditer(f'\\b{esc_topo}', doc.text):
         pos = match.start()
         doc.annotate('evi', pos, toponym, 'evi', geoname_id, allow_overlap=True)
         if pos in ner_anns:

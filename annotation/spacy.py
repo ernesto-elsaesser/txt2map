@@ -29,18 +29,18 @@ class SpacyClient:
       label = columns[2]
       if label not in self.label_map:
         continue
-      pos = int(columns[0])
-      phrase = self._normalized_name(columns[1])
+      (pos, phrase) = self._normalized_name(int(columns[0]), columns[1])
       group = self.label_map[label]
       doc.annotate('ner', pos, phrase, group, 'spacy_lg')
 
-  def _normalized_name(self, name):
+  def _normalized_name(self, pos, name):
     if name.startswith('the ') or name.startswith('The '):
       name = name[4:]
+      pos += 4
     if name.endswith('\n'):
       name = name[:-1]
     if name.endswith('\'s'):
       name = name[:-2]
     elif name.endswith('\''):
       name = name[:-1]
-    return name
+    return (pos, name)
