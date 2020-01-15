@@ -76,7 +76,8 @@ class GeoNamesResolver:
     parts = len(toponym.split(' '))
     candidates = []
     for g in results:
-      if toponym not in g.name and toponym not in g.toponym_name:
+      str_topo = toponym.rstrip('.')
+      if str_topo not in g.name and str_topo not in g.toponym_name:
         continue
       g_parts = len(g.name.split(' '))
       if g_parts > parts and g.population == 0:
