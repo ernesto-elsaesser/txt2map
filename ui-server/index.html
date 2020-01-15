@@ -11,7 +11,6 @@
       #layers a { display: inline-block; margin: 5px; color: blue; border: 1px solid blue; padding: 3px 5px; }
       #output { width: 80%; min-height: 100px; margin: 0 auto 20px; }
       #output span { background-color: lightgreen; }
-      #hint { color: white; margin-bottom: 40px; }
     </style>
   </head>
   <body>
@@ -27,21 +26,18 @@
       <h1>Output</h1>
       <div id="layers"></div>
       <div id="output"></div>
-      <div id="hint">Hover over annotations to see details.</div>
       <p>Source: <a href="https://github.com/ernesto-elsaesser/txt2map" target="_blank">https://github.com/ernesto-elsaesser/txt2map</a></p>
     </div>
 
     <script>
 
-    layerNames = { 'ner': 'Named Entities', 'rec': 'Global Names', 'res': 'Global Entities', 'wik': 'Wikipedia Links', 'clu': 'Clusters', 'con': 'Confidences' }
-    groupNames = { 'loc': 'Location Entity', 'per': 'Person Entity', 'org': 'Organization Entity', 'msc': 'Misc Entity', 'ner': 'From NER', 'gaz': 'From Global Gazetteer', 'anc': 'From Ancestor Scan', 'dem': 'From Demonym List', 'non': 'Not in Global Gazetteer', 'glo': 'Selected By Disambiguation Heuristic', 'low': 'Low Confidence', 'low': 'High Confidence' }
+    layerNames = { 'ner': 'Named Entities', 'rec': 'Recognition', 'res': 'Resolution', 'wik': 'Wikipedia Links', 'clu': 'Clusters' }
 
     var input = document.getElementById('input');
     var endpoint = document.getElementById('endpoint');
     var button = document.getElementById('button');
     var layers = document.getElementById('layers');
     var output = document.getElementById('output');
-    var hint = document.getElementById('hint');
 
     text = '';
     annotations = {};
@@ -68,7 +64,6 @@
 
     function finish(data) {
       toggle(false);
-      hint.style.color = 'grey';
       output.style.color = 'black';
       annotations = data;
       render();
@@ -98,25 +93,19 @@
       layers.innerHTML = '';
       var namesButton = null;
       for (layer in annotations) {
-        if (layer == 'evi') {
+        if (!['ner','rec','res','wik','clu'].includes(layer)) {
           continue;
         }
         var layerButton = document.createElement('a');
-        var layerName = '';
-        if (layer.startsWith('clu-')) {
-          layerName = 'Local Context ' + layer.substring(4);
-        } else {
-          layerName = layerNames[layer]
-        }
-        layerButton.innerHTML = layerName;
+        layerButton.innerHTML = layerNames[layer];
         var theLayer = layer;
         layerButton.onclick = makeClick(layer, layerButton);
         layers.appendChild(layerButton);
         if (layer == 'rec') {
-          namesButton = layerButton
+          recButton = layerButton
         }
       }
-      selectLayer('rec', namesButton);
+      selectLayer('rec', recButton);
     }
 
     function makeClick(layer, layerButton) {
@@ -155,28 +144,33 @@
         var group = ann[2];
         var data = ann[3];
 
-        var groupName = '';
-        if (group != '' && !group.startsWith('clu-')) 
-          groupName = groupNames[group];
         var trailer = null;
-
-        if (layer == 'wik')
-          trailer = '<a title="Wikipedia" href="' + data + '">WIKI</a>';
-        else if (layer == 'clu')
+        if (layer == 'ner') {
+          trailer = group.toUpperCase();
+        } else if (layer == 'wik') {
+          trailer = '<a title="Wikipedia" href="' + data + '">WIK</a>';
+        } else if (layer == 'clu') {
           trailer = group.substring(4);
-        else if (layer == 'res')
-          trailer = '<a title="GeoNames" href="https://www.geonames.org/' + data.toString() + '">GEO</a>';
-        else if (layer.startsWith('clu-')) {
-          var elements = data;
-          elements.sort(function(a, b) {
-            return b[0].length - a[0].length;
-          });
-          var et = elements[0][0];
-          var eid = elements[0][1].toString();
-          trailer = '<a title="OpenStreetMap (' + et + ')" href="https://www.openstreetmap.org/' + et + '/' + eid + '">OSM</a>';
+        } else if (layer == 'rec') {
+          if (group == 'glo')
+            trailer = 'GBL';
+          else
+            trailer = 'LCL';
+        } else if (layer == 'res') {
+          if (group == 'glo')
+            trailer = '<a title="GeoNames" href="https://www.geonames.org/' + data.toString() + '">GEO</a>';
+          else {
+            var elements = data;
+            elements.sort(function (a, b) {
+              return b[0].length - a[0].length;
+            });
+            var et = elements[0][0];
+            var eid = elements[0][1].toString();
+            trailer = '<a title="OpenStreetMap (' + et + ')" href="https://www.openstreetmap.org/' + et + '/' + eid + '">OSM</a>';
+          }
         }
 
-        html += '<span title="' + groupName + '">' + phrase + '</span>';
+        html += '<span>' + phrase + '</span>';
         if (trailer != null) {
           html += ' [' + trailer + ']';
         }

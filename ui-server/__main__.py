@@ -18,7 +18,6 @@ if gc_creds == None:
 builder = PipelineBuilder()
 builder.spacy_url = spacy_url
 builder.cogcomp_url = cogcomp_url
-builder.reocgnize_fac_ents = False
 spacy_pipe = builder.build('spacy')
 cogcomp_pipe = builder.build('cogcomp')
 gcnl_pipe = builder.build('gcnl')

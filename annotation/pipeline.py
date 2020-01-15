@@ -28,7 +28,6 @@ class PipelineBuilder:
     self.spacy_url = None
     self.cogcomp_url = None
     self.topores_url = None
-    self.reocgnize_fac_ents = True
 
   def build_empty(self):
     return Pipeline()
