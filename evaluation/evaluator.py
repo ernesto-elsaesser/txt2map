@@ -1,7 +1,7 @@
 import os
 import json
 import urllib
-from geoparser import GeoNamesCache, OSMLoader, GeoUtil, GeoNamesAPI
+from geoparser import GeoNamesCache, OSMLoader, GeoUtil, GeoNamesAPI, Config
 
 class Evaluator:
 
@@ -143,9 +143,10 @@ class RecogEvaluator(Evaluator):
 
 class ResolEvaluator(Evaluator):
 
-  def __init__(self, gold_group=None, tolerance_osm=0.2):
+  def __init__(self, gold_group=None, tolerance_gns=161, tolerance_raw=0.2):
     self.gold_group = gold_group
-    self.tol_osm = tolerance_osm
+    self.tol_gns = tolerance_gns
+    self.tol_raw = tolerance_raw
     self.gns_cache = GeoNamesCache()
     self.wiki_coords_cache = {}
     self.correct = 0
@@ -159,29 +160,32 @@ class ResolEvaluator(Evaluator):
     missed = []
     pending = doc.get_all('res')
 
-    for g in gold_doc.get_all('gld', self.gold_group):
-      matches = [a for a in pending if self._matches(a, g)]
-      pending = [a for a in pending if a not in matches]
+    res_indices = doc.annotations_by_index('res')
 
-      if len(matches) == 0:
+    for g in gold_doc.get_all('gld', self.gold_group):
+      if g.pos not in res_indices:
         missed.append(g)
         continue
+      
+      a = res_indices[g.pos]
+      pending = [p for p in pending if p.pos != a.pos]
 
-      wiki_urls = [a.data for a in matches if a.group == 'wik']
-      geo_ids = [a.data for a in matches if a.group == 'glo']
-      osm_refs = [a.data for a in matches if a.group.startswith('clu-')]
       resolved = False
       if g.group == 'gns':
-        resolved = self._global_hit(g.data, geo_ids)
-        if not resolved and len(osm_refs) > 0:
+        if a.group == 'wik':
+          resolved = self._wiki_gns_hit(g.data, a.data)
+        elif a.group == 'glo':
+          resolved = self._gns_hit(g.data, a.data)
+        elif a.group.startswith('clu-'):
           gold_geo = self.gns_cache.get(g.data)
-          resolved = self._local_hit(gold_geo.lat, gold_geo.lon, osm_refs)
-        if not resolved and len(wiki_urls) > 0:
-          resolved = self._wiki_gns_hit(g.data, wiki_urls)
+          resolved = self._osm_hit(gold_geo.lat, gold_geo.lon, a.data, self.tol_gns)
       else:
-        resolved = self._local_hit(g.data[0], g.data[1], osm_refs)
-        if not resolved and len(wiki_urls) > 0:
-          resolved = self._wiki_coord_hit(g.data[0], g.data[1], wiki_urls)
+        if a.group == 'wik':
+          resolved = self._wiki_coord_hit(g.data[0], g.data[1], a.data)
+        elif a.group == 'glo':
+          resolved = self._gns_coord_hit(g.data[0], g.data[1], a.data)
+        elif a.group.startswith('clu-'):
+          resolved = self._osm_hit(g.data[0], g.data[1], a.data, self.tol_raw)
 
       if resolved:
         corrects.append(g)
@@ -197,14 +201,13 @@ class ResolEvaluator(Evaluator):
     self._print_if_not_empty(missed, 'RES FALSE NEG')
 
 
-  def _global_hit(self, gold_id, geoname_ids):
+  def _gns_hit(self, gold_id, geoname_id):
     gold_ids = self._related_ids(gold_id)
-    for gid in geoname_ids:
-      if gid in gold_ids:
-        return True
-      ids = self._related_ids(gid)
-      if gold_id in ids:
-        return True
+    if geoname_id in gold_ids:
+      return True
+    related_ids = self._related_ids(geoname_id)
+    if gold_id in related_ids:
+      return True
     return False
 
   def _related_ids(self, geoname_id):
@@ -213,26 +216,29 @@ class ResolEvaluator(Evaluator):
     related = [g for g in hierarchy][-3:]  # accept up to two levels above
     return [g.id for g in related if name in g.name or g.name in name]
 
-  def _local_hit(self, gold_lat, gold_lon, osm_refs):
-    for refs in osm_refs:
-      elements = OSMLoader.load_geometries(refs)
-      dist = GeoUtil.osm_element_distance(gold_lat, gold_lon, elements[0])
-      if dist < self.tol_osm:
-        return True
-      elif dist < self.tol_osm + 30.0:  # max dist between two elements
-        for e in elements[1:]:
-          d = GeoUtil.osm_element_distance(gold_lat, gold_lon, e)
-          if d < self.tol_osm:
-            return True
-      return False
+  def _gns_coord_hit(self, gold_lat, gold_lon, geoname_id):
+    geo = self.gns_cache.get(geoname_id)
+    dist = GeoUtil.distance(geo.lat, geo.lon, gold_lat, gold_lon)
+    return dist < self.tol_raw
 
-  def _wiki_gns_hit(self, gold_id, wiki_urls):
-    geoname_ids = []
-    for url in wiki_urls:
-      geoname_id = self._geoname_for_wiki_url(url)
-      if geoname_id != None:
-        geoname_ids.append(geoname_id)
-    return self._global_hit(gold_id, geoname_ids)
+  def _osm_hit(self, gold_lat, gold_lon, osm_refs, tol):
+    elements = OSMLoader.load_geometries(osm_refs)
+    dist = GeoUtil.osm_element_distance(gold_lat, gold_lon, elements[0])
+    osm_diameter = Config.local_search_dist * 2
+    if dist < tol:
+      return True
+    elif dist < tol + osm_diameter: # correct local context, try other elements
+      for e in elements[1:]:
+        d = GeoUtil.osm_element_distance(gold_lat, gold_lon, e)
+        if d < tol:
+          return True
+    return False
+
+  def _wiki_gns_hit(self, gold_id, wiki_url):
+    geoname_id = self._geoname_for_wiki_url(url)
+    if geoname_id == None:
+      return False
+    return self._gns_hit(gold_id, geoname_id)
 
   def _geoname_for_wiki_url(self, url):
     title = url.replace('https://en.wikipedia.org/wiki/', '')
@@ -272,22 +278,21 @@ class ResolEvaluator(Evaluator):
     else:
       return geoname_id
 
-  def _wiki_coord_hit(self, gold_lat, gold_lon, urls):
-    for url in urls:
-      if url in self.wiki_coords_cache:
-        coords = self.wiki_coords_cache[url]
-      else:
-        coords = GeoUtil.coordinates_for_wiki_url(url)
-        self.wiki_coords_cache[url] = coords
-      for lat, lon in coords:
-        dist = GeoUtil.distance(lat, lon, gold_lat, gold_lon)
-        if dist < self.tolerance:
-          print('COORD HIT: ' + url)
-          return True
-      return False
+  def _wiki_coord_hit(self, gold_lat, gold_lon, url):
+    if url in self.wiki_coords_cache:
+      coords = self.wiki_coords_cache[url]
+    else:
+      coords = GeoUtil.coordinates_for_wiki_url(url)
+      self.wiki_coords_cache[url] = coords
+    for lat, lon in coords:
+      dist = GeoUtil.distance(lat, lon, gold_lat, gold_lon)
+      if dist < self.tolerance:
+        print('COORD HIT: ' + url)
+        return True
+    return False
 
   def _metrics(self):
-    metrics = {'TolOSM': self.tol_osm}
+    metrics = {'TolGNS': self.tol_gns, 'TolRaw': self.tol_raw}
     total = self.correct + self.incorrect + self.false_neg
     if total > 0:
       metrics['Acc'] = self.correct / total
