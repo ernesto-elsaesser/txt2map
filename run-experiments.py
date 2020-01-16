@@ -22,16 +22,17 @@ ev_rec = RecogEvaluator()
 ev_res = ResolEvaluator()
 ev_res_glob = ResolEvaluator(gold_group='gns')
 ev_res_street = ResolEvaluator(gold_group='raw')
+ev_res_lgls = ResolEvaluator(gold_group='non', measure_accuracy=False)
+ev_res_gritta = ResolEvaluator(gold_group='gns', gns_by_dist=True) 
 
-pipe_wiki = builder.build_wiki()
-pipe_spacy = builder.build('spacy')
+pipe = builder.build('stanford')
 
 #imp = GeoWebNewsImporter()
 #imp.import_documents(gwn)
 
-gwn.bulk_process(pipe_spacy, saved_steps=['spacy', 'gaz', 'geores', 'clust'], evaluator=ev_res_street)
+#gwn.bulk_process(pipe, saved_steps=['stanford', 'gaz', 'geores'], evaluator=ev_res_street)
 
-#gwn.process(pipe_spacy, '13', saved_steps=['spacy'])
-# TODO
-#gwn.bulk_process(pipe_wiki, saved_steps=['gcnl', 'wikires'], evaluator=ev_res_glob)
-#tests.process(pipe, 'global_d_c') , 'geores', 'clust'
+lgls.bulk_process(pipe, saved_steps=['stanford', 'gaz', 'geores'], evaluator=ev_res_lgls)
+# saved_steps=['spacy', 'gaz', 'geores', 'clust'], 
+#lgls.process(pipe, '44102981')
+

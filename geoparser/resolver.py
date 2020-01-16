@@ -124,7 +124,12 @@ class GeoNamesResolver:
     return candidates
 
   def _base_name(self, toponym):
-    return unidecode(toponym.rstrip('.')).lower()
+    toponym = toponym.rstrip('.')
+    try:
+      toponym = unidecode(toponym)
+    except:
+      pass
+    return toponym.lower()
 
   def _select_heuristically(self, toponym, current, tree):
     candidates = self._select_candidates(toponym)

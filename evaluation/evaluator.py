@@ -143,39 +143,52 @@ class RecogEvaluator(Evaluator):
 
 class ResolEvaluator(Evaluator):
 
-  def __init__(self, gold_group=None, tolerance_gns=161, tolerance_raw=0.2):
+  def __init__(self, gold_group=None, measure_accuracy=True, tolerance_gns=161, tolerance_raw=0.2, gns_by_dist=False):
     self.gold_group = gold_group
+    self.skip_acc = not measure_accuracy
     self.tol_gns = tolerance_gns
     self.tol_raw = tolerance_raw
+    self.gns_by_dist = gns_by_dist
     self.gns_cache = GeoNamesCache()
     self.wiki_coords_cache = {}
     self.correct = 0
     self.incorrect = 0
     self.false_neg = 0
-    self.false_pos = 0
+    self.total = 0
 
   def evaluate(self, doc, gold_doc):
     corrects = []
     incorrects = []
     missed = []
-    pending = doc.get_all('res')
 
     res_indices = doc.annotations_by_index('res')
 
     for g in gold_doc.get_all('gld', self.gold_group):
-      if g.pos not in res_indices:
+      self.total += 1
+      
+      a = None
+      for i in range(g.pos, g.end_pos()):
+        if i in res_indices:
+          a = res_indices[i]
+          break
+
+      if a == None:
         missed.append(g)
         continue
-      
-      a = res_indices[g.pos]
-      pending = [p for p in pending if p.pos != a.pos]
+
+      if self.skip_acc:
+        continue
 
       resolved = False
       if g.group == 'gns':
         if a.group == 'wik':
           resolved = self._wiki_gns_hit(g.data, a.data)
         elif a.group == 'glo':
-          resolved = self._gns_hit(g.data, a.data)
+          if self.gns_by_dist:
+            gold_geo = self.gns_cache.get(g.data)
+            resolved = self._gns_coord_hit(gold_geo.lat, gold_geo.lon, a.data, self.tol_gns)
+          else:
+            resolved = self._gns_hit(g.data, a.data)
         elif a.group.startswith('clu-'):
           gold_geo = self.gns_cache.get(g.data)
           resolved = self._osm_hit(gold_geo.lat, gold_geo.lon, a.data, self.tol_gns)
@@ -183,7 +196,9 @@ class ResolEvaluator(Evaluator):
         if a.group == 'wik':
           resolved = self._wiki_coord_hit(g.data[0], g.data[1], a.data)
         elif a.group == 'glo':
-          resolved = self._gns_coord_hit(g.data[0], g.data[1], a.data)
+          resolved = self._gns_coord_hit(g.data[0], g.data[1], a.data, self.tol_raw)
+          if not resolved:
+            print('WRONG GEO MATCH!')
         elif a.group.startswith('clu-'):
           resolved = self._osm_hit(g.data[0], g.data[1], a.data, self.tol_raw)
 
@@ -195,10 +210,7 @@ class ResolEvaluator(Evaluator):
     self.correct += len(corrects)
     self.incorrect += len(incorrects)
     self._print_if_not_empty(incorrects, 'RES INCORRECT')
-    self.false_pos += len(pending)
-    self._print_if_not_empty(pending, 'RES FALSE POS')
-    self.false_neg += len(missed)
-    self._print_if_not_empty(missed, 'RES FALSE NEG')
+    self._print_if_not_empty(missed, 'RES MISSED')
 
 
   def _gns_hit(self, gold_id, geoname_id):
@@ -216,10 +228,10 @@ class ResolEvaluator(Evaluator):
     related = [g for g in hierarchy][-3:]  # accept up to two levels above
     return [g.id for g in related if name in g.name or g.name in name]
 
-  def _gns_coord_hit(self, gold_lat, gold_lon, geoname_id):
+  def _gns_coord_hit(self, gold_lat, gold_lon, geoname_id, tol):
     geo = self.gns_cache.get(geoname_id)
     dist = GeoUtil.distance(geo.lat, geo.lon, gold_lat, gold_lon)
-    return dist < self.tol_raw
+    return dist < tol
 
   def _osm_hit(self, gold_lat, gold_lon, osm_refs, tol):
     elements = OSMLoader.load_geometries(osm_refs)
@@ -235,7 +247,7 @@ class ResolEvaluator(Evaluator):
     return False
 
   def _wiki_gns_hit(self, gold_id, wiki_url):
-    geoname_id = self._geoname_for_wiki_url(url)
+    geoname_id = self._geoname_for_wiki_url(wiki_url)
     if geoname_id == None:
       return False
     return self._gns_hit(gold_id, geoname_id)
@@ -286,18 +298,19 @@ class ResolEvaluator(Evaluator):
       self.wiki_coords_cache[url] = coords
     for lat, lon in coords:
       dist = GeoUtil.distance(lat, lon, gold_lat, gold_lon)
-      if dist < self.tolerance:
+      if dist < self.tol_raw:
         print('COORD HIT: ' + url)
         return True
     return False
 
   def _metrics(self):
-    metrics = {'TolGNS': self.tol_gns, 'TolRaw': self.tol_raw}
-    total = self.correct + self.incorrect + self.false_neg
-    if total > 0:
-      metrics['Acc'] = self.correct / total
+    metrics = {'Total': self.total}
+    if self.total > 0:
+      metrics['Acc'] = self.correct / self.total
       resolved = self.correct + self.incorrect
       if resolved > 0:
         metrics['AccResol'] = self.correct / resolved
-        metrics['Resol%'] = resolved / total
+        metrics['Resol%'] = resolved / self.total
+    metrics['TolGNS'] = self.tol_gns
+    metrics['TolRaw'] = self.tol_raw
     return metrics

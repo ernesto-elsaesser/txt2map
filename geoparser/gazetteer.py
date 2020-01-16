@@ -78,6 +78,10 @@ class Gazetteer:
       if not len(name) > 3:
         continue
 
+      id = int(row[0])
+      if (id == 6295630):
+        continue # Earth
+
       names = [name]
       if ' ' in name:
         parts = Gazetteer._grams(name)
@@ -86,9 +90,7 @@ class Gazetteer:
           if alt_name in parts:
             names.append(alt_name)
 
-      id = int(row[0])
       fcl = row[6]
-
       if fcl not in top_pops:
         top_names[fcl] = {}
         top_pops[fcl] = {}

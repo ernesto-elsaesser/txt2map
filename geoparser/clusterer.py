@@ -42,7 +42,7 @@ class Clusterer:
 
   def _find_anchor(self, toponym, geoname):
     hierarchy = self.gns_cache.get_hierarchy(geoname.id)
-    if len(hierarchy) == 1:
+    if len(hierarchy) < 2:
       return None
 
     while True:

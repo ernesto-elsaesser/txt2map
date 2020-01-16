@@ -144,8 +144,11 @@ class GeoNamesDatabase(Database):
 
   def store_search(self, name, geonames):
     result_ids = ','.join(str(g.id) for g in geonames)
-    self.cursor.execute('INSERT INTO search VALUES (?, ?)',
+    try:
+      self.cursor.execute('INSERT INTO search VALUES (?, ?)',
                         (name, result_ids))
+    except:
+      pass
     for geoname in geonames:
       self.store_geoname(geoname)
     self.commit_changes()
@@ -159,8 +162,11 @@ class GeoNamesDatabase(Database):
   def store_hierarchy(self, geonames):
     geoname_id = geonames[-1].id
     ancestor_ids = ','.join(str(g.id) for g in geonames)
-    self.cursor.execute('INSERT INTO hierarchy VALUES (?, ?)',
+    try:
+      self.cursor.execute('INSERT INTO hierarchy VALUES (?, ?)',
                         (geoname_id, ancestor_ids))
+    except:
+      pass
     for geoname in geonames:
       self.store_geoname(geoname)
     self.commit_changes()
@@ -173,8 +179,11 @@ class GeoNamesDatabase(Database):
 
   def store_children(self, geoname_id, geonames):
     child_ids = ','.join(str(g.id) for g in geonames)
-    self.cursor.execute('INSERT INTO children VALUES (?, ?)',
+    try:
+      self.cursor.execute('INSERT INTO children VALUES (?, ?)',
                         (geoname_id, child_ids))
+    except:
+      pass
     for geoname in geonames:
       self.store_geoname(geoname)
     self.commit_changes()

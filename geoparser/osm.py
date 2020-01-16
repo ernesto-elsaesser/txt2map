@@ -23,6 +23,10 @@ class OSMLoader:
     id_str = '-'.join(sorted_ids)
     file_path = f'{cache_dir}/{id_str}-{search_dist}km.db'
     is_cached = os.path.exists(file_path)
+    if is_cached and os.stat(file_path).st_size == 0:
+      # inconsistent database state
+      os.remove(file_path) 
+      is_cached = False
     db = sqlite3.connect(file_path)
     osm_db = OSMDatabase(db)
 

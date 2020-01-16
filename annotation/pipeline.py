@@ -54,9 +54,13 @@ class PipelineBuilder:
     pipe.add(GazetteerRecogStep())
     return pipe
 
-  def build(self, ner_key):
+  def build_res(self, ner_key):
     pipe = self.build_rec(ner_key)
     pipe.add(GeoNamesRecogResolStep())
+    return pipe
+
+  def build(self, ner_key):
+    pipe = self.build_res(ner_key)
     pipe.add(ClusterStep())
     return pipe
 
