@@ -23,10 +23,14 @@ ev_res = ResolEvaluator()
 ev_res_glob = ResolEvaluator(gold_group='gns')
 ev_res_street = ResolEvaluator(gold_group='raw')
 
-pipe = builder.build_wiki()
+pipe_wiki = builder.build_wiki()
+pipe_spacy = builder.build('spacy')
 
 #imp = GeoWebNewsImporter()
 #imp.import_documents(gwn)
 
-gwn.bulk_process(pipe, saved_steps=['gcnl', 'wikires'], evaluator=ev_res_glob)
+gwn.bulk_process(pipe_spacy, saved_steps=['spacy', 'gaz'], evaluator=ev_res_glob)
+
+# TODO 302 + V
+#gwn.bulk_process(pipe_wiki, saved_steps=['gcnl', 'wikires'], evaluator=ev_res_glob)
 #tests.process(pipe, 'global_d_c') , 'geores', 'clust'

@@ -1,5 +1,6 @@
 import re
 from .geonames import GeoNamesCache
+from .matcher import NameMatcher
 from .gazetteer import Gazetteer
 from .recognizer import GazetteerRecognizer
 from .tree import GeoNamesTree
@@ -34,23 +35,25 @@ class GeoNamesResolver:
   def annotate_res(self, doc):
     resolutions = {}
 
-    def add_demonym(c):
+    def commit_demonym(c):
       geoname_id = self.demonyms[c.lookup_phrase]
       resolutions[c.match] = self.gns_cache.get(geoname_id)
       return True
 
-    self.matcher.find_matches(doc, self._lookup_demonym, add_demonym)
+    self.matcher.find_matches(doc, self._lookup_demonym, commit_demonym)
 
-    for abbr in self.common_abbrevs:
-      match = re.search('\\b' + abbr, doc.text)
-      if match != None:
-        resolutions[abbr] = self.common_abbrevs[abbr]
+    def commit_abbrev(c):
+      geoname_id = self.common_abbrevs[c.lookup_phrase]
+      resolutions[c.match] = self.gns_cache.get(geoname_id)
+      return True
+
+    self.matcher.find_matches(doc, self._lookup_abbrev, commit_abbrev)
 
     unresolved = set()
     for a in doc.get_all('rec'):
       if a.phrase in self.defaults:
         resolutions[a.phrase] = self.gns_cache.get(self.defaults[a.phrase])
-      elif a.phrase not in self.demonyms:
+      elif a.phrase not in self.demonyms and a.phrase not in self.common_abbrevs:
         unresolved.add(a.phrase)
     
     for toponym in unresolved:
@@ -85,10 +88,16 @@ class GeoNamesResolver:
     for a in doc.get_all('rec'):
       if a.phrase in resolutions:
         geoname = resolutions[a.phrase]
-        doc.annotate('res', pos, toponym, 'glo', geoname.id)
+        doc.annotate('res', a.pos, a.phrase, 'glo', geoname.id)
 
   def _lookup_demonym(self, prefix):
     return [d for d in self.demonyms if d.startswith(prefix)]
+
+  def _lookup_abbrev(self, prefix):
+    if prefix in self.common_abbrevs:
+      return [prefix]
+    else:
+      return []
 
   def _select_candidates(self, toponym):
     if toponym in self.candidates:
