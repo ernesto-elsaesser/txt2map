@@ -51,9 +51,9 @@ class GeoNamesResolver:
 
     unresolved = set()
     for a in doc.get_all('rec'):
-      if a.phrase in self.defaults:
-        resolutions[a.phrase] = self.gns_cache.get(self.defaults[a.phrase])
-      elif a.phrase not in self.demonyms and a.phrase not in self.common_abbrevs:
+      if a.data in self.defaults:
+        resolutions[a.phrase] = self.gns_cache.get(self.defaults[a.data])
+      elif a.data not in self.demonyms and a.data not in self.common_abbrevs:
         unresolved.add(a.phrase)
     
     for toponym in unresolved:
@@ -113,11 +113,9 @@ class GeoNamesResolver:
       if g_parts > parts and g.population == 0:
         continue
       candidates.append(g)
-    if len(candidates) == 0 and len(results) == 1:
-      only = results[0]
-      if only.population > 0 or only.is_city:
-        candidates.append(only)
-        print(f'Chose single non-matching cadidate for "{toponym}": {only}')
+    if len(candidates) == 0 and len(results) > 0 and results[0].is_city:
+      candidates.append(results[0])
+      print(f'Chose first non-matching cadidate for "{toponym}": {results[0]}')
     candidates = sorted(candidates, key=lambda g: -g.population)
     self.candidates[toponym] = candidates
     return candidates

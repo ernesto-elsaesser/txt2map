@@ -17,7 +17,7 @@ class GazetteerRecognizer:
 
   def annotate_rec(self, doc):
     for a in doc.get_all('ner', 'loc'):
-      doc.annotate('rec', a.pos, a.phrase, 'glo', 'ner')
+      doc.annotate('rec', a.pos, a.phrase, 'glo', a.phrase)
 
     rec_indices = doc.annotations_by_index('rec')
 
@@ -40,7 +40,7 @@ class GazetteerRecognizer:
           return False
       if doc.text[c.end] == ' ' and doc.text[c.end+1].isupper():
         return False
-      doc.annotate('rec', c.pos, c.match, 'glo', 'gaz')
+      doc.annotate('rec', c.pos, c.match, 'glo', c.lookup_phrase)
       print('ADDED GAZ TOPO: ' + c.match)
       return True
 

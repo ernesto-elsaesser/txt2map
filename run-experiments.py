@@ -29,8 +29,9 @@ pipe_spacy = builder.build('spacy')
 #imp = GeoWebNewsImporter()
 #imp.import_documents(gwn)
 
-gwn.bulk_process(pipe_spacy, saved_steps=['spacy', 'gaz'], evaluator=ev_res_glob)
+#gwn.bulk_process(pipe_spacy, saved_steps=['spacy', 'gaz'], evaluator=ev_res_glob)
 
-# TODO 302 + V
+gwn.process(pipe_spacy, '302', saved_steps=['spacy', 'gaz'])
+# TODO
 #gwn.bulk_process(pipe_wiki, saved_steps=['gcnl', 'wikires'], evaluator=ev_res_glob)
 #tests.process(pipe, 'global_d_c') , 'geores', 'clust'
