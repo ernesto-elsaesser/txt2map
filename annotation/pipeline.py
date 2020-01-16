@@ -61,7 +61,8 @@ class PipelineBuilder:
     return pipe
 
   def build_wiki(self):
-    pipe = self.build_ner(GCNLNERStep.key)
+    pipe = self.build_empty()
+    pipe.add(GCNLNERStep())
     pipe.add(WikiResolStep())
     return pipe
 

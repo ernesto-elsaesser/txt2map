@@ -1,3 +1,5 @@
+import os
+import json
 from geoparser import GeoNamesCache, OSMLoader, GeoUtil, GeoNamesAPI
 
 class Evaluator:
@@ -144,6 +146,7 @@ class ResolEvaluator(Evaluator):
     self.gold_group = gold_group
     self.tol_osm = tolerance_osm
     self.gns_cache = GeoNamesCache()
+    self.wiki_coords_cache = {}
     self.correct = 0
     self.incorrect = 0
     self.false_neg = 0
@@ -163,16 +166,21 @@ class ResolEvaluator(Evaluator):
         missed.append(g)
         continue
 
+      wiki_urls = [a.data for a in matches if a.group == 'wik']
       geo_ids = [a.data for a in matches if a.group == 'glo']
       osm_refs = [a.data for a in matches if a.group.startswith('clu-')]
       resolved = False
       if g.group == 'gns':
         resolved = self._global_hit(g.data, geo_ids)
-        if not resolved:
+        if not resolved and len(osm_refs) > 0:
           gold_geo = self.gns_cache.get(g.data)
           resolved = self._local_hit(gold_geo.lat, gold_geo.lon, osm_refs)
+        if not resolved and len(wiki_urls) > 0:
+          resolved = self._wiki_gns_hit(g.data, wiki_urls)
       else:
         resolved = self._local_hit(g.data[0], g.data[1], osm_refs)
+        if not resolved and len(wiki_urls) > 0:
+          resolved = self._wiki_coord_hit(g.data[0], g.data[1], wiki_urls)
 
       if resolved:
         corrects.append(g)
@@ -217,86 +225,55 @@ class ResolEvaluator(Evaluator):
             return True
       return False
 
-  def _metrics(self):
-    metrics = {'TolOSM': self.tol_osm}
-    total = self.correct + self.incorrect + self.false_neg
-    if total > 0:
-      metrics['Acc'] = self.correct / total
-      resolved = self.correct + self.incorrect
-      if resolved > 0:
-        metrics['AccResol'] = self.correct / resolved
-        metrics['Resol%'] = resolved / total
-    return metrics
+  def _wiki_gns_hit(self, gold_id, wiki_urls):
+    geoname_ids = []
+    for url in wiki_urls:
+      geoname_id = self._geoname_for_wiki_url(url)
+      if geoname_id != None:
+        geoname_ids.append(geoname_id)
+    return self._global_hit(gold_id, geoname_ids)
 
+  def _geoname_for_wiki_url(self, url):
+    title = url.replace('https://en.wikipedia.org/wiki/', '')
 
-class WikiResolEvaluator(Evaluator):
-
-  def __init__(self, gold_group=None, tolerance=0.2):
-    self.gold_group = gold_group
-    self.tolerance = tolerance
-    self.gns_cache = {}
-    self.coords_cache = {}
-    self.correct = 0
-    self.incorrect = 0
-    self.false_neg = 0
-    self.false_pos = 0
-
-  def evaluate(self, doc, gold_doc):
-    corrects = []
-    incorrects = []
-    missed = []
-    pending = doc.get_all('res')
-
-    for g in gold_doc.get_all('gld', self.gold_group):
-      matches = [a for a in pending if self._matches(a, g)]
-      pending = [a for a in pending if a not in matches]
-
-      if len(matches) == 0:
-        missed.append(g)
-        continue
-
-      urls = [a.data for a in matches]
-      resolved = False
-      if g.group == 'gns':
-        resolved = self._url_hit(g.data, urls)
-        if not resolved:
-          gold_geo = self.gns_cache[g.data]
-          resolved = self._coord_hit(gold_geo.lat, gold_geo.lon, urls)
-      else:
-        resolved = self._coord_hit(g.data[0], g.data[1], urls)
-
-      if resolved:
-        corrects.append(g)
-      else:
-        incorrects.append(g)
-
-    self.correct += len(corrects)
-    self.incorrect += len(incorrects)
-    self._print_if_not_empty(incorrects, 'RES INCORRECT')
-    self.false_pos += len(pending)
-    self._print_if_not_empty(pending, 'RES FALSE POS')
-    self.false_neg += len(missed)
-    self._print_if_not_empty(missed, 'RES FALSE NEG')
-
-
-  def _url_hit(self, gold_id, urls):
-    if gold_id in self.gns_cache:
-      gold_url = self.gns_cache[gold_id].wiki_url
+    dirname = os.path.dirname(__file__)
+    cache_path = f'{dirname}/data/wiki.json'
+    if os.path.exists(cache_path):
+      with open(cache_path, 'r') as f:
+        cache = json.load(f)
     else:
-      full_geo = GeoNamesAPI.get_geoname(gold_id)
-      self.gns_cache[gold_id] = full_geo
-      if full_geo.wiki_url == None:
-        return False
-      gold_url = 'https://' + full_geo.wiki_url
-    return gold_url in urls
+      cache = {}
 
-  def _coord_hit(self, gold_lat, gold_lon, urls):
+    if title in cache:
+      geoname_id = cache[title]
+    else:
+      geoname_id = ''
+      results = self.gns_cache.search(title)[:25]
+      for g in results:
+        full_geo = GeoNamesAPI.get_geoname(g.id)
+        if full_geo.wiki_url == None:
+          continue
+        wiki_url = 'https://' + full_geo.wiki_url
+        if wiki_url == url:
+          geoname_id = g.id
+          break
+
+      cache[title] = geoname_id
+      with open(cache_path, 'w') as f:
+        json.dump(cache, f)
+
+    if geoname_id == '':
+      return None
+    else:
+      return geoname_id
+
+  def _wiki_coord_hit(self, gold_lat, gold_lon, urls):
     for url in urls:
-      if url in self.coords_cache:
-        coords = self.coords_cache[url]
+      if url in self.wiki_coords_cache:
+        coords = self.wiki_coords_cache[url]
       else:
         coords = GeoUtil.coordinates_for_wiki_url(url)
-        self.coords_cache[url] = coords
+        self.wiki_coords_cache[url] = coords
       for lat, lon in coords:
         dist = GeoUtil.distance(lat, lon, gold_lat, gold_lon)
         if dist < self.tolerance:
@@ -305,7 +282,7 @@ class WikiResolEvaluator(Evaluator):
       return False
 
   def _metrics(self):
-    metrics = {'Tol': self.tolerance}
+    metrics = {'TolOSM': self.tol_osm}
     total = self.correct + self.incorrect + self.false_neg
     if total > 0:
       metrics['Acc'] = self.correct / total

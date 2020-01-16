@@ -20,14 +20,11 @@ ev_rec = RecogEvaluator()
 ev_res = ResolEvaluator()
 ev_res_glob = ResolEvaluator(gold_group='gns')
 ev_res_street = ResolEvaluator(gold_group='raw')
-eval_wiki = WikiResolEvaluator()
-eval_wiki_glob = WikiResolEvaluator(gold_group='gns')
-eval_wiki_street = WikiResolEvaluator(gold_group='raw')
 
-pipe = builder.build_rec('gcnl')
+pipe = builder.build_wiki()
 
 #imp = GeoWebNewsImporter()
 #imp.import_documents(gwn)
 
-gwn.bulk_process(pipe, saved_steps=['gcnl', 'remdem'], evaluator=ev_rec)
+gwn.bulk_process(pipe, saved_steps=['gcnl', 'wikires'], evaluator=ev_res_glob)
 #tests.process(pipe, 'global_d_c') , 'geores', 'clust'
