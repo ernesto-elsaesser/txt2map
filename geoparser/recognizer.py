@@ -40,7 +40,7 @@ class GazetteerRecognizer:
           return False
       if doc.text[c.end] == ' ' and doc.text[c.end+1].isupper():
         return False
-      doc.annotate('rec', c.pos, c.match, 'glo', c.lookup_phrase)
+      doc.annotate('rec', c.pos, c.match, 'glo', c.lookup_phrase, replace_shorter=True)
       print('ADDED GAZ TOPO: ' + c.match)
       return True
 

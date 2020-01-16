@@ -1,4 +1,5 @@
 import re
+from unidecode import unidecode
 from .geonames import GeoNamesCache
 from .matcher import NameMatcher
 from .gazetteer import Gazetteer
@@ -103,11 +104,13 @@ class GeoNamesResolver:
     if toponym in self.candidates:
       return self.candidates[toponym]
     results = self.gns_cache.search(toponym)
+    base_name = self._base_name(toponym)
     parts = len(toponym.split(' '))
     candidates = []
     for g in results:
-      str_topo = toponym.rstrip('.')
-      if str_topo not in g.name and str_topo not in g.toponym_name:
+      base = self._base_name(toponym)
+      base_topo = self._base_name(g.toponym_name)
+      if base_name not in base and base_name not in base_topo:
         continue
       g_parts = len(g.name.split(' '))
       if g_parts > parts and g.population == 0:
@@ -119,6 +122,9 @@ class GeoNamesResolver:
     candidates = sorted(candidates, key=lambda g: -g.population)
     self.candidates[toponym] = candidates
     return candidates
+
+  def _base_name(self, toponym):
+    return unidecode(toponym.rstrip('.')).lower()
 
   def _select_heuristically(self, toponym, current, tree):
     candidates = self._select_candidates(toponym)

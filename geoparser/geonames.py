@@ -184,7 +184,11 @@ class GeoNamesDatabase(Database):
       return None
     if row[0] == '':
       return []
-    return [self.get_geoname(int(s)) for s in row[0].split(',')]
+    geonames = [self.get_geoname(int(s)) for s in row[0].split(',')]
+    if None in geonames:
+      return None
+    else:
+      return geonames
 
   def get_geoname(self, geoname_id):
     self.cursor.execute('SELECT * FROM geonames WHERE geoname_id = ?',
