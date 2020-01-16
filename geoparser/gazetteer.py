@@ -133,15 +133,8 @@ class Gazetteer:
         if toponym not in defaults and toponym not in stopwords:
           defaults[toponym] = entries[toponym]
 
-    # common abbreviations
-    defaults['U.S.'] = 6252001
-    defaults['US'] = 6252001
-    defaults['USA'] = 6252001
-    defaults['EU'] = 6255148
-    defaults['UAE'] = 290557
-    defaults['D.C.'] = 4140963
-
     Gazetteer._save('defaults', defaults)
+    print('Gazetteer updated.')
 
   @staticmethod
   def _load(file_name):

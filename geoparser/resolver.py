@@ -8,26 +8,49 @@ from .config import Config
 
 class GeoNamesResolver:
 
+  common_abbrevs = {'U.S.': 6252001,
+                    'US': 6252001,
+                    'USA': 6252001,
+                    'EU': 6255148,
+                    'UAE': 290557,
+                    'D.C.': 4140963}
+
   def __init__(self, keep_defaults=False):
     self.keep_defaults = keep_defaults
     self.recognizer = GazetteerRecognizer()
     self.gns_cache = GeoNamesCache()
+    self.matcher = NameMatcher()
+
+    self.defaults = Gazetteer.defaults()
+    self.demonyms = {}
+    for toponym, demonyms in Gazetteer.demonyms().items():
+      if toponym not in self.defaults:
+        continue
+      for demonym in demonyms:
+        self.demonyms[demonym] = self.defaults[toponym]
+
     self.candidates = {}
 
-  def annotate_rec_evi_res(self, doc):
+  def annotate_res(self, doc):
     resolutions = {}
 
-    demonyms = self.recognizer.find_demonyms(doc)
-    for toponym, geoname_id in demonyms.items():
-      resolutions[toponym] = self.gns_cache.get(geoname_id)
+    def add_demonym(c):
+      geoname_id = self.demonyms[c.lookup_phrase]
+      resolutions[c.match] = self.gns_cache.get(geoname_id)
+      return True
 
-    tops = self.recognizer.find_top_level_toponyms(doc)
-    for toponym, geoname_id in tops.items():
-      resolutions[toponym] = self.gns_cache.get(geoname_id)
+    self.matcher.find_matches(doc, self._lookup_demonym, add_demonym)
+
+    for abbr in self.common_abbrevs:
+      match = re.search('\\b' + abbr, doc.text)
+      if match != None:
+        resolutions[abbr] = self.common_abbrevs[abbr]
 
     unresolved = set()
-    for a in doc.get_all('ner', 'loc'):
-      if a.phrase not in resolutions:
+    for a in doc.get_all('rec'):
+      if a.phrase in self.defaults:
+        resolutions[a.phrase] = self.gns_cache.get(self.defaults[a.phrase])
+      elif a.phrase not in self.demonyms:
         unresolved.add(a.phrase)
     
     for toponym in unresolved:
@@ -59,27 +82,13 @@ class GeoNamesResolver:
           print(f'Chose {city} over {geoname} for {toponym}')
           break
     
-    loc_anns = doc.annotations_by_position('ner', 'loc')
-    ner_positions = doc.annotations_by_position('ner')
-    resolved = sorted(resolutions.keys(), key=lambda t: -len(t))  # longer first
-    for toponym in resolved:
-      geoname = resolutions[toponym]
-      esc_topo = re.escape(toponym)
-      for match in re.finditer(f'\\b{esc_topo}', doc.text):
-        pos = match.start()
-        doc.annotate('evi', pos, toponym, 'evi', geoname.id, allow_overlap=True)
-        if pos in loc_anns:
-          ann = loc_anns[pos]
-          if len(toponym) >= len(ann.phrase):
-            doc.annotate('rec', pos, toponym, 'glo', '')
-            doc.annotate('res', pos, toponym, 'glo', geoname.id)
-        elif pos not in ner_positions and toponym not in demonyms and geoname.is_city:
-          node = tree.node_for(geoname, False)
-          if tree.adm1_supported(node):
-            print("ADDING NON-NER TOPO: " + toponym)
-            doc.annotate('rec', pos, toponym, 'glo', '')
-            doc.annotate('res', pos, toponym, 'glo', geoname.id)
+    for a in doc.get_all('rec'):
+      if a.phrase in resolutions:
+        geoname = resolutions[a.phrase]
+        doc.annotate('res', pos, toponym, 'glo', geoname.id)
 
+  def _lookup_demonym(self, prefix):
+    return [d for d in self.demonyms if d.startswith(prefix)]
 
   def _select_candidates(self, toponym):
     if toponym in self.candidates:

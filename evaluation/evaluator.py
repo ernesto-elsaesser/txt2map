@@ -52,7 +52,8 @@ class Counter(Evaluator):
 
 class NEREvaluator(Evaluator):
 
-  def __init__(self):
+  def __init__(self, groups=['loc']):
+    self.groups = groups
     self.true_pos = 0
     self.false_neg = 0
     self.false_pos = 0
@@ -60,22 +61,24 @@ class NEREvaluator(Evaluator):
   def evaluate(self, doc, gold_doc):
     correct = []
     missed = []
-    pending = doc.get_all('ner', 'loc')
+    pending = []
+    for group in self.groups:
+      pending += doc.get_all('ner', group)
 
     for g in gold_doc.get_all('gld'):
-      prev_len = len(pending)
-      pending = [a for a in pending if not self._matches(a, g)]
-      if len(pending) < prev_len:
+      matches = [a for a in pending if self._matches(a, g)]
+      pending = [a for a in pending if a not in matches]
+
+      if len(matches) > 0:
         correct.append(g)
       else:
         missed.append(g)
 
     self.true_pos += len(correct)
-    self.false_pos += len(pending)
     self.false_neg += len(missed)
-
-    self._print_if_not_empty(pending, 'REC FALSE POS')
     self._print_if_not_empty(missed, 'REC FALSE NEG')
+    self.false_pos += len(pending)
+    self._print_if_not_empty(pending, 'REC FALSE POS')
 
   def _metrics(self):
     metrics = {}
@@ -116,9 +119,8 @@ class RecogEvaluator(Evaluator):
 
     self.true_pos += len(correct)
     self.false_pos += len(pending)
-    self.false_neg += len(missed)
-
     self._print_if_not_empty(pending, 'REC FALSE POS')
+    self.false_neg += len(missed)
     self._print_if_not_empty(missed, 'REC FALSE NEG')
 
   def _metrics(self):
@@ -177,14 +179,14 @@ class ResolEvaluator(Evaluator):
       else:
         incorrects.append(g)
 
-    self.incorrect += len(incorrects)
     self.correct += len(corrects)
-    self.false_pos += len(pending)
-    self.false_neg += len(missed)
-
-    self._print_if_not_empty(pending, 'RES FALSE POS')
-    self._print_if_not_empty(missed, 'RES FALSE NEG')
+    self.incorrect += len(incorrects)
     self._print_if_not_empty(incorrects, 'RES INCORRECT')
+    self.false_pos += len(pending)
+    self._print_if_not_empty(pending, 'RES FALSE POS')
+    self.false_neg += len(missed)
+    self._print_if_not_empty(missed, 'RES FALSE NEG')
+
 
   def _global_hit(self, gold_id, geoname_ids):
     gold_ids = self._related_ids(gold_id)
@@ -270,12 +272,12 @@ class WikiResolEvaluator(Evaluator):
 
     self.correct += len(corrects)
     self.incorrect += len(incorrects)
-    self.false_pos += len(pending)
-    self.false_neg += len(missed)
-
-    self._print_if_not_empty(pending, 'RES FALSE POS')
-    self._print_if_not_empty(missed, 'RES FALSE NEG')
     self._print_if_not_empty(incorrects, 'RES INCORRECT')
+    self.false_pos += len(pending)
+    self._print_if_not_empty(pending, 'RES FALSE POS')
+    self.false_neg += len(missed)
+    self._print_if_not_empty(missed, 'RES FALSE NEG')
+
 
   def _url_hit(self, gold_id, urls):
     if gold_id in self.gns_cache:

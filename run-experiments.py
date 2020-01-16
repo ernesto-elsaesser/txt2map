@@ -14,6 +14,8 @@ lgls = Corpus('LGL-Street')
 
 # evaluators
 ev_ner = NEREvaluator()
+ev_ner_org = NEREvaluator(groups=['loc', 'org'])
+ev_ner_org_per = NEREvaluator(groups=['loc', 'org', 'per'])
 ev_rec = RecogEvaluator()
 ev_res = ResolEvaluator()
 ev_res_glob = ResolEvaluator(gold_group='gns')
@@ -22,6 +24,10 @@ eval_wiki = WikiResolEvaluator()
 eval_wiki_glob = WikiResolEvaluator(gold_group='gns')
 eval_wiki_street = WikiResolEvaluator(gold_group='raw')
 
-pipe = builder.build_wiki()
-gwn.bulk_process(pipe, saved_steps=['gcnl'], evaluator=eval_wiki_street)
+pipe = builder.build_rec('gcnl')
+
+#imp = GeoWebNewsImporter()
+#imp.import_documents(gwn)
+
+gwn.bulk_process(pipe, saved_steps=['gcnl', 'remdem'], evaluator=ev_rec)
 #tests.process(pipe, 'global_d_c') , 'geores', 'clust'

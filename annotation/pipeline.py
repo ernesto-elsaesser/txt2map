@@ -1,4 +1,4 @@
-from geoparser import GeoNamesResolver, Clusterer
+from geoparser import GeoNamesResolver, Clusterer, Gazetteer, GazetteerRecognizer
 from .spacy import SpacyClient
 from .gcnl import GoogleCloudNLClient
 from .cogcomp import CogCompClient
@@ -44,12 +44,18 @@ class PipelineBuilder:
       pipe.add(StanfordServerNERStep(self.stanford_url))
     elif ner_key == GCNLNERStep.key:
       pipe.add(GCNLNERStep())
+      pipe.add(RemoveDemonymsStep())
     else:
       raise PipelineException('Invalid key for NER step!')
     return pipe
 
-  def build(self, ner_key):
+  def build_rec(self, ner_key):
     pipe = self.build_ner(ner_key)
+    pipe.add(GazetteerRecogStep())
+    return pipe
+
+  def build(self, ner_key):
+    pipe = self.build_rec(ner_key)
     pipe.add(GeoNamesRecogResolStep())
     pipe.add(ClusterStep())
     return pipe
@@ -62,6 +68,11 @@ class PipelineBuilder:
   def build_topo(self):
     pipe = self.build_empty()
     pipe.add(TopoResolverServerStep(self.topores_url))
+    return pipe
+
+  def build_remdem(self, ner_key):
+    pipe = self.build_ner(ner_key)
+    pipe.add(RemoveDemonymsStep())
     return pipe
   
 
@@ -109,8 +120,8 @@ class GazetteerRecogStep:
     self.gazrec = GazetteerRecognizer()
 
   def annotate(self, doc):
-    self.gazrec.annotate_rec_evi(doc)
-    return ['rec', 'evi']
+    self.gazrec.annotate_rec(doc)
+    return ['rec']
 
 
 class GeoNamesRecogResolStep:
@@ -121,8 +132,8 @@ class GeoNamesRecogResolStep:
     self.geores = GeoNamesResolver()
 
   def annotate(self, doc):
-    self.geores.annotate_rec_evi_res(doc)
-    return ['rec', 'evi', 'res']
+    self.geores.annotate_res(doc)
+    return ['res']
 
 
 class GeoNamesDefaultRecogResolStep:
@@ -201,4 +212,18 @@ class TopoResolverServerStep:
   def annotate(self, doc):
     self.topo.annotate_res(doc)
     return ['res']
-  
+
+
+class RemoveDemonymsStep:
+
+  key = 'remdem'
+
+  def __init__(self):
+    dem_map = Gazetteer.demonyms()
+    self.demonyms = sum(dem_map.values(), [])
+
+  def annotate(self, doc):
+    for a in doc.get_all('ner'):
+      if a.group == 'loc' and a.phrase in self.demonyms:
+        doc.delete_annotation('ner', a.pos)
+    return ['ner']
