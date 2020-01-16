@@ -1,6 +1,8 @@
 from annotation import *
 from evaluation import *
 
+from geoparser import GeoNamesCache, GeoNamesAPI
+
 builder = PipelineBuilder()
 builder.spacy_url = 'http://localhost:8001'
 builder.cogcomp_url = 'http://localhost:8002'

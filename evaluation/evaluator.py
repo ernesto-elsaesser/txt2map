@@ -1,5 +1,6 @@
 import os
 import json
+import urllib
 from geoparser import GeoNamesCache, OSMLoader, GeoUtil, GeoNamesAPI
 
 class Evaluator:
@@ -235,6 +236,7 @@ class ResolEvaluator(Evaluator):
 
   def _geoname_for_wiki_url(self, url):
     title = url.replace('https://en.wikipedia.org/wiki/', '')
+    title = title.replace('_', ' ')
 
     dirname = os.path.dirname(__file__)
     cache_path = f'{dirname}/data/wiki.json'
@@ -253,7 +255,10 @@ class ResolEvaluator(Evaluator):
         full_geo = GeoNamesAPI.get_geoname(g.id)
         if full_geo.wiki_url == None:
           continue
-        wiki_url = 'https://' + full_geo.wiki_url
+        wiki_url = full_geo.wiki_url
+        if '%' in wiki_url:
+          print(wiki_url)
+        wiki_url = 'https://' + urllib.parse.unquote(wiki_url)
         if wiki_url == url:
           geoname_id = g.id
           break
