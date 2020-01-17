@@ -61,19 +61,23 @@ class Clusterer:
       return None
 
   def annotate_rec_res(self, doc):
-    clust_keys = {}
+    clust_anchors = {}
+    largest_pop = {}
     for a in doc.get_all('clu'):
-      clust_keys[a.group] = a.data
+      if a.group in clust_anchors or len(a.data) == 0:
+        continue
+      geonames = [self.gns_cache.get(gid) for gid in a.data]
+      clust_anchors[a.group] = geonames
+      largest_pop[a.group] = max(g.population for g in geonames)
+
+    sorted_keys = sorted(clust_anchors.keys(), key=lambda k: -largest_pop[k])
 
     entity_indicies = doc.annotations_by_index('ner')
     rec_positions = doc.annotations_by_position('rec')
 
-    for cluster_key, anchor_ids in clust_keys.items():
-      if len(anchor_ids) == 0:
-        continue
-
-      geonames = [self.gns_cache.get(gid) for gid in anchor_ids]
-      db = OSMLoader.load_database(geonames)
+    for cluster_key in sorted_keys:
+      anchors = clust_anchors[cluster_key]
+      db = OSMLoader.load_database(anchors)
 
       def lookup_prefix(prefix):
         return db.find_names(prefix)

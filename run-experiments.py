@@ -34,5 +34,5 @@ pipe = builder.build('spacy')
 
 #lgls.bulk_process(pipe, saved_steps=['stanford', 'gaz', 'geores'], evaluator=ev_res_lgls)
 # saved_steps=['spacy', 'gaz', 'geores', 'clust'], 
-gwn.process(pipe, '289')
+gwn.process(pipe, '274')
 
