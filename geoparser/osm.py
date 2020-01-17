@@ -18,9 +18,11 @@ class OSMLoader:
     if not os.path.exists(cache_dir):
       os.mkdir(cache_dir)
 
-    search_dist = Config.local_search_dist
-    sorted_ids = sorted(str(g.id) for g in geonames)
+    ids = [str(g.id) for g in geonames]
+    sorted_ids = sorted(set(ids))
     id_str = '-'.join(sorted_ids)
+
+    search_dist = Config.local_search_dist
     file_path = f'{cache_dir}/{id_str}-{search_dist}km.db'
     is_cached = os.path.exists(file_path)
     if is_cached and os.stat(file_path).st_size == 0:
