@@ -36,6 +36,10 @@ class Gazetteer:
     return Gazetteer._load('P')
 
   @staticmethod
+  def stopwords():
+    return Gazetteer._load('stopwords')
+
+  @staticmethod
   def continent_map():
     return Gazetteer._load('continent_map')
 

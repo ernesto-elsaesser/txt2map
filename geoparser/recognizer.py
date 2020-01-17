@@ -9,8 +9,12 @@ class GazetteerRecognizer:
     self.matcher = NameMatcher()
 
     self.cities = Gazetteer.cities()
+    stopwords = Gazetteer.stopwords()
+
     self.lookup_tree = {}
     for city in self.cities:
+      if city in stopwords:
+        continue
       key = city[:2]
       if key not in self.lookup_tree:
         self.lookup_tree[key] = []

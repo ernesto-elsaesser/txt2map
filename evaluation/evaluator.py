@@ -177,6 +177,7 @@ class ResolEvaluator(Evaluator):
         continue
 
       if self.skip_acc:
+        corrects.append(g)
         continue
 
       resolved = False

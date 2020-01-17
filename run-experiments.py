@@ -1,7 +1,7 @@
 from annotation import *
 from evaluation import *
 
-from geoparser import GeoNamesCache, GeoNamesAPI
+from geoparser import OSMLoader, GeoNamesCache
 
 builder = PipelineBuilder()
 builder.spacy_url = 'http://localhost:8001'
@@ -13,6 +13,7 @@ builder.topores_url = 'http://localhost:8004'
 tests = Corpus('Tests')
 gwn = Corpus('GeoWebNews')
 lgls = Corpus('LGL-Street')
+dm = Corpus('Dummy')
 
 # evaluators
 ev_ner = NEREvaluator()
@@ -25,14 +26,15 @@ ev_res_street = ResolEvaluator(gold_group='raw')
 ev_res_lgls = ResolEvaluator(gold_group='non', measure_accuracy=False)
 ev_res_gritta = ResolEvaluator(gold_group='gns', gns_by_dist=True) 
 
-pipe = builder.build('spacy')
+pipe = builder.build_rec('gcnl')
 
-#imp = GeoWebNewsImporter()
-#imp.import_documents(gwn)
 
-#gwn.bulk_process(pipe, saved_steps=['stanford', 'gaz', 'geores'], evaluator=ev_res_street)
+gwn.bulk_process(pipe, saved_steps=['gcnl'], evaluator=ev_ner)
 
-#lgls.bulk_process(pipe, saved_steps=['stanford', 'gaz', 'geores'], evaluator=ev_res_lgls)
+#lgls.bulk_process(pipe, evaluator=cn1)
 # saved_steps=['spacy', 'gaz', 'geores', 'clust'], 
-gwn.process(pipe, '274')
+#gwn.process(pipe, '274')
+
+#g = GeoNamesCache().get(3466703)
+#OSMLoader.load_database([g])
 

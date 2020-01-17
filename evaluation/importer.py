@@ -88,6 +88,10 @@ class GeoWebNewsImporter:
 class LGLImporter:
 
   def import_documents(self, corpus, exclude_geo):
+    self.gns_count = 0
+    self.non_count = 0
+    self.skip_count = 0
+
     dirname = os.path.dirname(__file__)
     corpus_file = dirname + '/corpora/lgl.xml'
     tree = etree.parse(corpus_file)
@@ -100,6 +104,8 @@ class LGLImporter:
       self._annotate_gold_coords(gold_doc, article, exclude_geo)
       if len(gold_doc.get_all('gld')) > 0:
         corpus.add_document(doc_id, gold_doc)
+      
+    print(f'Imported {self.gns_count + self.non_count} toponyms ({self.gns_count}/{self.non_count} - {self.skip_count}).')
 
   def _annotate_gold_coords(self, doc, article, exclude_geo):
     toponyms = article.find('toponyms')
@@ -107,6 +113,7 @@ class LGLImporter:
     for toponym in toponyms:
       tag = toponym.find('gaztag')
       if exclude_geo and tag != None:
+        self.skip_count += 1
         continue
 
       pos = int(toponym.find('start').text)
@@ -114,9 +121,11 @@ class LGLImporter:
 
       if tag == None:
         doc.annotate('gld', pos, phrase, 'non', '')
+        self.non_count += 1
       else:
         geoname_id = tag.get('geonameid')
         doc.annotate('gld', pos, phrase, 'gns', geoname_id)
+        self.gns_count += 1
 
 
 class TestsImporter:

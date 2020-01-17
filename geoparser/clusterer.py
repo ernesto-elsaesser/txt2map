@@ -73,7 +73,7 @@ class Clusterer:
     sorted_keys = sorted(clust_anchors.keys(), key=lambda k: -largest_pop[k])
 
     entity_indicies = doc.annotations_by_index('ner')
-    rec_positions = doc.annotations_by_position('rec')
+    res_positions = doc.annotations_by_position('res')
 
     for cluster_key in sorted_keys:
       anchors = clust_anchors[cluster_key]
@@ -88,7 +88,7 @@ class Clusterer:
             return False
           if c.pos in entity_indicies and entity_indicies[c.pos].phrase != c.match:
             return False
-        if c.pos in rec_positions and rec_positions[c.pos].phrase == c.match:
+        if c.pos in res_positions and res_positions[c.pos].phrase == c.match:
           return False
         osm_refs = db.get_elements(c.lookup_phrase)
         doc.annotate('rec', c.pos, c.match, cluster_key, '', replace_shorter=True)
