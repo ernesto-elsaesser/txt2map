@@ -1,4 +1,8 @@
 [
+  "West", 
+  "South", 
+  "East", 
+  "North",
   "Gold",
   "Nice",
   "Hull",
@@ -19,6 +23,7 @@
   "Mon",
   "Muse",
   "Lee",
+  "Bay",
   "Clay",
   "Lake",
   "Hall",
@@ -33,5 +38,8 @@
   "Lane",
   "Java",
   "Gard",
-  "Park"
+  "Park",
+  "King",
+  "Delta",
+  "Union"
 ]

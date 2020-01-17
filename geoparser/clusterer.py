@@ -1,4 +1,3 @@
-from .gazetteer import Gazetteer
 from .geonames import GeoNamesCache
 from .osm import OSMLoader
 from .matcher import NameMatcher
@@ -11,7 +10,6 @@ class Clusterer:
   def __init__(self):
     self.matcher = NameMatcher()
     self.gns_cache = GeoNamesCache()
-    self.top_names = Gazetteer.defaults().keys()
 
   def annotate_clu(self, doc):
     resolutions = {}
@@ -95,25 +93,3 @@ class Clusterer:
 
       self.matcher.find_matches(doc, lookup_prefix, commit_match)
 
-  def annotate_con(self, doc):
-    clust_keys = [l for l in doc.layers() if l.startswith('clu-')]
-    clust_count = len(clust_keys)
-
-    if clust_count == 0:
-      return
-
-    for clust_key in clust_keys:
-      glob_anns = doc.get_all('clu', clust_key)
-      loc_anns = doc.get_all(clust_key)
-      anchor_ids = glob_anns[0].data
-      confidence = 'high'
-
-      if clust_count > 1 and len(glob_anns) == 1 and len(anchor_ids) > 0:
-        a = glob_anns[0]
-        in_gaz = a.phrase in self.top_names
-        if not in_gaz and ' ' not in a.phrase:
-          if len(loc_anns) == 0:
-            confidence = 'low'
-
-      for a in glob_anns:
-        doc.annotate('con', a.pos, a.phrase, confidence, '')

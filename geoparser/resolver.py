@@ -19,17 +19,24 @@ class GeoNamesResolver:
 
   def __init__(self, keep_defaults=False):
     self.keep_defaults = keep_defaults
-    self.recognizer = GazetteerRecognizer()
     self.gns_cache = GeoNamesCache()
     self.matcher = NameMatcher()
 
-    self.defaults = Gazetteer.defaults()
+    countries = Gazetteer.countries()
+
+    self.defaults = Gazetteer.cities()
+    self.defaults.update(Gazetteer.admins())
+    self.defaults.update(Gazetteer.us_states())
+    self.defaults.update(countries)
+    self.defaults.update(Gazetteer.oceans())
+    self.defaults.update(Gazetteer.continents())
+
     self.demonyms = {}
     for toponym, demonyms in Gazetteer.demonyms().items():
-      if toponym not in self.defaults:
+      if toponym not in countries:
         continue
       for demonym in demonyms:
-        self.demonyms[demonym] = self.defaults[toponym]
+        self.demonyms[demonym] = countries[toponym]
 
     self.candidates = {}
 
