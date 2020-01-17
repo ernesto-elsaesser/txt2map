@@ -26,10 +26,17 @@ class CogCompClient:
     i = pos = 0
     ent_pos = ent_group = ent_phrase = None
 
+    ticks = ['"','\'','`']
+
     while pos < l and i < cc_l:
       c = cc_text[i]
       oc = text[pos]
-      if c == '[':
+
+      if c in ticks:
+        i += 1
+      elif oc in ticks:
+        pos += 1
+      elif c == '[':
         ent_pos = pos
         ent_phrase = ''
         if cc_text[i+1] == 'M':
@@ -49,11 +56,7 @@ class CogCompClient:
         pos += 1
       elif c == ' ' and oc != ' ':
         i += 1
-      elif (c == '{' and oc == '[') or (c == '}' and oc == ']'):
-        assert ent_phrase == None
-        i += 1
-        pos += 1
-      elif c == oc:
+      elif c == oc or (c == '{' and oc == '[') or (c == '}' and oc == ']'):
         if ent_phrase != None:
           ent_phrase += oc
         pos += 1

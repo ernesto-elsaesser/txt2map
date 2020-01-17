@@ -13,7 +13,6 @@ builder.topores_url = 'http://localhost:8004'
 tests = Corpus('Tests')
 gwn = Corpus('GeoWebNews')
 lgls = Corpus('LGL-Street')
-dm = Corpus('Dummy')
 
 # evaluators
 ev_ner = NEREvaluator()
@@ -23,18 +22,14 @@ ev_rec = RecogEvaluator()
 ev_res = ResolEvaluator()
 ev_res_glob = ResolEvaluator(gold_group='gns')
 ev_res_street = ResolEvaluator(gold_group='raw')
-ev_res_lgls = ResolEvaluator(gold_group='non', measure_accuracy=False)
+ev_res_lgls = ResolEvaluator(measure_accuracy=False)
 ev_res_gritta = ResolEvaluator(gold_group='gns', gns_by_dist=True) 
 
-pipe = builder.build_rec('gcnl')
+pipe = builder.build('cogcomp')
 
+lgls.bulk_process(pipe, saved_steps=['cogcomp','gaz','geores'], evaluator=ev_res_lgls)
 
-gwn.bulk_process(pipe, saved_steps=['gcnl'], evaluator=ev_ner)
-
-#lgls.bulk_process(pipe, evaluator=cn1)
 # saved_steps=['spacy', 'gaz', 'geores', 'clust'], 
-#gwn.process(pipe, '274')
+#lgls.process(pipe, '40647404')
 
-#g = GeoNamesCache().get(3466703)
-#OSMLoader.load_database([g])
 
