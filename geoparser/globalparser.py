@@ -12,36 +12,12 @@ class GlobalGeoparser(Step):
 
   layers = [Layer.gres]
 
-  common_abbrevs = {'U.S.': 6252001,
-                    'US': 6252001,
-                    'USA': 6252001,
-                    'America': 6252001,
-                    'EU': 6255148,
-                    'UAE': 290557,
-                    'D.C.': 4140963}
-
   def __init__(self, keep_defaults=False):
     self.key = 'globaldef' if keep_defaults else 'global'
     self.keep_defaults = keep_defaults
     self.matcher = NameMatcher()
 
-    countries = Gazetteer.countries()
-
-    self.top_level_topos = {}
-    #self.top_level_topos.update(Gazetteer.admins())
-    #self.top_level_topos.update(Gazetteer.us_states())
-    self.top_level_topos.update(countries)
-
-    for toponym, demonyms in Gazetteer.demonyms().items():
-      if toponym not in countries:
-        continue
-      for demonym in demonyms:
-        self.top_level_topos[demonym] = countries[toponym]
-
-    self.top_level_topos.update(Gazetteer.oceans())
-    self.top_level_topos.update(Gazetteer.continents())
-    self.top_level_topos.update(self.common_abbrevs)
-
+    self.top_level_topos = Gazetteer.top_level()
     self.lookup_tree = {}
     for toponym in self.top_level_topos:
       key = toponym[:2]
@@ -55,21 +31,23 @@ class GlobalGeoparser(Step):
     resolutions = {}
 
     for a in doc.get_all(Layer.topo):
+      if a.phrase in resolutions:
+        continue
       if a.phrase in self.top_level_topos:
         geoname_id = self.top_level_topos[a.phrase]
         default = Datastore.get_geoname(geoname_id)
       else:
-        candidates = self._select_candidates(a.phrase)
-        if len(candidates) == 0:
+        results = Datastore.search_geonames(a.phrase)
+        if len(results) == 0:
           continue
-        default = self._city_result(a.phrase, candidates[0])
+        default = self._city_result(a.phrase, results[0])
 
       print(f'gres - chose {default} for "{a.phrase}"')
       resolutions[a.phrase] = default
 
     self._find_missed_top_levels(doc, resolutions)
 
-    should_continue = len(resolutions) > 1 and not self.keep_defaults
+    should_continue = not self.keep_defaults
     rounds = 0
     while should_continue:
       rounds += 1
@@ -114,28 +92,6 @@ class GlobalGeoparser(Step):
 
     self.matcher.find_matches(doc, lookup, commit)
 
-  def _select_candidates(self, toponym):
-    if toponym in self.candidates:
-      return self.candidates[toponym]
-    results = Datastore.search_geonames(toponym)
-    base_name = self._base_name(toponym)
-    parts = len(toponym.split(' '))
-    candidates = []
-    for g in results:
-      base = self._base_name(g.name)
-      base_topo = self._base_name(g.toponym_name)
-      if base_name not in base and base_name not in base_topo:
-        continue
-      g_parts = len(g.name.split(' '))
-      if g_parts > parts and g.population == 0:
-        continue
-      candidates.append(g)
-    if len(candidates) == 0 and len(results) > 0 and results[0].is_city:
-      candidates.append(results[0])
-      print(f'gres - chose first non-matching cadidate for "{toponym}": {results[0]}')
-    self.candidates[toponym] = candidates
-    return candidates
-
   def _base_name(self, toponym):
     toponym = toponym.rstrip('.')
     try:
@@ -145,8 +101,23 @@ class GlobalGeoparser(Step):
     return toponym.lower()
 
   def _select_heuristically(self, toponym, current, tree):
-    candidates = self._select_candidates(toponym)
-    candidates = [c for c in candidates if c.id != current.id]
+    results = Datastore.search_geonames(toponym)
+
+    base_name = self._base_name(toponym)
+    parts = len(toponym.split(' '))
+
+    candidates = []
+    for g in results:
+      if g.id == current.id:
+        continue
+      base = self._base_name(g.name)
+      base_topo = self._base_name(g.toponym_name)
+      if base_name not in base and base_name not in base_topo:
+        continue
+      g_parts = len(g.name.split(' '))
+      if g_parts > parts and g.population == 0:
+        continue
+      candidates.append(g)
 
     if len(candidates) == 0:
       return None
@@ -159,6 +130,7 @@ class GlobalGeoparser(Step):
         return g
 
     return None
+
 
   def _city_result(self, toponym, selected):
     if selected.is_city or selected.adm1 == '-':

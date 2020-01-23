@@ -42,17 +42,27 @@ class LocalGeoparser(Step):
         db = Datastore.load_osm_database(anchor)
 
         def commit_match(c):
-          if c.match == anchor.name:
-            return False
+          replace_identical = False
           if c.pos in entity_indicies:
             ent_ann = entity_indicies[c.pos]
             if len(ent_ann.phrase) > len(c.match):
-              return False
+              return True # part of entity name
+            gres_ann = doc.get(Layer.gres, ent_ann.pos)
+            if gres_ann != None:
+              if gres_ann.data == anchor.id:
+                return True # anchor itself
+              geoname = Datastore.get_geoname(gres_ann.data)
+              key_path = tree.key_path(geoname)
+              if len(key_path) < 3:
+                return True # country or above
+              node = tree.root.get(key_path, False)
+              if tree.adm1_supported(node):
+                return True # supported global resolution
+              replace_identical = True
           osm_refs = db.get_elements(c.lookup_phrase)
-          added = doc.annotate(Layer.lres, c.pos, c.match, 'local', osm_refs, replace_shorter=True)
-          if added:
-            print(f'lres - local match: {c.match}')
-          return added
+          print(f'lres - local match: {c.match}')
+          doc.annotate(Layer.lres, c.pos, c.match, 'local', osm_refs, replace_shorter=True, replace_identical=replace_identical)
+          return True
 
         self.matcher.find_matches(doc, db.find_names, commit_match)
 

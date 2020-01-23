@@ -26,9 +26,10 @@ ev_res_gritta = ResolEvaluator(gold_group='geonames', geonames_by_dist=True)
 
 pipe = builder.build('spacy')
 
-#imp = TestsImporter()
-#imp.import_documents(tests)
+#imp = GeoWebNewsImporter()
+#imp.import_documents(gwn)
 
+#gwn.bulk_process(pipe, evaluator=ev_res, doc_range=range(10))
 tests.bulk_process(pipe, evaluator=ev_res)
 #tests.process(pipe, 'global_two')
 

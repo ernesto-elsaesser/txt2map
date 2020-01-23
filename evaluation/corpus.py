@@ -24,7 +24,7 @@ class Corpus:
     text_path = self._text_path(doc_id)
     with open(text_path, 'w') as f:
       f.write(gold_doc.text)
-    self.annotate_document(doc_id, ['gold'], gold_doc)
+    self.save_annotations(doc_id, ['gold'], gold_doc)
 
   def get_gold_document(self, doc_id):
     return self.get_document(doc_id, ['gold'])

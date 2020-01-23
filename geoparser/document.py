@@ -48,7 +48,7 @@ class Document:
   def layers(self):
     return list(self.anns.keys())
 
-  def annotate(self, layer, pos, phrase, group, data='', allow_overlap=False, replace_shorter=False):
+  def annotate(self, layer, pos, phrase, group, data='', replace_shorter=False, replace_identical=False):
     if layer not in self.anns:
       self.anns[layer] = []
 
@@ -66,7 +66,10 @@ class Document:
           print(f'{layer} - annotation {phrase} [{group}] replaces {overlap.phrase} [{overlap.group}]')
           self.delete_annotation(layer, overlap.pos)
           deleted.append(overlap.pos)
-        elif not allow_overlap:
+        elif replace_identical and len(overlap.phrase) == len(phrase):
+          print(f'{layer} - annotation {phrase} [{group}] replaces {overlap.phrase} [{overlap.group}]')
+          return False
+        else:
           print(f'{layer} - annotation {phrase} [{group}] blocked by {overlap.phrase} [{overlap.group}]')
           return False
     
@@ -90,16 +93,13 @@ class Document:
     filtered = [a for a in anns if a[0] != pos]
     self.anns[layer] = filtered
 
-  def get(self, pos):
-    annotations = {}
-    for layer, arrs in self.anns.items():
-      for arr in arrs:
-        if arr[0] == pos:
-          a = Annotation(layer, arr[0], arr[1], arr[2], arr[3])
-          annotations[layer] = a
-          break
-
-    return annotations
+  def get(self, layer, pos):
+    if layer not in self.anns:
+      return False
+    for arr in self.anns[layer]:
+      if arr[0] == pos:
+        return Annotation(layer, arr[0], arr[1], arr[2], arr[3])
+    return None
 
   def get_all(self, layer, group=None, pos_range=None):
     if layer not in self.anns:

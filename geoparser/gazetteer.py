@@ -9,6 +9,33 @@ class Gazetteer:
 
   population_limit = 100_000
 
+  common_abbrevs = {'U.S.': 6252001,
+                    'US': 6252001,
+                    'USA': 6252001,
+                    'America': 6252001,
+                    'EU': 6255148,
+                    'UAE': 290557,
+                    'D.C.': 4140963}
+
+  @staticmethod
+  def top_level():
+    countries = Gazetteer.countries()
+
+    top_level = {}
+    top_level.update(countries)
+
+    for toponym, demonyms in Gazetteer.demonyms().items():
+      if toponym not in countries:
+        continue
+      for demonym in demonyms:
+        top_level[demonym] = countries[toponym]
+
+    top_level.update(Gazetteer.oceans())
+    top_level.update(Gazetteer.continents())
+    top_level.update(Gazetteer.common_abbrevs)
+
+    return top_level
+
   @staticmethod
   def demonyms():
     return Datastore.load_gazetteer('demonyms')
@@ -63,13 +90,9 @@ class Gazetteer:
       for country in cache.get_children(continent.id):
         continent_map[country.cc] = continent.name
         countries[country.name] = country.id
-        if country.id == 6252001:  # US
-          for state in cache.get_children(country.id):
-            us_states[state.name] = state.id
 
     Datastore.save_gazetteer('continents', continents)
     Datastore.save_gazetteer('countries', countries)
-    Datastore.save_gazetteer('us_states', us_states)
     Datastore.save_gazetteer('continent_map', continent_map)
 
   @staticmethod

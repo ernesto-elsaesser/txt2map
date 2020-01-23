@@ -52,6 +52,8 @@ class GeoNamesTree:
     return key_path
 
   def adm1_supported(self, node):
+    if len(self.adm1s) == 1:
+      return True
     support = [len(n.geonames) for n in node.iter()]
     if sum(support) > 2 or support[0] > 1:
       return True  # multiple support or siblings
