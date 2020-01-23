@@ -24,6 +24,8 @@ class Gazetteer:
     countries = Gazetteer.countries()
 
     top_level = {}
+    top_level.update(Gazetteer.us_states())
+    del top_level['New York'] # default sense is the city, not the state
     top_level.update(countries)
 
     for toponym, demonyms in Gazetteer.demonyms().items():
@@ -82,6 +84,7 @@ class Gazetteer:
   def update_top_level():
     continents = {}
     countries = {}
+    us_states = {}
     continent_map = {}
 
     for continent in Datastore.get_children(6295630):  # Earth
@@ -90,6 +93,9 @@ class Gazetteer:
       for country in Datastore.get_children(continent.id):
         continent_map[country.cc] = continent.name
         countries[country.name] = country.id
+        if country.id == 6252001:  # US
+          for us_state in Datastore.get_children(country.id):
+            us_states[us_state.name] = us_state.id
         if country.id == 2635167:  # UK
           for uk_country in Datastore.get_children(country.id):
             continent_map[uk_country.cc] = continent.name
@@ -97,6 +103,7 @@ class Gazetteer:
 
     Datastore.save_gazetteer('continents', continents)
     Datastore.save_gazetteer('countries', countries)
+    Datastore.save_gazetteer('us_states', us_states)
     Datastore.save_gazetteer('continent_map', continent_map)
 
   @staticmethod
