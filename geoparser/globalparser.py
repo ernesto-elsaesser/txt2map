@@ -15,6 +15,7 @@ class GlobalGeoparser(Step):
   common_abbrevs = {'U.S.': 6252001,
                     'US': 6252001,
                     'USA': 6252001,
+                    'America': 6252001,
                     'EU': 6255148,
                     'UAE': 290557,
                     'D.C.': 4140963}
@@ -25,30 +26,24 @@ class GlobalGeoparser(Step):
     self.matcher = NameMatcher()
 
     countries = Gazetteer.countries()
-    admins = Gazetteer.admins()
-    cities = Gazetteer.cities()
 
-    self.common_topos = {}
-    self.common_topos.update(admins)
-    self.common_topos.update(cities)
-    self.common_topos.update(Gazetteer.us_states())
+    self.top_level_topos = {}
+    #self.top_level_topos.update(Gazetteer.admins())
+    #self.top_level_topos.update(Gazetteer.us_states())
+    self.top_level_topos.update(countries)
 
     for toponym, demonyms in Gazetteer.demonyms().items():
       if toponym not in countries:
         continue
       for demonym in demonyms:
-        self.common_topos[demonym] = countries[toponym]
+        self.top_level_topos[demonym] = countries[toponym]
 
-    self.common_topos.update(countries)
-    self.common_topos.update(Gazetteer.oceans())
-    self.common_topos.update(Gazetteer.continents())
-    self.common_topos.update(common_abbrevs)
+    self.top_level_topos.update(Gazetteer.oceans())
+    self.top_level_topos.update(Gazetteer.continents())
+    self.top_level_topos.update(self.common_abbrevs)
 
     self.lookup_tree = {}
-    stopwords = Gazetteer.stopwords()
-    for toponym in self.common_topos:
-      if toponym in stopwords:
-        continue
+    for toponym in self.top_level_topos:
       key = toponym[:2]
       if key not in self.lookup_tree:
         self.lookup_tree[key] = []
@@ -57,29 +52,29 @@ class GlobalGeoparser(Step):
     self.candidates = {}
 
   def annotate(self, doc):
-    resolutions = self._resolve_defaults(doc)
+    resolutions = {}
 
-    unresolved = set()
     for a in doc.get_all(Layer.topo):
-      if a.data not in resolutions:
-        unresolved.add(a.phrase)
-    
-    for toponym in unresolved:
-      candidates = self._select_candidates(toponym)
-      if len(candidates) == 0:
-        continue
-      city = self._city_result(toponym, candidates[0])
-      resolutions[toponym] = city
+      if a.phrase in self.top_level_topos:
+        geoname_id = self.top_level_topos[a.phrase]
+        default = Datastore.get_geoname(geoname_id)
+      else:
+        candidates = self._select_candidates(a.phrase)
+        if len(candidates) == 0:
+          continue
+        default = self._city_result(a.phrase, candidates[0])
 
-    should_continue = not self.keep_defaults
+      print(f'gres - chose {default} for "{a.phrase}"')
+      resolutions[a.phrase] = default
+
+    self._find_missed_top_levels(doc, resolutions)
+
+    should_continue = len(resolutions) > 1 and not self.keep_defaults
     rounds = 0
     while should_continue:
       rounds += 1
       should_continue = False
-
       tree = GeoNamesTree(resolutions)
-      if len(tree.adm1s) < 2:
-        break
 
       for adm1 in tree.adm1s:
         if tree.adm1_supported(adm1):
@@ -90,7 +85,7 @@ class GlobalGeoparser(Step):
           should_continue = True
           city = self._city_result(toponym, new)
           resolutions[toponym] = city
-          print(f'Chose {city} over {geoname} for {toponym}')
+          print(f'gres - heuristic preferred {city} for {toponym}')
           break
     
     for a in doc.get_all(Layer.topo):
@@ -98,9 +93,8 @@ class GlobalGeoparser(Step):
         geoname = resolutions[a.phrase]
         doc.annotate(Layer.gres, a.pos, a.phrase, 'global', geoname.id)
 
-
-  def _resolve_defaults(self, doc):
-    resolutions = {}
+  def _find_missed_top_levels(self, doc, resolutions):
+    topo_indices = doc.annotations_by_index(Layer.topo)
 
     def lookup(prefix):
       key = prefix[:2]
@@ -110,14 +104,15 @@ class GlobalGeoparser(Step):
       return [t for t in toponyms if t.startswith(prefix)]
 
     def commit(c):
-      geoname_id = self.common_topos[c.lookup_phrase]
+      indices = range(c.pos, c.end)
+      overlaps = [i for i in topo_indices if i in indices]
+      if len(overlaps) > 0:
+        return False
+      geoname_id = self.top_level_topos[c.lookup_phrase]
       resolutions[c.match] = Datastore.get_geoname(geoname_id)
       return True
 
     self.matcher.find_matches(doc, lookup, commit)
-
-    return resolutions
-
 
   def _select_candidates(self, toponym):
     if toponym in self.candidates:
@@ -127,7 +122,7 @@ class GlobalGeoparser(Step):
     parts = len(toponym.split(' '))
     candidates = []
     for g in results:
-      base = self._base_name(toponym)
+      base = self._base_name(g.name)
       base_topo = self._base_name(g.toponym_name)
       if base_name not in base and base_name not in base_topo:
         continue
@@ -137,8 +132,7 @@ class GlobalGeoparser(Step):
       candidates.append(g)
     if len(candidates) == 0 and len(results) > 0 and results[0].is_city:
       candidates.append(results[0])
-      print(f'Chose first non-matching cadidate for "{toponym}": {results[0]}')
-    candidates = sorted(candidates, key=lambda g: -g.population)
+      print(f'gres - chose first non-matching cadidate for "{toponym}": {results[0]}')
     self.candidates[toponym] = candidates
     return candidates
 
@@ -156,6 +150,8 @@ class GlobalGeoparser(Step):
 
     if len(candidates) == 0:
       return None
+
+    candidates = sorted(candidates, key=lambda g: -g.population)
 
     for g in candidates[:10]:
       node = tree.node_for(g, False)

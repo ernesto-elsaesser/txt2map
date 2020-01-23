@@ -68,10 +68,11 @@ class Document:
           deleted.append(overlap.pos)
         elif not allow_overlap:
           print(f'{layer} - annotation {phrase} [{group}] blocked by {overlap.phrase} [{overlap.group}]')
-          return
+          return False
     
 
     self.anns[layer].append(ann)
+    return True
 
   def update_annotation(self, layer, pos, new_group, new_data):
     anns = self.anns[layer]

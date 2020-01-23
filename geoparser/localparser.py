@@ -21,35 +21,42 @@ class LocalGeoparser(Step):
     tree = GeoNamesTree(resolutions)
 
     entity_indicies = doc.annotations_by_index(Layer.ner)
+    seen = []
 
     for leaf in tree.leafs():
-      items = list(leaf.geonames.items())
-      anchors = [i for i in items if i[1].is_city]
+      geonames = leaf.geonames.values()
+      anchors = [g for g in geonames if g.is_city]
 
       if len(anchors) == 0:
-        (toponym, geoname) = min(items, key=lambda t: t[1].population)
-        anchor = self._find_anchor(toponym, geoname)
+        smallest = min(geonames, key=lambda g: g.population)
+        anchor = self._find_city_child(smallest)
         if anchor != None:
-          anchors.append((toponym, anchor))
+          anchors.append(anchor)
 
-      anchors = sorted(anchors, key=lambda a: -a[1].population)
-      for toponym, geoname in anchors:
-        db = Datastore.load_osm_database(geoname)
+      anchors = sorted(anchors, key=lambda g: -g.population)
+      for anchor in anchors:
+        if anchor.id in seen:
+          continue
+        seen.append(anchor.id)
+        print(f'lres - anchor: {anchor}')
+        db = Datastore.load_osm_database(anchor)
 
         def commit_match(c):
-          if c.match == toponym:
+          if c.match == anchor.name:
             return False
           if c.pos in entity_indicies:
             ent_ann = entity_indicies[c.pos]
             if len(ent_ann.phrase) > len(c.match):
               return False
           osm_refs = db.get_elements(c.lookup_phrase)
-          doc.annotate(Layer.lres, c.pos, c.match, 'local', osm_refs, replace_shorter=True)
-          return True
+          added = doc.annotate(Layer.lres, c.pos, c.match, 'local', osm_refs, replace_shorter=True)
+          if added:
+            print(f'lres - local match: {c.match}')
+          return added
 
         self.matcher.find_matches(doc, db.find_names, commit_match)
 
-  def _find_anchor(self, toponym, geoname):
+  def _find_city_child(self, geoname):
     hierarchy = Datastore.get_hierarchy(geoname.id)
     if len(hierarchy) < 2:
       return None

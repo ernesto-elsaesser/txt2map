@@ -30,8 +30,6 @@ pipe = builder.build('spacy')
 #imp.import_documents(tests)
 
 tests.bulk_process(pipe, evaluator=ev_res)
-
-# saved_steps=['spacy', 'gaz', 'geores', 'clust'], 
-#lgls.process(pipe, '40647404')
+#tests.process(pipe, 'global_two')
 
 

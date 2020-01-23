@@ -161,7 +161,7 @@ class ResolEvaluator(Evaluator):
     incorrects = []
     missed = []
 
-    res_indices = doc.annotations_by_index(Layer.gres)
+    res_indices = doc.annotations_by_index(self.layer)
 
     for g in gold_doc.get_all(Layer.gold, self.gold_group):
       self.total += 1

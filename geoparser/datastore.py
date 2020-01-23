@@ -96,11 +96,10 @@ class Datastore:
     osm_db = OSMDatabase(sqlite_db)
 
     if not is_cached:
-      print(f'requesting OSM data for {geoname} ...')
+      print(f'lres - requesting OSM data for {geoname} ...')
       box = GeoUtil.bounding_box(geoname.lat, geoname.lon, search_dist)
       csv_reader = OverpassAPI.load_names_in_bounding_box(box, Datastore.osm_exclusions)
       name_count = Datastore._store_osm_data(osm_db, csv_reader, 1, [2, 3, 4, 5, 6])
-      print(f'created database with {name_count} names.')
 
     return osm_db
 

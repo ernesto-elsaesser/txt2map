@@ -76,12 +76,10 @@ class Gazetteer:
   def extract_large_entries(data_path, classes):
 
     pop_limit = Gazetteer.population_limit
-    top_names = {}
-    top_pops = {}
+    toponyms = {}
 
     for fcl in classes:
-      top_names[fcl] = {}
-      top_pops[fcl] = {}
+      toponyms[fcl] = set()
 
     last_log = 0
 
@@ -96,23 +94,14 @@ class Gazetteer:
       if pop < pop_limit:
         continue
 
-      id = int(row[0])
-      if (id == 6295630):
-        continue # Earth
-
-      name = row[1]
-      if name in top_names[fcl] and top_pops[fcl][name] >= pop:
-        continue
-
-      top_names[fcl][name] = id
-      top_pops[fcl][name] = pop
+      toponyms[fcl].add(row[1])
 
       if reader.line_num > last_log + 500_000:
         print('at row', reader.line_num)
         last_log = reader.line_num
 
-    for fcl in top_names:
-      Datastore.save_gazetteer(fcl, top_names[fcl])
+    for fcl, names in toponyms.items():
+      Datastore.save_gazetteer(fcl, list(names))
 
     print('Entries extracted.')
 
