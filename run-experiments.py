@@ -29,9 +29,10 @@ pipe = builder.build('spacy')
 #imp = GeoWebNewsImporter()
 #imp.import_documents(gwn)
 
-gwn.bulk_process(pipe, evaluator=ev_res, doc_range=range(100))
-#gwn.process(pipe, '128', evaluator=ev_res)
+#gwn.bulk_process(pipe, evaluator=ev_res, doc_range=range(100))
+gwn.process(pipe, '173', evaluator=ev_res)
 #tests.bulk_process(pipe, evaluator=ev_res)
 #tests.process(pipe, 'global_two')
 
 
+# 182

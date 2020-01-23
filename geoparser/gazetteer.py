@@ -82,16 +82,18 @@ class Gazetteer:
   def update_top_level():
     continents = {}
     countries = {}
-    us_states = {}
     continent_map = {}
 
-    cache = GeoNamesCache()
-    for continent in cache.get_children(6295630):  # Earth
+    for continent in Datastore.get_children(6295630):  # Earth
       continents[continent.name] = continent.id
       print('loading countries in', continent.name)
-      for country in cache.get_children(continent.id):
+      for country in Datastore.get_children(continent.id):
         continent_map[country.cc] = continent.name
         countries[country.name] = country.id
+        if country.id == 2635167:  # UK
+          for uk_country in Datastore.get_children(country.id):
+            continent_map[uk_country.cc] = continent.name
+            countries[uk_country.name] = uk_country.id
 
     Datastore.save_gazetteer('continents', continents)
     Datastore.save_gazetteer('countries', countries)

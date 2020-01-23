@@ -83,31 +83,5 @@ class LocalGeoparser(Step):
         geoname = child
         continue
 
-      for child in children:
-        if child.name == geoname.name:
-          if child.is_city:
-            return child
-          geoname = child
-          continue
-
       return None
-
-
-
-
-  def _city_result(self, toponym, selected):
-    if selected.is_city or selected.adm1 == '-':
-      return selected
-
-    name = selected.name
-    region = selected.region()
-    results = Datastore.search_geonames(toponym)
-    for g in results:
-      if not g.is_city:
-        continue
-      if not g.region() == region:
-        continue
-      if g.name in name or name in g.name:
-        return g
-
-    return selected
+      
