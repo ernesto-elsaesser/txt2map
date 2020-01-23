@@ -25,7 +25,11 @@ class Gazetteer:
 
     top_level = {}
     top_level.update(Gazetteer.us_states())
-    del top_level['New York'] # default sense is the city, not the state
+
+    # default senses are the cities, not the states
+    del top_level['New York'] 
+    del top_level['Washington']
+    
     top_level.update(countries)
 
     for toponym, demonyms in Gazetteer.demonyms().items():

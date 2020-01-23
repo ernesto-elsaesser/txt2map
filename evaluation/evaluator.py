@@ -1,7 +1,7 @@
 import os
 import json
 import urllib
-from geoparser import Datastore, Layer, GeoUtil, GeoNamesAPI
+from geoparser import Datastore, Layer, GeoUtil, GeoNamesAPI, OverpassAPI
 
 class Evaluator:
 
@@ -212,17 +212,9 @@ class ResolEvaluator(Evaluator):
     return dist < tol
 
   def _osm_hit(self, gold_lat, gold_lon, osm_refs, tol):
-    elements = Datastore.load_osm_geometries(osm_refs)
-    dist = GeoUtil.osm_element_distance(gold_lat, gold_lon, elements[0])
-    osm_diameter = Datastore.osm_search_dist * 2
-    if dist < tol:
-      return True
-    elif dist < tol + osm_diameter: # correct local context, try other elements
-      for e in elements[1:]:
-        d = GeoUtil.osm_element_distance(gold_lat, gold_lon, e)
-        if d < tol:
-          return True
-    return False
+    bb_data = OverpassAPI.load_bounding_boxes(osm_refs)
+    dist = GeoUtil.osm_minimum_distance(gold_lat, gold_lon, bb_data)
+    return dist < tol
 
   def _wiki_hit(self, gold_id, wiki_url, tol):
     geoname_id = self._geoname_for_wiki_url(wiki_url)

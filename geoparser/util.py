@@ -40,51 +40,22 @@ class GeoUtil:
     return dist / 1000
 
   @staticmethod
-  def minimum_distance(lat, lon, lat_lons):
-    l = len(lat_lons)
-
-    if l > 2 and lat_lons[0] == lat_lons[-1]:
-      point = GeoUtil.geojson_point(lat, lon)
-      polygon = GeoUtil.geojson_polygon(lat_lons)
-      is_inside = geojson_utils.point_in_polygon(point, polygon)
-      if is_inside:
-        return 0
-
+  def osm_minimum_distance(lat, lon, bb_data):
     min_dist = float('inf')
-    step = int(math.ceil(l / 10))
-    for idx in range(0, l, step):
-      (lat2, lon2) = lat_lons[idx]
-      dist = GeoUtil.distance(lat, lon, lat2, lon2)
-      if dist == 0:
-        return 0
+    for el in bb_data['elements']:
+      t = el['type']
+      if t == 'node':
+        dist = GeoUtil.distance(lat, lon, el['lat'], el['lon'])
+      else:
+        b = el['bounds']
+        if b['minlat'] < lat < b['maxlat'] and b['minlon'] < lon < b['maxlon']:
+          return 0
+        center_lat = (b['minlat'] + b['maxlat']) / 2
+        center_lon = (b['minlon'] + b['maxlon']) / 2
+        dist = GeoUtil.distance(lat, lon, center_lat, center_lon)
       if dist < min_dist:
         min_dist = dist
-
     return min_dist
-
-  @staticmethod
-  def osm_element_distance(lat, lon, el):
-    t = el['type']
-    if t == 'node':
-      return GeoUtil.distance(lat, lon, el['lat'], el['lon'])
-    elif t == 'way':
-      lat_lons = [(p['lat'], p['lon']) for p in el['geometry']]
-      return GeoUtil.minimum_distance(lat, lon, lat_lons)
-    elif t == 'relation':
-      distances = []
-      for m in el['members']:
-        if m['role'] in ['label', 'admin_centre', 'subarea', 'inner']:
-          continue
-        if m['type'] == 'relation':
-          print('Super-relations not supported!')
-          continue
-        dist = GeoUtil.osm_element_distance(lat, lon, m)
-        distances.append(dist)
-        if dist == 0:
-          break
-      if len(distances) == 0:
-        return float('inf')
-      return min(distances)
 
   @staticmethod
   def coordinates_for_wiki_url(url):

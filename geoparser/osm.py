@@ -25,11 +25,11 @@ class OverpassAPI:
     return reader
 
   @staticmethod
-  def load_geometries(elements):
+  def load_bounding_boxes(elements):
     query = '[out:json]; ('
     for e in elements:
       query += f'{e[0]}({e[1]}); '
-    query += '); out geom;'
+    query += '); out ids bb;'
     response = OverpassAPI.post_query(query)
     return response.json()
     

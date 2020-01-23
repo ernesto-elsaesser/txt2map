@@ -122,29 +122,6 @@ class Datastore:
     osm_db.commit_changes()
     return name_count
 
-
-  @staticmethod
-  def load_osm_geometries(elements):
-    short_refs = [e[0][0] + str(e[1]) for e in elements]
-    max_ref = max(short_refs)
-    num = len(elements) - 1
-    data_dir = Datastore.data_dir
-    file_path = f'{data_dir}/{max_ref}+{num}.json'
-    is_cached = os.path.exists(file_path)
-
-    if is_cached:
-      with open(file_path, 'r') as f:
-        json_str = f.read()
-      json_data = json.loads(json_str)
-    else:
-      osm_json = OverpassAPI.load_geometries(elements)
-      json_data = osm_json['elements']
-      with open(file_path, 'w') as f:
-        json_str = json.dumps(json_data)
-        f.write(json_str)
-
-    return json_data
-
   
   @staticmethod
   def load_gazetteer(file_name):
