@@ -143,7 +143,7 @@ class RecogEvaluator(Evaluator):
 
 class ResolEvaluator(Evaluator):
 
-  def __init__(self, layer=Layer.lres, gold_group=None, measure_accuracy=True, tolerance_geonames=161, tolerance_raw=0.2, geonames_by_dist=False):
+  def __init__(self, layer=Layer.lres, gold_group=None, measure_accuracy=True, tolerance_geonames=161, tolerance_raw=2, geonames_by_dist=False):
     self.layer = layer
     self.gold_group = gold_group
     self.skip_acc = not measure_accuracy

@@ -28,24 +28,25 @@ class GlobalGeoparser(Step):
     admins = Gazetteer.admins()
     cities = Gazetteer.cities()
 
-    self.global_topos = {}
-    self.global_topos.update(cities)
-    self.global_topos.update(admins)
-    self.global_topos.update(Gazetteer.us_states())
+    self.common_topos = {}
+    self.common_topos.update(admins)
+    self.common_topos.update(cities)
+    self.common_topos.update(Gazetteer.us_states())
 
     for toponym, demonyms in Gazetteer.demonyms().items():
       if toponym not in countries:
         continue
       for demonym in demonyms:
-        self.global_topos[demonym] = countries[toponym]
+        self.common_topos[demonym] = countries[toponym]
 
-    self.global_topos.update(countries)
-    self.global_topos.update(Gazetteer.oceans())
-    self.global_topos.update(Gazetteer.continents())
+    self.common_topos.update(countries)
+    self.common_topos.update(Gazetteer.oceans())
+    self.common_topos.update(Gazetteer.continents())
+    self.common_topos.update(common_abbrevs)
 
     self.lookup_tree = {}
     stopwords = Gazetteer.stopwords()
-    for toponym in self.global_topos:
+    for toponym in self.common_topos:
       if toponym in stopwords:
         continue
       key = toponym[:2]
@@ -56,11 +57,11 @@ class GlobalGeoparser(Step):
     self.candidates = {}
 
   def annotate(self, doc):
-    resolutions = self._resolve_defaults()
+    resolutions = self._resolve_defaults(doc)
 
     unresolved = set()
     for a in doc.get_all(Layer.topo):
-      if a.data not resolutions:
+      if a.data not in resolutions:
         unresolved.add(a.phrase)
     
     for toponym in unresolved:
@@ -109,8 +110,8 @@ class GlobalGeoparser(Step):
       return [t for t in toponyms if t.startswith(prefix)]
 
     def commit(c):
-      geoname_id = gazetteer[c.lookup_phrase]
-      resolutions[c.match] = Datastore.get(geoname_id)
+      geoname_id = self.common_topos[c.lookup_phrase]
+      resolutions[c.match] = Datastore.get_geoname(geoname_id)
       return True
 
     self.matcher.find_matches(doc, lookup, commit)
@@ -169,7 +170,7 @@ class GlobalGeoparser(Step):
 
     name = selected.name
     region = selected.region()
-    results = Datastore.search(toponym)
+    results = Datastore.search_geonames(toponym)
     for g in results:
       if not g.is_city:
         continue

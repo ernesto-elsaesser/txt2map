@@ -1,4 +1,4 @@
-from .document import Document
+from .document import Document, Layer
 from .datastore import Datastore
 from .pipeline import Step, Pipeline, PipelineBuilder
 from .ner import NERException

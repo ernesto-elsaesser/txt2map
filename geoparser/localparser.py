@@ -16,33 +16,35 @@ class LocalGeoparser(Step):
   def annotate(self, doc):
     resolutions = {}
     for a in doc.get_all(Layer.gres):
-      doc.annotate(Layer.lres, a.pos, a.match, 'global', a.data)
+      doc.annotate(Layer.lres, a.pos, a.phrase, 'global', a.data)
       resolutions[a.phrase] = Datastore.get_geoname(a.data)
     tree = GeoNamesTree(resolutions)
 
-    entity_indicies = doc.annotations_by_index('ner')
+    entity_indicies = doc.annotations_by_index(Layer.ner)
 
     for leaf in tree.leafs():
       items = list(leaf.geonames.items())
-      anchors = [g for _, g in items if g.is_city]
+      anchors = [i for i in items if i[1].is_city]
 
       if len(anchors) == 0:
         (toponym, geoname) = min(items, key=lambda t: t[1].population)
         anchor = self._find_anchor(toponym, geoname)
         if anchor != None:
-          anchors.append(anchor)
+          anchors.append((toponym, anchor))
 
-      anchors = sorted(anchors, key=lambda g: -g.population)
-      for anchor in anchors:
-        db = Datastore.load_osm_database(anchor)
+      anchors = sorted(anchors, key=lambda a: -a[1].population)
+      for toponym, geoname in anchors:
+        db = Datastore.load_osm_database(geoname)
 
         def commit_match(c):
-          if ' ' not in c.match and c.pos in entity_indicies:
+          if c.match == toponym:
+            return False
+          if c.pos in entity_indicies:
             ent_ann = entity_indicies[c.pos]
-            if ent_ann.phrase != c.match:
+            if len(ent_ann.phrase) > len(c.match):
               return False
           osm_refs = db.get_elements(c.lookup_phrase)
-          doc.annotate(Layer.lres, c.pos, c.match, cluster_key, osm_refs, replace_shorter=True)
+          doc.annotate(Layer.lres, c.pos, c.match, 'local', osm_refs, replace_shorter=True)
           return True
 
         self.matcher.find_matches(doc, db.find_names, commit_match)
@@ -62,7 +64,7 @@ class LocalGeoparser(Step):
       if len(children) == 1:
         child = children[0]
         if child.is_city:
-            return child
+          return child
         geoname = child
         continue
 

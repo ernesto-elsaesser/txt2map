@@ -3,6 +3,8 @@ import csv
 import json
 import sqlite3
 from .util import GeoUtil
+from .geonames import GeoName, GeoNamesAPI
+from .osm import OverpassAPI
 
 
 class Datastore:
@@ -74,7 +76,7 @@ class Datastore:
     sqlite_db = sqlite3.connect(db_path)
     geonames_db = GeoNamesDatabase(sqlite_db)
     if not exists:
-      Datastore._create_geonames_tables(geonames_db)
+      geonames_db.create_tables()
     return geonames_db
 
   @staticmethod
@@ -84,7 +86,7 @@ class Datastore:
       os.mkdir(data_dir)
 
     search_dist = Datastore.osm_search_dist
-    file_path = f'{data_dir}/{g.id}-{search_dist}km.db'
+    file_path = f'{data_dir}/{geoname.id}-{search_dist}km.db'
     is_cached = os.path.exists(file_path)
     if is_cached and os.stat(file_path).st_size == 0:
       # inconsistent database state
@@ -94,10 +96,9 @@ class Datastore:
     osm_db = OSMDatabase(sqlite_db)
 
     if not is_cached:
-      print(f'requesting OSM data for {geonames} ...')
-      def bbox(g): return GeoUtil.bounding_box(g.lat, g.lon, search_dist)
-      boxes = [bbox(g) for g in geonames]
-      csv_reader = OverpassAPI.load_names_in_bounding_boxes(boxes, Datastore.osm_exclusions)
+      print(f'requesting OSM data for {geoname} ...')
+      box = GeoUtil.bounding_box(geoname.lat, geoname.lon, search_dist)
+      csv_reader = OverpassAPI.load_names_in_bounding_box(box, Datastore.osm_exclusions)
       name_count = Datastore._store_osm_data(osm_db, csv_reader, 1, [2, 3, 4, 5, 6])
       print(f'created database with {name_count} names.')
 
@@ -161,22 +162,6 @@ class Datastore:
     with open(file_path, 'w') as f:
       json.dump(obj, f)
 
-
-  @staticmethod
-  def _create_geonames_tables(db):
-    db.initialize(
-        ['CREATE TABLE geonames (geoname_id INT UNIQUE, name TEXT, population INT, lat REAL, lng REAL, fcl CHAR(1), fcode VARCHAR(10), cc CHAR(2), adm1 TEXT, toponame TEXT)',
-        'CREATE TABLE search (name TEXT UNIQUE, result_ids TEXT)',
-        'CREATE TABLE hierarchy (geoname_id INT UNIQUE, ancestor_ids TEXT)',
-        'CREATE TABLE children (geoname_id INT UNIQUE, child_ids TEXT)'])
-
-  @staticmethod
-  def _create_osm_tables(db):
-    db.initialize(
-        ['CREATE TABLE names (name VARCHAR(100) NOT NULL UNIQUE)',
-        'CREATE INDEX names_index ON names(name)',
-        'CREATE TABLE osm (ref BIGINT NOT NULL, names_rowid INTEGER NOT NULL, type_code TINYINT NOT NULL)',
-        'CREATE INDEX osm_index ON osm(names_rowid)']
 
 class Database:
 
@@ -294,7 +279,7 @@ class OSMDatabase(Database):
         ['CREATE TABLE names (name VARCHAR(100) NOT NULL UNIQUE)',
         'CREATE INDEX names_index ON names(name)',
         'CREATE TABLE osm (ref BIGINT NOT NULL, names_rowid INTEGER NOT NULL, type_code TINYINT NOT NULL)',
-        'CREATE INDEX osm_index ON osm(names_rowid)']
+        'CREATE INDEX osm_index ON osm(names_rowid)'])
 
   def insert_element(self, name, type_name, element_id):
     first = name[0]

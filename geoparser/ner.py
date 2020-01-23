@@ -3,9 +3,10 @@ import csv
 from google.cloud import language
 from google.cloud.language import enums
 from google.cloud.language import types
-from document import Layer
+from .pipeline import Step
+from .document import Layer
 
-class NERException:
+class NERException(Exception):
   pass
 
 class EntityRecognizer(Step):
@@ -28,7 +29,7 @@ class EntityRecognizer(Step):
       raise NERException('NER service not running!')
 
     response.encoding = 'utf-8'
-    entities = self._extract_annotations(response.text)
+    entities = self._extract_annotations(response.text, doc)
     for pos, phrase, group in entities:
       doc.annotate(Layer.ner, pos, phrase, group)
 

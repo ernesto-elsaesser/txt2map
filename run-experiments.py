@@ -1,7 +1,5 @@
-from annotation import *
+from geoparser import *
 from evaluation import *
-
-from geoparser import OSMLoader, GeoNamesCache
 
 builder = PipelineBuilder()
 builder.spacy_url = 'http://localhost:8001'
@@ -26,12 +24,12 @@ ev_res_street = ResolEvaluator(gold_group='raw')
 ev_res_lgls = ResolEvaluator(measure_accuracy=False)
 ev_res_gritta = ResolEvaluator(gold_group='geonames', geonames_by_dist=True) 
 
-pipe = builder.build_res('spacy')
+pipe = builder.build('spacy')
 
-imp = TestsImporter()
-imp.import_documents(tests)
+#imp = TestsImporter()
+#imp.import_documents(tests)
 
-#gwn.bulk_process(pipe, saved_steps=['spacy','gaz','geores'], evaluator=ev_res_gritta)
+tests.bulk_process(pipe, evaluator=ev_res)
 
 # saved_steps=['spacy', 'gaz', 'geores', 'clust'], 
 #lgls.process(pipe, '40647404')

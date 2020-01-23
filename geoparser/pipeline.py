@@ -1,14 +1,15 @@
-from .ner import SpacyClient, StanfordClient, CogCompClient, GoogleCloudNLClient
-from .reclassifier import Reclassifier
-from .local-parser import LocalGeoparser
-from .global-parser import GlobalGeoparser
-from .gazetteer import Gazetteer
-
 
 class Step:
 
   def annotate(self, doc):
     return
+
+from .document import Layer
+from .ner import SpacyEntityRecognizer, StanfordEntityRecognizer, CogCompEntityRecognizer, GCNLEntityLinker
+from .reclassifier import Reclassifier
+from .localparser import LocalGeoparser
+from .globalparser import GlobalGeoparser
+from .gazetteer import Gazetteer
 
 
 class Pipeline:
@@ -39,13 +40,13 @@ class PipelineBuilder:
 
   def build_ner(self, ner_key):
     pipe = self.build_empty()
-    if ner_key == SpacyServerNERStep.key:
+    if ner_key == SpacyEntityRecognizer.key:
       pipe.add(SpacyEntityRecognizer(self.spacy_url))
-    elif ner_key == CogCompServerNERStep.key:
+    elif ner_key == CogCompEntityRecognizer.key:
       pipe.add(CogCompEntityRecognizer(self.cogcomp_url))
-    elif ner_key == StanfordServerNERStep.key:
+    elif ner_key == StanfordEntityRecognizer.key:
       pipe.add(StanfordEntityRecognizer(self.stanford_url))
-    elif ner_key == GCNLNERStep.key:
+    elif ner_key == GCNLEntityLinker.key:
       pipe.add(GCNLEntityLinker())
       pipe.add(DemonymRemover())
     else:

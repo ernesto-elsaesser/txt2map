@@ -4,7 +4,7 @@ import json
 import datetime
 from io import StringIO
 from lxml import etree
-from annotation import Document, Layer
+from geoparser import Document, Layer
 from .corpus import Corpus
 
 class GeoWebNewsImporter:

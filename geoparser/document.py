@@ -63,11 +63,11 @@ class Document:
         if replace_shorter and len(overlap.phrase) < len(phrase):
           if overlap.pos in deleted:
             continue
-          print(f'Annotation {phrase} [{group}] replaces {overlap}')
+          print(f'{layer} - annotation {phrase} [{group}] replaces {overlap.phrase} [{overlap.group}]')
           self.delete_annotation(layer, overlap.pos)
           deleted.append(overlap.pos)
         elif not allow_overlap:
-          print(f'Annotation {phrase} [{group}] blocked by {overlap}')
+          print(f'{layer} - annotation {phrase} [{group}] blocked by {overlap.phrase} [{overlap.group}]')
           return
     
 

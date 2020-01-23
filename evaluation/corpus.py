@@ -29,7 +29,7 @@ class Corpus:
   def get_gold_document(self, doc_id):
     return self.get_document(doc_id, ['gold'])
 
-  def annotate_document(self, doc_id, key_path, doc):
+  def save_annotations(self, doc_id, key_path, doc):
     ann_path = self._annotations_path(key_path, doc_id)
     json_str = doc.export_layers()
     with open(ann_path, 'w') as f:
@@ -41,10 +41,11 @@ class Corpus:
       text = f.read()
     doc = Document(text)
 
-    ann_path = self._annotations_path(key_path, doc_id)
-    with open(ann_path, 'r') as f:
-      json_str = f.read()
-    doc.import_layers(json_str)
+    if len(key_path) > 0:
+      ann_path = self._annotations_path(key_path, doc_id)
+      with open(ann_path, 'r') as f:
+        json_str = f.read()
+      doc.import_layers(json_str)
 
     return doc
 
@@ -55,7 +56,7 @@ class Corpus:
       key_path.append(step.key)
       if step.key not in saved_steps:
         layers = step.annotate(doc)
-        self.annotate_document(doc_id, key_path, doc, layers)
+        self.save_annotations(doc_id, key_path, doc)
     return doc
 
   def bulk_process(self, pipeline, saved_steps=[], doc_range=None, evaluator=None):
