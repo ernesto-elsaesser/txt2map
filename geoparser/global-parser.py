@@ -95,8 +95,7 @@ class GlobalGeoparser(Step):
     for a in doc.get_all(Layer.topo):
       if a.phrase in resolutions:
         geoname = resolutions[a.phrase]
-        group = 'uncommon' if a.phrase in unresolved else 'common' 
-        doc.annotate(Layer.gres, a.pos, a.phrase, group, geoname.id)
+        doc.annotate(Layer.gres, a.pos, a.phrase, 'global', geoname.id)
 
 
   def _resolve_defaults(self, doc):

@@ -7,6 +7,7 @@ class Layer:
   gres = 'gres' # global resolution
   lres = 'lres' # local resolution
   wiki = 'wiki' # Wikipedia URLs
+  gold = 'gold' # gold annotations
 
 
 class Annotation:

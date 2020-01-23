@@ -1,7 +1,7 @@
 import os
 import json
 import urllib
-from geoparser import Datastore, GeoUtil, GeoNamesAPI
+from geoparser import Datastore, Layer, GeoUtil, GeoNamesAPI
 
 class Evaluator:
 
@@ -66,9 +66,9 @@ class NEREvaluator(Evaluator):
     missed = []
     pending = []
     for group in self.groups:
-      pending += doc.get_all('ner', group)
+      pending += doc.get_all(Layer.ner, group)
 
-    for g in gold_doc.get_all('gld'):
+    for g in gold_doc.get_all(Layer.gold):
       matches = [a for a in pending if self._matches(a, g)]
       pending = [a for a in pending if a not in matches]
 
@@ -109,9 +109,9 @@ class RecogEvaluator(Evaluator):
   def evaluate(self, doc, gold_doc):
     correct = []
     missed = []
-    pending = doc.get_all('rec')
+    pending = doc.get_all(Layer.topo)
 
-    for g in gold_doc.get_all('gld'):
+    for g in gold_doc.get_all(Layer.gold):
       matches = [a for a in pending if self._matches(a, g)]
       pending = [a for a in pending if a not in matches]
 
@@ -143,13 +143,13 @@ class RecogEvaluator(Evaluator):
 
 class ResolEvaluator(Evaluator):
 
-  def __init__(self, gold_group=None, measure_accuracy=True, tolerance_gns=161, tolerance_raw=0.2, gns_by_dist=False):
+  def __init__(self, layer=Layer.lres, gold_group=None, measure_accuracy=True, tolerance_geonames=161, tolerance_raw=0.2, geonames_by_dist=False):
+    self.layer = layer
     self.gold_group = gold_group
     self.skip_acc = not measure_accuracy
-    self.tol_gns = tolerance_gns
+    self.tol_gns = tolerance_geonames
     self.tol_raw = tolerance_raw
-    self.gns_by_dist = gns_by_dist
-    self.gns_cache = GeoNamesCache()
+    self.gns_by_dist = geonames_by_dist
     self.wiki_coords_cache = {}
     self.correct = 0
     self.incorrect = 0
@@ -161,9 +161,9 @@ class ResolEvaluator(Evaluator):
     incorrects = []
     missed = []
 
-    res_indices = doc.annotations_by_index('res')
+    res_indices = doc.annotations_by_index(Layer.gres)
 
-    for g in gold_doc.get_all('gld', self.gold_group):
+    for g in gold_doc.get_all(Layer.gold, self.gold_group):
       self.total += 1
       
       a = None
@@ -181,26 +181,26 @@ class ResolEvaluator(Evaluator):
         continue
 
       resolved = False
-      if g.group == 'gns':
-        if a.group == 'wik':
+      if g.group == 'geonames':
+        if a.group == 'wiki':
           resolved = self._wiki_gns_hit(g.data, a.data)
-        elif a.group == 'glo':
+        elif a.group == 'global':
           if self.gns_by_dist:
-            gold_geo = self.gns_cache.get(g.data)
+            gold_geo = Datastore.get_geoname(g.data)
             resolved = self._gns_coord_hit(gold_geo.lat, gold_geo.lon, a.data, self.tol_gns)
           else:
             resolved = self._gns_hit(g.data, a.data)
-        elif a.group.startswith('clu-'):
-          gold_geo = self.gns_cache.get(g.data)
+        elif a.group == 'local':
+          gold_geo = Datastore.get_geoname(g.data)
           resolved = self._osm_hit(gold_geo.lat, gold_geo.lon, a.data, self.tol_gns)
       else:
-        if a.group == 'wik':
+        if a.group == 'wiki':
           resolved = self._wiki_coord_hit(g.data[0], g.data[1], a.data)
-        elif a.group == 'glo':
+        elif a.group == 'global':
           resolved = self._gns_coord_hit(g.data[0], g.data[1], a.data, self.tol_raw)
           if not resolved:
             print('WRONG GEO MATCH!')
-        elif a.group.startswith('clu-'):
+        elif a.group == 'local':
           resolved = self._osm_hit(g.data[0], g.data[1], a.data, self.tol_raw)
 
       if resolved:
@@ -224,13 +224,13 @@ class ResolEvaluator(Evaluator):
     return False
 
   def _related_ids(self, geoname_id):
-    hierarchy = self.gns_cache.get_hierarchy(geoname_id)
+    hierarchy = Datastore.get_hierarchy(geoname_id)
     name = hierarchy[-1].name
     related = [g for g in hierarchy][-3:]  # accept up to two levels above
     return [g.id for g in related if name in g.name or g.name in name]
 
   def _gns_coord_hit(self, gold_lat, gold_lon, geoname_id, tol):
-    geo = self.gns_cache.get(geoname_id)
+    geo = Datastore.get_geoname(geoname_id)
     dist = GeoUtil.distance(geo.lat, geo.lon, gold_lat, gold_lon)
     return dist < tol
 
@@ -269,7 +269,7 @@ class ResolEvaluator(Evaluator):
       geoname_id = cache[title]
     else:
       geoname_id = ''
-      results = self.gns_cache.search(title)[:25]
+      results = Datastore.search(title)[:25]
       for g in results:
         full_geo = GeoNamesAPI.get_geoname(g.id)
         if full_geo.wiki_url == None:

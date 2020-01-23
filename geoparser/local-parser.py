@@ -7,13 +7,16 @@ from .tree import GeoNamesTree
 
 class LocalGeoparser(Step):
 
+  key = 'local'
+  layers = [Layer.lres]
+
   def __init__(self):
     self.matcher = NameMatcher()
 
   def annotate(self, doc):
     resolutions = {}
     for a in doc.get_all(Layer.gres):
-      doc.annotate(Layer.lres, a.pos, a.match, a.group, a.data)
+      doc.annotate(Layer.lres, a.pos, a.match, 'global', a.data)
       resolutions[a.phrase] = Datastore.get_geoname(a.data)
     tree = GeoNamesTree(resolutions)
 

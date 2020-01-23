@@ -4,7 +4,7 @@ import json
 import datetime
 from io import StringIO
 from lxml import etree
-from annotation import Document
+from annotation import Document, Layer
 from .corpus import Corpus
 
 class GeoWebNewsImporter:
@@ -75,10 +75,10 @@ class GeoWebNewsImporter:
       if category == "Literal_Modifier" and key not in noun_mods:
         continue
       if key in geoname_ids:
-        doc.annotate('gld', pos, phrase, 'gns', geoname_ids[key])
+        doc.annotate(Layer.gold, pos, phrase, 'geonames', geoname_ids[key])
         self.gns_count += 1
       elif key in coords:
-        doc.annotate('gld', pos, phrase, 'raw', coords[key])
+        doc.annotate(Layer.gold, pos, phrase, 'raw', coords[key])
         self.raw_count += 1
       else:
         assert False
@@ -102,7 +102,7 @@ class LGLImporter:
 
       gold_doc = Document(text)
       self._annotate_gold_coords(gold_doc, article, exclude_geo)
-      if len(gold_doc.get_all('gld')) > 0:
+      if len(gold_doc.get_all(Layer.gold)) > 0:
         corpus.add_document(doc_id, gold_doc)
       
     print(f'Imported {self.gns_count + self.non_count} toponyms ({self.gns_count}/{self.non_count} - {self.skip_count}).')
@@ -120,11 +120,11 @@ class LGLImporter:
       phrase = toponym.find('phrase').text
 
       if tag == None:
-        doc.annotate('gld', pos, phrase, 'non', '')
+        doc.annotate(Layer.gold, pos, phrase, 'none', '')
         self.non_count += 1
       else:
         geoname_id = tag.get('geonameid')
-        doc.annotate('gld', pos, phrase, 'gns', geoname_id)
+        doc.annotate(Layer.gold, pos, phrase, 'geonames', geoname_id)
         self.gns_count += 1
 
 
@@ -145,8 +145,8 @@ class TestsImporter:
         phrase = arr[0]
         pos = text.find(phrase)
         if len(arr) == 3:
-          gold_doc.annotate('gld', pos, phrase, 'raw', arr[1:3])
+          gold_doc.annotate(Layer.gold, pos, phrase, 'raw', arr[1:3])
         else:
-          gold_doc.annotate('gld', pos, phrase, 'gns', arr[1])
+          gold_doc.annotate(Layer.gold, pos, phrase, 'geonames', arr[1])
 
       corpus.add_document(doc_id, gold_doc)

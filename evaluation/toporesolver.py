@@ -1,10 +1,13 @@
 import requests
 import csv
-from geoparser import Pipeline, Step
+from geoparser import Pipeline, Step, Layer
 
 class TopoResolverClient(Step):
 
-  def __init__(self):
+  key = 'tr'
+  layers = [Layer.gres]
+
+  def __init__(self, url):
     self.server_url = url
 
   def create_pipeline(self):
@@ -13,9 +16,6 @@ class TopoResolverClient(Step):
     return pipe
 
   def annotate(self, doc):
-    self.annotate_res(doc)
-
-  def annotate_res(self, doc):
     req_data = doc.text.encode('utf-8')
     response = requests.post(url=self.server_url, data=req_data, timeout=10)
     response.encoding = 'utf-8'
@@ -27,6 +27,5 @@ class TopoResolverClient(Step):
       pos = int(columns[1])
       phrase = columns[0]
       geoname_id = int(columns[2])
-      doc.annotate('rec', pos, phrase, 'glo', '')
-      doc.annotate('res', pos, phrase, 'glo', geoname_id)
+      doc.annotate(Layer.gres, pos, phrase, 'ext', geoname_id)
 

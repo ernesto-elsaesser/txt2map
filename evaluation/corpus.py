@@ -24,14 +24,14 @@ class Corpus:
     text_path = self._text_path(doc_id)
     with open(text_path, 'w') as f:
       f.write(gold_doc.text)
-    self.annotate_document(doc_id, ['gold'], gold_doc, ['gld'])
+    self.annotate_document(doc_id, ['gold'], gold_doc)
 
   def get_gold_document(self, doc_id):
     return self.get_document(doc_id, ['gold'])
 
-  def annotate_document(self, doc_id, key_path, doc, layers):
+  def annotate_document(self, doc_id, key_path, doc):
     ann_path = self._annotations_path(key_path, doc_id)
-    json_str = doc.export_layers(layers)
+    json_str = doc.export_layers()
     with open(ann_path, 'w') as f:
       f.write(json_str)
 
@@ -41,12 +41,10 @@ class Corpus:
       text = f.read()
     doc = Document(text)
 
-    for i in range(len(key_path)):
-      path = key_path[:i+1]
-      ann_path = self._annotations_path(path, doc_id)
-      with open(ann_path, 'r') as f:
-        json_str = f.read()
-      doc.import_layers(json_str)
+    ann_path = self._annotations_path(key_path, doc_id)
+    with open(ann_path, 'r') as f:
+      json_str = f.read()
+    doc.import_layers(json_str)
 
     return doc
 

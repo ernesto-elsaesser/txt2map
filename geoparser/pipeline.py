@@ -32,6 +32,7 @@ class PipelineBuilder:
   spacy_url = None
   cogcomp_url = None
   stanford_url = None
+  keep_defaults = False
 
   def build_empty(self):
     return Pipeline()
@@ -58,7 +59,7 @@ class PipelineBuilder:
 
   def build_res(self, ner_key):
     pipe = self.build_rec(ner_key)
-    pipe.add(GlobalGeoparser())
+    pipe.add(GlobalGeoparser(self.keep_defaults))
     return pipe
 
   def build(self, ner_key):
@@ -73,73 +74,31 @@ class PipelineBuilder:
     return pipe
   
 
-
-
-
-class GazetteerRecogStep(Step):
-
-  key = 'gaz'
-
-  def __init__(self):
-    self.gazrec = GazetteerRecognizer()
-
-  def annotate(self, doc):
-    self.gazrec.annotate_rec(doc)
-    return ['rec']
-
-
-class GeoNamesRecogResolStep(Step):
-
-  key = 'geores'
-
-  def __init__(self):
-    self.geores = GeoNamesResolver()
-
-  def annotate(self, doc):
-    self.geores.annotate_res(doc)
-    return ['res']
-
-
-class GeoNamesDefaultRecogResolStep(Step):
-
-  key = 'georesdef'
-
-  def __init__(self):
-    self.geores = GeoNamesResolver(keep_defaults=True)
-
-  def annotate(self, doc):
-    self.geores.annotate_rec_res(doc)
-    return ['rec', 'res']
-
-
-
 class WikiResolver(Step):
 
   key = 'wikires'
+  layers = [Layer.lres]
 
   def annotate(self, doc):
-    wik_anns = doc.annotations_by_position('wik')
+    wiki_anns = doc.annotations_by_position(Layer.wiki)
     cache = {}
-    for a in doc.get_all('ner', 'loc'):
-      if a.pos not in wik_anns:
+    for a in doc.get_all(Layer.ner, 'loc'):
+      if a.pos not in wiki_anns:
         continue
       url = wik_anns[a.pos].data
-      doc.annotate('rec', a.pos, a.phrase, 'wik', '')
-      doc.annotate('res', a.pos, a.phrase, 'wik', url)
-    return ['rec','res']
-
+      doc.annotate(Layer.lres, a.pos, a.phrase, 'wiki', url)
 
 
 class DemonymRemover(Step):
 
   key = 'remdem'
-  layers = ['ner']
+  layers = [Layer.ner]
 
   def __init__(self):
     dem_map = Gazetteer.demonyms()
     self.demonyms = sum(dem_map.values(), [])
 
   def annotate(self, doc):
-    for a in doc.get_all('ner'):
+    for a in doc.get_all(Layer.ner):
       if a.group == 'loc' and a.phrase in self.demonyms:
-        doc.delete_annotation('ner', a.pos)
+        doc.delete_annotation(Layer.ner, a.pos)
