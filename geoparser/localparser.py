@@ -42,6 +42,8 @@ class LocalGeoparser(Step):
         db = Datastore.load_osm_database(anchor)
 
         def commit_match(c):
+          if c.match.isnumeric():
+            return False
           replace_identical = False
           if c.pos in entity_indicies:
             ent_ann = entity_indicies[c.pos]
@@ -52,12 +54,8 @@ class LocalGeoparser(Step):
               if gres_ann.data == anchor.id:
                 return True # anchor itself
               geoname = Datastore.get_geoname(gres_ann.data)
-              key_path = tree.key_path(geoname)
-              if len(key_path) < 3:
-                return True # country or above
-              node = tree.root.get(key_path, False)
-              if tree.adm1_supported(node):
-                return True # supported global resolution
+              if geoname.char_match(c.match):
+                return True # exact match
               replace_identical = True
           osm_refs = db.get_elements(c.lookup_phrase)
           print(f'lres - local match: {c.match}')
@@ -85,4 +83,31 @@ class LocalGeoparser(Step):
         geoname = child
         continue
 
+      for child in children:
+        if child.name == geoname.name:
+          if child.is_city:
+            return child
+          geoname = child
+          continue
+
       return None
+
+
+
+
+  def _city_result(self, toponym, selected):
+    if selected.is_city or selected.adm1 == '-':
+      return selected
+
+    name = selected.name
+    region = selected.region()
+    results = Datastore.search_geonames(toponym)
+    for g in results:
+      if not g.is_city:
+        continue
+      if not g.region() == region:
+        continue
+      if g.name in name or name in g.name:
+        return g
+
+    return selected

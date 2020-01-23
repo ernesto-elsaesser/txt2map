@@ -1,4 +1,5 @@
 import requests
+import unidecode
 
 
 class GeoName:
@@ -43,6 +44,20 @@ class GeoName:
 
   def region(self):
     return f'{self.cc}-{self.adm1}'
+
+  def char_match(self, name):
+    a = self._base_name(name)
+    b = self._base_name(self.name)
+    c = self._base_name(self.toponym_name)
+    return a == b or a == c
+
+  def _base_name(self, toponym):
+    toponym = toponym.rstrip('.')
+    try:
+      toponym = unidecode(toponym)
+    except:
+      pass
+    return toponym.lower()
 
   def __repr__(self):
     return f'{self.toponym_name}, {self.adm1}, {self.cc} [{self.fcode}]'

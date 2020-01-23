@@ -143,10 +143,9 @@ class RecogEvaluator(Evaluator):
 
 class ResolEvaluator(Evaluator):
 
-  def __init__(self, layer=Layer.lres, gold_group=None, measure_accuracy=True, tolerance_geonames=161, tolerance_raw=2, geonames_by_dist=False):
+  def __init__(self, layer=Layer.lres, gold_group=None, tolerance_geonames=161, tolerance_raw=2, geonames_by_dist=True):
     self.layer = layer
     self.gold_group = gold_group
-    self.skip_acc = not measure_accuracy
     self.tol_gns = tolerance_geonames
     self.tol_raw = tolerance_raw
     self.gns_by_dist = geonames_by_dist
@@ -176,32 +175,26 @@ class ResolEvaluator(Evaluator):
         missed.append(g)
         continue
 
-      if self.skip_acc:
+      if g.group == 'geonames':
+        gold_geo = Datastore.get_geoname(g.data)
+        gold_lat = gold_geo.lat
+        gold_lon = gold_geo.lon
+        tolerance = self.tol_gns
+      elif g.group == 'raw':
+        gold_lat = g.data[0]
+        gold_lon = g.data[1]
+        tolerance = self.tol_raw
+      else:
         corrects.append(g)
         continue
-
+      
       resolved = False
-      if g.group == 'geonames':
-        if a.group == 'wiki':
-          resolved = self._wiki_gns_hit(g.data, a.data)
-        elif a.group == 'global':
-          if self.gns_by_dist:
-            gold_geo = Datastore.get_geoname(g.data)
-            resolved = self._gns_coord_hit(gold_geo.lat, gold_geo.lon, a.data, self.tol_gns)
-          else:
-            resolved = self._gns_hit(g.data, a.data)
-        elif a.group == 'local':
-          gold_geo = Datastore.get_geoname(g.data)
-          resolved = self._osm_hit(gold_geo.lat, gold_geo.lon, a.data, self.tol_gns)
-      else:
-        if a.group == 'wiki':
-          resolved = self._wiki_coord_hit(g.data[0], g.data[1], a.data)
-        elif a.group == 'global':
-          resolved = self._gns_coord_hit(g.data[0], g.data[1], a.data, self.tol_raw)
-          if not resolved:
-            print('WRONG GEO MATCH!')
-        elif a.group == 'local':
-          resolved = self._osm_hit(g.data[0], g.data[1], a.data, self.tol_raw)
+      if a.group == 'wiki':
+        resolved = self._wiki_hit(gold_lat, gold_lon, a.data, tolerance)
+      elif a.group == 'global':
+        resolved = self._gns_hit(gold_lat, gold_lon, a.data, tolerance)
+      elif a.group == 'local':
+        resolved = self._osm_hit(gold_lat, gold_lon, a.data, tolerance)
 
       if resolved:
         corrects.append(g)
@@ -213,23 +206,7 @@ class ResolEvaluator(Evaluator):
     self._print_if_not_empty(incorrects, 'RES INCORRECT')
     self._print_if_not_empty(missed, 'RES MISSED')
 
-
-  def _gns_hit(self, gold_id, geoname_id):
-    gold_ids = self._related_ids(gold_id)
-    if geoname_id in gold_ids:
-      return True
-    related_ids = self._related_ids(geoname_id)
-    if gold_id in related_ids:
-      return True
-    return False
-
-  def _related_ids(self, geoname_id):
-    hierarchy = Datastore.get_hierarchy(geoname_id)
-    name = hierarchy[-1].name
-    related = [g for g in hierarchy][-3:]  # accept up to two levels above
-    return [g.id for g in related if name in g.name or g.name in name]
-
-  def _gns_coord_hit(self, gold_lat, gold_lon, geoname_id, tol):
+  def _gns_hit(self, gold_lat, gold_lon, geoname_id, tol):
     geo = Datastore.get_geoname(geoname_id)
     dist = GeoUtil.distance(geo.lat, geo.lon, gold_lat, gold_lon)
     return dist < tol
@@ -247,11 +224,11 @@ class ResolEvaluator(Evaluator):
           return True
     return False
 
-  def _wiki_gns_hit(self, gold_id, wiki_url):
+  def _wiki_hit(self, gold_id, wiki_url, tol):
     geoname_id = self._geoname_for_wiki_url(wiki_url)
     if geoname_id == None:
       return False
-    return self._gns_hit(gold_id, geoname_id)
+    return self._gns_hit(gold_id, geoname_id, tol)
 
   def _geoname_for_wiki_url(self, url):
     title = url.replace('https://en.wikipedia.org/wiki/', '')
@@ -290,19 +267,6 @@ class ResolEvaluator(Evaluator):
       return None
     else:
       return geoname_id
-
-  def _wiki_coord_hit(self, gold_lat, gold_lon, url):
-    if url in self.wiki_coords_cache:
-      coords = self.wiki_coords_cache[url]
-    else:
-      coords = GeoUtil.coordinates_for_wiki_url(url)
-      self.wiki_coords_cache[url] = coords
-    for lat, lon in coords:
-      dist = GeoUtil.distance(lat, lon, gold_lat, gold_lon)
-      if dist < self.tol_raw:
-        print('COORD HIT: ' + url)
-        return True
-    return False
 
   def _metrics(self):
     metrics = {'Total': self.total}

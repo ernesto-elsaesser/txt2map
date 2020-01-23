@@ -6,6 +6,7 @@ from .pipeline import Step
 from .matcher import NameMatcher
 from .gazetteer import Gazetteer
 from .tree import GeoNamesTree
+from .util import GeoUtil
 
 
 class GlobalGeoparser(Step):
@@ -40,7 +41,7 @@ class GlobalGeoparser(Step):
         results = Datastore.search_geonames(a.phrase)
         if len(results) == 0:
           continue
-        default = self._city_result(a.phrase, results[0])
+        default = results[0]
 
       print(f'gres - chose {default} for "{a.phrase}"')
       resolutions[a.phrase] = default
@@ -61,9 +62,8 @@ class GlobalGeoparser(Step):
         new = self._select_heuristically(toponym, geoname, tree)
         if new != None:
           should_continue = True
-          city = self._city_result(toponym, new)
-          resolutions[toponym] = city
-          print(f'gres - heuristic preferred {city} for {toponym}')
+          resolutions[toponym] = new
+          print(f'gres - heuristic preferred {new} for {toponym}')
           break
     
     for a in doc.get_all(Layer.topo):
@@ -92,27 +92,14 @@ class GlobalGeoparser(Step):
 
     self.matcher.find_matches(doc, lookup, commit)
 
-  def _base_name(self, toponym):
-    toponym = toponym.rstrip('.')
-    try:
-      toponym = unidecode(toponym)
-    except:
-      pass
-    return toponym.lower()
-
   def _select_heuristically(self, toponym, current, tree):
     results = Datastore.search_geonames(toponym)
 
-    base_name = self._base_name(toponym)
     parts = len(toponym.split(' '))
 
     candidates = []
     for g in results:
       if g.id == current.id:
-        continue
-      base = self._base_name(g.name)
-      base_topo = self._base_name(g.toponym_name)
-      if base_name not in base and base_name not in base_topo:
         continue
       g_parts = len(g.name.split(' '))
       if g_parts > parts and g.population == 0:
@@ -130,21 +117,3 @@ class GlobalGeoparser(Step):
         return g
 
     return None
-
-
-  def _city_result(self, toponym, selected):
-    if selected.is_city or selected.adm1 == '-':
-      return selected
-
-    name = selected.name
-    region = selected.region()
-    results = Datastore.search_geonames(toponym)
-    for g in results:
-      if not g.is_city:
-        continue
-      if not g.region() == region:
-        continue
-      if g.name in name or name in g.name:
-        return g
-
-    return selected

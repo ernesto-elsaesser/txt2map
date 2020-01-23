@@ -21,7 +21,7 @@ ev_rec = RecogEvaluator()
 ev_res = ResolEvaluator()
 ev_res_glob = ResolEvaluator(gold_group='geonames')
 ev_res_street = ResolEvaluator(gold_group='raw')
-ev_res_lgls = ResolEvaluator(measure_accuracy=False)
+ev_res_lgls = ResolEvaluator(gold_group='none')
 ev_res_gritta = ResolEvaluator(gold_group='geonames', geonames_by_dist=True) 
 
 pipe = builder.build('spacy')
@@ -29,8 +29,9 @@ pipe = builder.build('spacy')
 #imp = GeoWebNewsImporter()
 #imp.import_documents(gwn)
 
-#gwn.bulk_process(pipe, evaluator=ev_res, doc_range=range(10))
-tests.bulk_process(pipe, evaluator=ev_res)
+gwn.bulk_process(pipe, evaluator=ev_res, doc_range=range(100))
+#gwn.process(pipe, '128', evaluator=ev_res)
+#tests.bulk_process(pipe, evaluator=ev_res)
 #tests.process(pipe, 'global_two')
 
 

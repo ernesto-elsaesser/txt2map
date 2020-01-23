@@ -49,7 +49,7 @@ class Corpus:
 
     return doc
 
-  def process(self, pipeline, doc_id, saved_steps=[]):
+  def process(self, pipeline, doc_id, saved_steps=[], evaluator=None):
     doc = self.get_document(doc_id, saved_steps)
     key_path = []
     for step in pipeline.steps:
@@ -57,7 +57,10 @@ class Corpus:
       if step.key not in saved_steps:
         layers = step.annotate(doc)
         self.save_annotations(doc_id, key_path, doc)
-    return doc
+    
+    if evaluator != None:
+      gold_doc = self.get_gold_document(doc_id)
+      evaluator.evaluate(doc, gold_doc)
 
   def bulk_process(self, pipeline, saved_steps=[], doc_range=None, evaluator=None):
     doc_ids = self.document_ids()
@@ -67,11 +70,7 @@ class Corpus:
     for i in doc_range:
       doc_id = doc_ids[i]
       print(f'-- {doc_id} ({i+1}/{num_docs}) --')
-      doc = self.process(pipeline, doc_id, saved_steps)
-
-      if evaluator != None:
-        gold_doc = self.get_gold_document(doc_id)
-        evaluator.evaluate(doc, gold_doc)
+      self.process(pipeline, doc_id, saved_steps, evaluator)
 
     if evaluator != None:
       print(f'-- EVALUATION --')
