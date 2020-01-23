@@ -1,51 +1,53 @@
 import os
 import csv
 import json
-from .geonames import GeoNamesCache, GeoNamesAPI
-from .config import Config
+from .geonames import GeoNamesAPI
+from .datastore import Datastore
 
 
 class Gazetteer:
 
+  population_limit = 100_000
+
   @staticmethod
   def demonyms():
-    return Gazetteer._load('demonyms')
+    return Datastore.load_gazetteer('demonyms')
 
   @staticmethod
   def continents():
-    return Gazetteer._load('continents')
+    return Datastore.load_gazetteer('continents')
 
   @staticmethod
   def countries():
-    return Gazetteer._load('countries')
+    return Datastore.load_gazetteer('countries')
 
   @staticmethod
   def us_states():
-    return Gazetteer._load('us_states')
+    return Datastore.load_gazetteer('us_states')
 
   @staticmethod
   def oceans():
-    return Gazetteer._load('oceans')
+    return Datastore.load_gazetteer('oceans')
 
   @staticmethod
   def admins():
-    return Gazetteer._load('A')
+    return Datastore.load_gazetteer('A')
 
   @staticmethod
   def cities():
-    return Gazetteer._load('P')
+    return Datastore.load_gazetteer('P')
 
   @staticmethod
   def stopwords():
-    return Gazetteer._load('stopwords')
+    return Datastore.load_gazetteer('stopwords')
 
   @staticmethod
   def continent_map():
-    return Gazetteer._load('continent_map')
+    return Datastore.load_gazetteer('continent_map')
 
   @staticmethod
   def country_boxes():
-    return Gazetteer._load('country_boxes')
+    return Datastore.load_gazetteer('country_boxes')
 
   @staticmethod
   def update_top_level():
@@ -65,15 +67,15 @@ class Gazetteer:
           for state in cache.get_children(country.id):
             us_states[state.name] = state.id
 
-    Gazetteer._save('continents', continents)
-    Gazetteer._save('countries', countries)
-    Gazetteer._save('us_states', us_states)
-    Gazetteer._save('continent_map', continent_map)
+    Datastore.save_gazetteer('continents', continents)
+    Datastore.save_gazetteer('countries', countries)
+    Datastore.save_gazetteer('us_states', us_states)
+    Datastore.save_gazetteer('continent_map', continent_map)
 
   @staticmethod
   def extract_large_entries(data_path, classes):
 
-    pop_limit = Config.gazetteer_population_limit
+    pop_limit = Gazetteer.population_limit
     top_names = {}
     top_pops = {}
 
@@ -110,22 +112,8 @@ class Gazetteer:
         last_log = reader.line_num
 
     for fcl in top_names:
-      Gazetteer._save(fcl, top_names[fcl])
+      Datastore.save_gazetteer(fcl, top_names[fcl])
 
     print('Entries extracted.')
 
-  @staticmethod
-  def _load(file_name):
-    dirname = os.path.dirname(__file__)
-    file_path = f'{dirname}/data/{file_name}.json'
-    with open(file_path, 'r') as f:
-      data = json.load(f)
-    return data
-
-  @staticmethod
-  def _save(file_name, obj):
-    dirname = os.path.dirname(__file__)
-    file_path = f'{dirname}/data/{file_name}.json'
-    with open(file_path, 'w') as f:
-      json.dump(obj, f)
 

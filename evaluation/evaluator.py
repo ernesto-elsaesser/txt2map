@@ -1,7 +1,7 @@
 import os
 import json
 import urllib
-from geoparser import GeoNamesCache, OSMLoader, GeoUtil, GeoNamesAPI, Config
+from geoparser import Datastore, GeoUtil, GeoNamesAPI
 
 class Evaluator:
 
@@ -235,9 +235,9 @@ class ResolEvaluator(Evaluator):
     return dist < tol
 
   def _osm_hit(self, gold_lat, gold_lon, osm_refs, tol):
-    elements = OSMLoader.load_geometries(osm_refs)
+    elements = Datastore.load_osm_geometries(osm_refs)
     dist = GeoUtil.osm_element_distance(gold_lat, gold_lon, elements[0])
-    osm_diameter = Config.local_search_dist * 2
+    osm_diameter = Datastore.osm_search_dist * 2
     if dist < tol:
       return True
     elif dist < tol + osm_diameter: # correct local context, try other elements

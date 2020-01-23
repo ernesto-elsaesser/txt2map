@@ -25,9 +25,9 @@ ev_res_street = ResolEvaluator(gold_group='raw')
 ev_res_lgls = ResolEvaluator(measure_accuracy=False)
 ev_res_gritta = ResolEvaluator(gold_group='gns', gns_by_dist=True) 
 
-pipe = builder.build('cogcomp')
+pipe = builder.build_res('spacy')
 
-lgls.bulk_process(pipe, saved_steps=['cogcomp','gaz','geores'], evaluator=ev_res_lgls)
+gwn.bulk_process(pipe, saved_steps=['spacy','gaz','geores'], evaluator=ev_res_gritta)
 
 # saved_steps=['spacy', 'gaz', 'geores', 'clust'], 
 #lgls.process(pipe, '40647404')

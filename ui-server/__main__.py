@@ -1,7 +1,7 @@
 import sys
 import os
 from flask import Flask, request
-from annotation import Document, PipelineBuilder, PipelineException
+from annotation import Document, PipelineBuilder, NERException
 
 port = sys.argv[1]
 
@@ -60,7 +60,7 @@ def process(pipe):
   try:
     pipe.annotate(doc)
     return doc.export_layers()
-  except PipelineException as e:
+  except NERException as e:
     return str(e), 500
 
 

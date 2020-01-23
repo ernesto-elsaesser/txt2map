@@ -1,5 +1,5 @@
 import os
-from annotation import Document
+from geoparser import Document
 
 class Corpus:
 

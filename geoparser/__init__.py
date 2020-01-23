@@ -1,8 +1,8 @@
-from .config import Config
-from .geonames import GeoNamesCache, GeoNamesAPI, GeoName
+from .document import Document
+from .datastore import Datastore
+from .pipeline import Step, Pipeline, PipelineBuilder
+from .ner import NERException
+from .geonames import GeoNamesAPI, GeoName
+from .osm import OverpassAPI
 from .gazetteer import Gazetteer
-from .osm import OSMLoader, OverpassAPI
 from .util import GeoUtil
-from .recognizer import GazetteerRecognizer
-from .resolver import GeoNamesResolver
-from .clusterer import Clusterer

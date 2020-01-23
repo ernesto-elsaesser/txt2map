@@ -1,5 +1,4 @@
 from .gazetteer import Gazetteer
-from .geonames import GeoNamesCache
 
 
 class GeoNamesTree:

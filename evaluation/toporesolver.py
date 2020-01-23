@@ -1,22 +1,23 @@
 import requests
 import csv
-from .exception import PipelineException
+from geoparser import Pipeline, Step
 
+class TopoResolverClient(Step):
 
-class TopoResolverClient:
-
-  def __init__(self, url=None):
+  def __init__(self):
     self.server_url = url
 
-  def annotate_res(self, doc):
-    if self.server_url == None:
-      raise PipelineException('TopoResolver service not configured!')
+  def create_pipeline(self):
+    pipe = Pipeline()
+    pipe.add(self)
+    return pipe
 
+  def annotate(self, doc):
+    self.annotate_res(doc)
+
+  def annotate_res(self, doc):
     req_data = doc.text.encode('utf-8')
-    try:
-      response = requests.post(url=self.server_url, data=req_data, timeout=10)
-    except:
-      raise PipelineException('TopoResolver service not running!')
+    response = requests.post(url=self.server_url, data=req_data, timeout=10)
     response.encoding = 'utf-8'
     rows = response.text.split('\n')
     for row in rows:

@@ -1,14 +1,16 @@
 import re
 from unidecode import unidecode
-from .geonames import GeoNamesCache
+from .datastore import Datastore
+from .document import Layer
+from .pipeline import Step
 from .matcher import NameMatcher
 from .gazetteer import Gazetteer
-from .recognizer import GazetteerRecognizer
 from .tree import GeoNamesTree
-from .config import Config
 
 
-class GeoNamesResolver:
+class GlobalGeoparser(Step):
+
+  layers = [Layer.gres]
 
   common_abbrevs = {'U.S.': 6252001,
                     'US': 6252001,
@@ -18,50 +20,47 @@ class GeoNamesResolver:
                     'D.C.': 4140963}
 
   def __init__(self, keep_defaults=False):
+    self.key = 'globaldef' if keep_defaults else 'global'
     self.keep_defaults = keep_defaults
-    self.gns_cache = GeoNamesCache()
     self.matcher = NameMatcher()
 
     countries = Gazetteer.countries()
+    admins = Gazetteer.admins()
+    cities = Gazetteer.cities()
 
-    self.defaults = Gazetteer.cities()
-    self.defaults.update(Gazetteer.admins())
-    self.defaults.update(Gazetteer.us_states())
-    self.defaults.update(countries)
-    self.defaults.update(Gazetteer.oceans())
-    self.defaults.update(Gazetteer.continents())
+    self.global_topos = {}
+    self.global_topos.update(cities)
+    self.global_topos.update(admins)
+    self.global_topos.update(Gazetteer.us_states())
 
-    self.demonyms = {}
     for toponym, demonyms in Gazetteer.demonyms().items():
       if toponym not in countries:
         continue
       for demonym in demonyms:
-        self.demonyms[demonym] = countries[toponym]
+        self.global_topos[demonym] = countries[toponym]
+
+    self.global_topos.update(countries)
+    self.global_topos.update(Gazetteer.oceans())
+    self.global_topos.update(Gazetteer.continents())
+
+    self.lookup_tree = {}
+    stopwords = Gazetteer.stopwords()
+    for toponym in self.global_topos:
+      if toponym in stopwords:
+        continue
+      key = toponym[:2]
+      if key not in self.lookup_tree:
+        self.lookup_tree[key] = []
+      self.lookup_tree[key].append(toponym)
 
     self.candidates = {}
 
-  def annotate_res(self, doc):
-    resolutions = {}
-
-    def commit_demonym(c):
-      geoname_id = self.demonyms[c.lookup_phrase]
-      resolutions[c.match] = self.gns_cache.get(geoname_id)
-      return True
-
-    self.matcher.find_matches(doc, self._lookup_demonym, commit_demonym)
-
-    def commit_abbrev(c):
-      geoname_id = self.common_abbrevs[c.lookup_phrase]
-      resolutions[c.match] = self.gns_cache.get(geoname_id)
-      return True
-
-    self.matcher.find_matches(doc, self._lookup_abbrev, commit_abbrev)
+  def annotate(self, doc):
+    resolutions = self._resolve_defaults()
 
     unresolved = set()
-    for a in doc.get_all('rec'):
-      if a.data in self.defaults:
-        resolutions[a.phrase] = self.gns_cache.get(self.defaults[a.data])
-      elif a.data not in self.demonyms and a.data not in self.common_abbrevs:
+    for a in doc.get_all(Layer.topo):
+      if a.data not resolutions:
         unresolved.add(a.phrase)
     
     for toponym in unresolved:
@@ -71,20 +70,20 @@ class GeoNamesResolver:
       city = self._city_result(toponym, candidates[0])
       resolutions[toponym] = city
 
-    should_continue = True
+    should_continue = not self.keep_defaults
     rounds = 0
     while should_continue:
       rounds += 1
       should_continue = False
 
       tree = GeoNamesTree(resolutions)
-      if self.keep_defaults or len(tree.adm1s) < 2:
+      if len(tree.adm1s) < 2:
         break
 
       for adm1 in tree.adm1s:
         if tree.adm1_supported(adm1):
           continue
-        (toponym, geoname) = list(adm1.geonames.items())[0]
+        (toponym, geoname) = list(adm1.geonames.items())[0] # only one in node
         new = self._select_heuristically(toponym, geoname, tree)
         if new != None:
           should_continue = True
@@ -93,24 +92,37 @@ class GeoNamesResolver:
           print(f'Chose {city} over {geoname} for {toponym}')
           break
     
-    for a in doc.get_all('rec'):
+    for a in doc.get_all(Layer.topo):
       if a.phrase in resolutions:
         geoname = resolutions[a.phrase]
-        doc.annotate('res', a.pos, a.phrase, 'glo', geoname.id)
+        group = 'uncommon' if a.phrase in unresolved else 'common' 
+        doc.annotate(Layer.gres, a.pos, a.phrase, group, geoname.id)
 
-  def _lookup_demonym(self, prefix):
-    return [d for d in self.demonyms if d.startswith(prefix)]
 
-  def _lookup_abbrev(self, prefix):
-    if prefix in self.common_abbrevs:
-      return [prefix]
-    else:
-      return []
+  def _resolve_defaults(self, doc):
+    resolutions = {}
+
+    def lookup(prefix):
+      key = prefix[:2]
+      if key not in self.lookup_tree:
+        return []
+      toponyms = self.lookup_tree[key]
+      return [t for t in toponyms if t.startswith(prefix)]
+
+    def commit(c):
+      geoname_id = gazetteer[c.lookup_phrase]
+      resolutions[c.match] = Datastore.get(geoname_id)
+      return True
+
+    self.matcher.find_matches(doc, lookup, commit)
+
+    return resolutions
+
 
   def _select_candidates(self, toponym):
     if toponym in self.candidates:
       return self.candidates[toponym]
-    results = self.gns_cache.search(toponym)
+    results = Datastore.search_geonames(toponym)
     base_name = self._base_name(toponym)
     parts = len(toponym.split(' '))
     candidates = []
@@ -158,7 +170,7 @@ class GeoNamesResolver:
 
     name = selected.name
     region = selected.region()
-    results = self.gns_cache.search(toponym)
+    results = Datastore.search(toponym)
     for g in results:
       if not g.is_city:
         continue

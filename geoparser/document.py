@@ -1,5 +1,13 @@
 import json
 
+class Layer:
+
+  ner = 'ner' # recognized entities
+  topo = 'topo' # recognized locations
+  gres = 'gres' # global resolution
+  lres = 'lres' # local resolution
+  wiki = 'wiki' # Wikipedia URLs
+
 
 class Annotation:
 
@@ -39,7 +47,7 @@ class Document:
   def layers(self):
     return list(self.anns.keys())
 
-  def annotate(self, layer, pos, phrase, group, data, allow_overlap=False, replace_shorter=False):
+  def annotate(self, layer, pos, phrase, group, data='', allow_overlap=False, replace_shorter=False):
     if layer not in self.anns:
       self.anns[layer] = []
 
@@ -91,15 +99,18 @@ class Document:
 
     return annotations
 
-  def get_all(self, layer, group=None):
+  def get_all(self, layer, group=None, pos_range=None):
     if layer not in self.anns:
       return []
 
     annotations = []
     for arr in self.anns[layer]:
-      if group == None or arr[2] == group:
-        a = Annotation(layer, arr[0], arr[1], arr[2], arr[3])
-        annotations.append(a)
+      if group != None and arr[2] != group:
+        continue
+      if pos_range != None and arr[0] not in pos_range:
+        continue
+      a = Annotation(layer, arr[0], arr[1], arr[2], arr[3])
+      annotations.append(a)
 
     return annotations
     
