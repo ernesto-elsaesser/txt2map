@@ -2,12 +2,12 @@
   <head>
     <title>txt2map</title>
     <style>
-      a { cursor: pointer; font-weight: bold; }
+      a { cursor: pointer; font-weight: bold; color: blue; }
       .container { max-width: 500px; margin: 0 auto; padding: 20px; text-align: center; }
       #input { width: 100%; height: 100px; margin-top: 30px; }
       #button { font-size: 18px; color: blue; }
       #layers { width: 100%; margin-top: 40px; }
-      #layers a { display: inline-block; margin: 5px; color: blue; border: 1px solid blue; padding: 3px 7px; }
+      #layers a { display: inline-block; margin: 5px; border: 1px solid blue; padding: 3px 7px; }
       #output { width: 100%; min-height: 100px; margin: 20px 0 60px; }
       #output span { background-color: lightgreen; }
     </style>
@@ -154,8 +154,13 @@
         } else if (layer == 'lres') {
           if (group == 'global')
             trailer = '<a title="GeoNames" href="https://www.geonames.org/' + data[2].toString() + '">GEO</a>';
-          else if (group == 'local')
-            trailer = '<a title="OpenStreetMap" onclick="showOSMDiag(' + pos + ')">OSM</a>';
+          else if (group == 'local') {
+            if (data[2].length == 1) {
+              trailer = '<a title="OpenStreetMap" href="https://www.openstreetmap.org/' + data[2][0] + '">OSM</a>';
+            } else {
+              trailer = '<a title="OpenStreetMap" onclick="showOSMDiag(' + pos + ')">OSM</a>';
+            }
+          }
         }
 
         html += '<span>' + phrase + '</span>';

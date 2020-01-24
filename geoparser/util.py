@@ -18,13 +18,6 @@ class BoundingBox:
 
 class GeoUtil:
 
-  dbpedia_patterns = [
-      ('<span property="geo:lat" xmlns:geo="http:\/\/www\.w3\.org\/2003\/01\/geo\/wgs84_pos#">([0-9\.\-]+)</span>',
-       '<span property="geo:long" xmlns:geo="http:\/\/www\.w3\.org\/2003\/01\/geo\/wgs84_pos#">([0-9\.\-]+)</span>'),
-      ('<span property="dbp:latitude">([0-9\.\-]+)<\/span>',
-       '<span property="dbp:longitude">([0-9\.\-]+)<\/span>')
-  ]
-
   @staticmethod
   def geojson_point(lat, lon):
       return {'type': 'Point', 'coordinates': [lon, lat]}
@@ -66,24 +59,6 @@ class GeoUtil:
     p2 = GeoUtil.geojson_point(lat2, lon2)
     dist = geojson_utils.point_distance(p1, p2)
     return dist / 1000
-
-  @staticmethod
-  def osm_minimum_distance(lat, lon, bb_data):
-    min_dist = float('inf')
-    for el in bb_data['elements']:
-      t = el['type']
-      if t == 'node':
-        dist = GeoUtil.distance(lat, lon, el['lat'], el['lon'])
-      else:
-        b = el['bounds']
-        if b['minlat'] < lat < b['maxlat'] and b['minlon'] < lon < b['maxlon']:
-          return 0
-        center_lat = (b['minlat'] + b['maxlat']) / 2
-        center_lon = (b['minlon'] + b['maxlon']) / 2
-        dist = GeoUtil.distance(lat, lon, center_lat, center_lon)
-      if dist < min_dist:
-        min_dist = dist
-    return min_dist
 
   @staticmethod
   def coordinate_for_wiki_url(url):
