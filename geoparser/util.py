@@ -88,6 +88,7 @@ class GeoUtil:
   @staticmethod
   def coordinate_for_wiki_url(url):
     title = url.replace('https://en.wikipedia.org/wiki/', '')
+    title = title.replace('_', ' ')
     req_url = "https://en.wikipedia.org/w/api.php"
     params = {
         "action": "query",
@@ -99,22 +100,14 @@ class GeoUtil:
     data = resp.json()
     pages = data['query']['pages']
 
-    if len(pages) == 0:
-      return None
+    for p in pages.values():
+      if p['title'] != title:
+        continue
+      if 'coordinates' not in p:
+        continue
+      lat = p['coordinates'][0]['lat']
+      lon = p['coordinates'][0]['lon']
+      return (lat, lon)
 
-    if len(pages) == 1:
-      page = list(pages.values())[0]
-
-    else:
-      p = None
-      for p in pages.values():
-        if p['title'] == title:
-          p = page
-          break
-      if p == None:
-        return None
+    return None
       
-    lat = page['coordinates'][0]['lat']
-    lon = page['coordinates'][0]['lon']
-
-    return (lat, lon)

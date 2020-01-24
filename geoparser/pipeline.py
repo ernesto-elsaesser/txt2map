@@ -81,14 +81,27 @@ class WikiResolver(Step):
   key = 'wikires'
   layers = [Layer.lres]
 
+  def __init__(self):
+    self.coord_cache = {}
+    self.no_coords = []
+
   def annotate(self, doc):
     wiki_anns = doc.annotations_by_position(Layer.wiki)
     for a in doc.get_all(Layer.ner, 'loc'):
       if a.pos not in wiki_anns:
         continue
       url = wiki_anns[a.pos].data
-      (lat, lon) = GeoUtil.coordinate_for_wiki_url(wiki_url)
-      data = [lat, lon, url]
+      if url in self.no_coords:
+        continue
+      if url in self.coord_cache:
+        coord = self.coord_cache[url]
+      else:
+        coord = GeoUtil.coordinate_for_wiki_url(url)
+        if coord == None:
+          self.no_coords.append(url)
+          continue
+        self.coord_cache[url] = coord
+      data = [coord[0], coord[1], url]
       doc.annotate(Layer.lres, a.pos, a.phrase, 'wiki', data)
 
 
