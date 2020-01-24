@@ -7,8 +7,6 @@ from .datastore import Datastore
 
 class Gazetteer:
 
-  population_limit = 100_000
-
   common_abbrevs = {'U.S.': 6252001,
                     'US': 6252001,
                     'USA': 6252001,
@@ -29,7 +27,7 @@ class Gazetteer:
     # default senses are the cities, not the states
     del top_level['New York'] 
     del top_level['Washington']
-    
+
     top_level.update(countries)
 
     for toponym, demonyms in Gazetteer.demonyms().items():
@@ -65,12 +63,8 @@ class Gazetteer:
     return Datastore.load_gazetteer('oceans')
 
   @staticmethod
-  def admins():
-    return Datastore.load_gazetteer('A')
-
-  @staticmethod
-  def cities():
-    return Datastore.load_gazetteer('P')
+  def large_entries(pop_limit=50_000):
+    return Datastore.load_gazetteer(str(pop_limit))
 
   @staticmethod
   def stopwords():
@@ -111,36 +105,28 @@ class Gazetteer:
     Datastore.save_gazetteer('continent_map', continent_map)
 
   @staticmethod
-  def extract_large_entries(data_path, classes):
+  def extract_large_entries(data_path, pop_limit=50_000):
 
-    pop_limit = Gazetteer.population_limit
-    toponyms = {}
-
-    for fcl in classes:
-      toponyms[fcl] = set()
+    toponyms = set()
 
     last_log = 0
 
     data_file = open(data_path, encoding='utf-8')
     reader = csv.reader(data_file, delimiter='\t')
     for row in reader:
-      fcl = row[6]
-      if fcl not in classes:
-        continue
-
       pop = int(row[14])
       if pop < pop_limit:
         continue
 
-      toponyms[fcl].add(row[1])
+      toponyms.add(row[1])
+      toponyms.add(row[2]) # ascii name
 
       if reader.line_num > last_log + 500_000:
         print('at row', reader.line_num)
         last_log = reader.line_num
 
-    for fcl, names in toponyms.items():
-      Datastore.save_gazetteer(fcl, list(names))
+    Datastore.save_gazetteer(str(pop_limit), list(toponyms))
 
-    print('Entries extracted.')
+    print('Cities extracted.')
 
 

@@ -53,12 +53,12 @@ class PipelineBuilder:
       raise PipelineException('Invalid key for NER step!')
     return pipe
 
-  def build_rec(self, ner_key):
+  def build_topo(self, ner_key):
     pipe = self.build_ner(ner_key)
     pipe.add(Reclassifier())
     return pipe
 
-  def build_res(self, ner_key):
+  def build_global(self, ner_key):
     pipe = self.build_rec(ner_key)
     pipe.add(GlobalGeoparser(self.keep_defaults))
     return pipe

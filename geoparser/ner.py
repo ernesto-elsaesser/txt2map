@@ -82,6 +82,7 @@ class StanfordEntityRecognizer(EntityRecognizer):
   label_map = {'LOCATION': 'loc', 'ORGANIZATION': 'org', 'PERSON': 'per', 'MISC': 'msc'}
 
   def _extract_annotations(self, response_text, doc):
+    entities = []
     rows = response_text.split('\n')
     for row in rows:
       columns = row.split('\t')
@@ -105,8 +106,9 @@ class CogCompEntityRecognizer(EntityRecognizer):
     return text.replace('[', '{').replace(']', '}')
 
   def _extract_annotations(self, response_text, doc):
+    entities = []
 
-    l = len(text)
+    l = len(doc.text)
     cc_l = len(response_text)
     i = pos = 0
     ent_pos = ent_group = ent_phrase = None
@@ -115,7 +117,7 @@ class CogCompEntityRecognizer(EntityRecognizer):
 
     while pos < l and i < cc_l:
       c = response_text[i]
-      oc = text[pos]
+      oc = doc.text[pos]
 
       if c in ticks:
         i += 1
