@@ -114,10 +114,10 @@ class LocalGeoparser(Step):
       if not self._point_in_boxes(bbox.center_lat, bbox.center_lon, bboxes):
         coords.append((bbox.center_lat, bbox.center_lon))
 
-    (lat, lon) = GeoUtil.average_coord(coords)
+    (avg_lat, avg_lon) = GeoUtil.average_coord(coords)
     osm_refs = [e.reference for e in osm_elements]
 
-    return [lat, lon, osm_refs]
+    return [avg_lat, avg_lon, osm_refs]
 
   def _point_in_boxes(self, lat, lon, boxes):
     for bbox in boxes:

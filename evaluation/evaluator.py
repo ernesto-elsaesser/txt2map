@@ -1,7 +1,7 @@
 import os
 import json
 import urllib
-from geoparser import Datastore, Layer, GeoUtil, GeoNamesAPI, OverpassAPI
+from geoparser import Datastore, Layer, GeoUtil, BoundingBox, GeoNamesAPI, OverpassAPI, OSMElement
 
 class Evaluator:
 
@@ -189,7 +189,15 @@ class ResolEvaluator(Evaluator):
         continue
       
       dist = GeoUtil.distance(a.data[0], a.data[1], gold_lat, gold_lon)
-      if dist < tolerance:
+      resolved = dist < tolerance
+      if not resolved and a.group == 'local':
+        boxes = self._bounding_boxes(a.data[2])
+        for bbox in boxes:
+          if GeoUtil.point_in_bounding_box(gold_lat, gold_lon, bbox):
+            resolved = True
+            break
+
+      if resolved:
         corrects.append(g)
       else:
         incorrects.append(g)
@@ -199,27 +207,20 @@ class ResolEvaluator(Evaluator):
     self._print_if_not_empty(incorrects, 'RES INCORRECT')
     self._print_if_not_empty(missed, 'RES MISSED')
 
-  def _gns_hit(self, gold_lat, gold_lon, geoname_id, tol):
-    geo = Datastore.get_geoname(geoname_id)
-    dist = GeoUtil.distance(geo.lat, geo.lon, gold_lat, gold_lon)
-    return dist < tol
-
-  def _osm_hit(self, gold_lat, gold_lon, osm_refs, tol):
-    bb_data = OverpassAPI.load_bounding_boxes(osm_refs)
-    dist = GeoUtil.osm_minimum_distance(gold_lat, gold_lon, bb_data)
-    return dist < tol
-
-  def _wiki_hit(self, gold_lat, gold_lon, wiki_url, tol):
-    # geoname_id = Datastore.geoname_for_wiki_url(wiki_url)
-    # if geoname_id != None:
-    #   if self._gns_hit(gold_lat, gold_lon, geoname_id, tol):
-    #     return True
-    coords = GeoUtil.coordinates_for_wiki_url(wiki_url)
-    for lat, lon in coords:
-      dist = GeoUtil.distance(lat, lon, gold_lat, gold_lon)
-      if dist < tol:
-        return True
-    return False
+  def _bounding_boxes(self, osm_refs):
+    ways_and_rels = []
+    for ref in osm_refs:
+      if ref.startswith('node'):
+        continue
+      parts = ref.split('/')
+      type_id = OSMElement.type_names.index(parts[0])
+      element = OSMElement(type_id, int(parts[1]))
+      ways_and_rels.append(element)
+    geoms = Datastore.load_osm_geometries(ways_and_rels)
+    boxes = [BoundingBox(*geom) for geom in geoms['way'].values()]
+    boxes += [BoundingBox(*geom) for geom in geoms['relation'].values()]
+    return boxes
+        
 
   def _metrics(self):
     metrics = {'Total': self.total}
