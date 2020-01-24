@@ -44,7 +44,7 @@ class EntityRecognizer(Step):
 class SpacyEntityRecognizer(EntityRecognizer):
 
   key = 'spacy'
-  label_map = {'GPE': 'loc', 'LOC': 'loc', 'FAC': 'loc', 'NORP': 'dem', 'ORG': 'org', 'PERSON': 'per',
+  label_map = {'GPE': 'loc', 'LOC': 'loc', 'FAC': 'msc', 'NORP': 'msc', 'ORG': 'org', 'PERSON': 'per',
                'LANGUAGE': 'msc', 'PRODUCT': 'msc', 'EVENT': 'msc', 'WORK_OF_ART': 'msc', 'LAW': 'msc'}
 
   def _extract_annotations(self, response_text, doc):

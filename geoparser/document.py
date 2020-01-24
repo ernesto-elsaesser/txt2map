@@ -52,6 +52,7 @@ class Document:
     if layer not in self.anns:
       self.anns[layer] = []
 
+    l = len(phrase)
     end = pos + len(phrase)
     ann = [pos, phrase, group, data]
 
@@ -60,19 +61,16 @@ class Document:
     for i in range(pos, end):
       if i in anns_by_index:
         overlap = anns_by_index[i]
-        if replace_shorter and len(overlap.phrase) < len(phrase):
+        ol = len(overlap.phrase) 
+        if (replace_shorter and ol < l) or (replace_identical and ol == l):
           if overlap.pos in deleted:
             continue
           print(f'{layer} - annotation {phrase} [{group}] replaces {overlap.phrase} [{overlap.group}]')
           self.delete_annotation(layer, overlap.pos)
           deleted.append(overlap.pos)
-        elif replace_identical and len(overlap.phrase) == len(phrase):
-          print(f'{layer} - annotation {phrase} [{group}] replaces {overlap.phrase} [{overlap.group}]')
-          return False
         else:
           print(f'{layer} - annotation {phrase} [{group}] blocked by {overlap.phrase} [{overlap.group}]')
           return False
-    
 
     self.anns[layer].append(ann)
     return True

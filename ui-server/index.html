@@ -31,7 +31,7 @@
 
     <script>
 
-    layerNames = { 'ner': 'Named Entities', 'res': 'Resolved Locations', 'wik': 'Wikipedia Links', 'clu': 'Local Anchors' }
+    layerNames = { 'ner': 'Named Entities', 'lres': 'Resolved Locations', 'wiki': 'Wikipedia Links' }
 
     var input = document.getElementById('input');
     var endpoint = document.getElementById('endpoint');
@@ -93,19 +93,20 @@
       layers.innerHTML = '';
       var namesButton = null;
       for (layer in annotations) {
-        if (!['ner','res','wik','clu'].includes(layer)) {
+        var name = layerNames[layer];
+        if (name == null) {
           continue;
         }
         var layerButton = document.createElement('a');
-        layerButton.innerHTML = layerNames[layer];
+        layerButton.innerHTML = name;
         var theLayer = layer;
         layerButton.onclick = makeClick(layer, layerButton);
         layers.appendChild(layerButton);
-        if (layer == 'res') {
-          resButton = layerButton
+        if (layer == 'lres') {
+          lresButton = layerButton
         }
       }
-      selectLayer('res', resButton);
+      selectLayer('lres', lresButton);
     }
 
     function makeClick(layer, layerButton) {
@@ -147,19 +148,12 @@
         var trailer = null;
         if (layer == 'ner') {
           trailer = group.toUpperCase();
-        } else if (layer == 'wik') {
+        } else if (layer == 'wiki') {
           trailer = '<a title="Wikipedia" href="' + data + '">WIK</a>';
-        } else if (layer == 'clu') {
-          trailer = group.substring(4);
-        } else if (layer == 'rec') {
-          if (group == 'glo')
-            trailer = 'GBL';
-          else
-            trailer = 'LCL';
-        } else if (layer == 'res') {
-          if (group == 'glo')
+        } else if (layer == 'lres') {
+          if (group == 'global')
             trailer = '<a title="GeoNames" href="https://www.geonames.org/' + data.toString() + '">GEO</a>';
-          else {
+          else if (group == 'local') {
             var elements = data;
             elements.sort(function (a, b) {
               return b[0].length - a[0].length;

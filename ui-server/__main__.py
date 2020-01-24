@@ -1,7 +1,7 @@
 import sys
 import os
 from flask import Flask, request
-from annotation import Document, PipelineBuilder, NERException
+from geoparser import Document, PipelineBuilder, NERException
 
 port = sys.argv[1]
 
