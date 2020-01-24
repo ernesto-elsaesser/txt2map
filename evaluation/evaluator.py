@@ -216,11 +216,17 @@ class ResolEvaluator(Evaluator):
     dist = GeoUtil.osm_minimum_distance(gold_lat, gold_lon, bb_data)
     return dist < tol
 
-  def _wiki_hit(self, gold_id, wiki_url, tol):
-    geoname_id = self._geoname_for_wiki_url(wiki_url)
-    if geoname_id == None:
-      return False
-    return self._gns_hit(gold_id, geoname_id, tol)
+  def _wiki_hit(self, gold_lat, gold_lon, wiki_url, tol):
+    # geoname_id = self._geoname_for_wiki_url(wiki_url)
+    # if geoname_id != None:
+    #   if self._gns_hit(gold_lat, gold_lon, geoname_id, tol):
+    #     return True
+    coords = GeoUtil.coordinates_for_wiki_url(wiki_url)
+    for lat, lon in coords:
+      dist = GeoUtil.distance(lat, lon, gold_lat, gold_lon)
+      if dist < tol:
+        return True
+    return False
 
   def _geoname_for_wiki_url(self, url):
     title = url.replace('https://en.wikipedia.org/wiki/', '')
@@ -238,7 +244,7 @@ class ResolEvaluator(Evaluator):
       geoname_id = cache[title]
     else:
       geoname_id = ''
-      results = Datastore.search(title)[:25]
+      results = Datastore.search_geonames(title)[:25]
       for g in results:
         full_geo = GeoNamesAPI.get_geoname(g.id)
         if full_geo.wiki_url == None:

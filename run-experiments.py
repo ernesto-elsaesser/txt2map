@@ -6,7 +6,7 @@ builder.spacy_url = 'http://localhost:8001'
 builder.cogcomp_url = 'http://localhost:8002'
 builder.stanford_url = 'http://localhost:8003'
 
-tr_pipe = TopoResolverClient('http://localhost:8004')
+tr = TopoResolverClient('http://localhost:8004')
 
 # corpora
 tests = Corpus('Tests')
@@ -26,12 +26,12 @@ ev_res_street = ResolEvaluator(gold_group='raw')
 ev_res_lgls = ResolEvaluator(gold_group='none')
 ev_res_gritta = ResolEvaluator(gold_group='geonames', geonames_by_dist=True) 
 
-pipe = builder.build_topo('cogcomp')
+pipe = builder.build_wiki()
 
 #imp = GeoWebNewsImporter()
 #imp.import_documents(gwn)
-
-gwn.bulk_process(pipe, evaluator=ev_ner)
+# , 'global', 'local'
+gwn.bulk_process(pipe, saved_steps=['gcnl', 'wikires'], evaluator=ev_res_glob)
 #gwn.bulk_process(pipe, saved_steps=['spacy','topo','global','local'] evaluator=ev_res)
 #gwn.process(pipe, '182', evaluator=ev_res)
 #tests.bulk_process(pipe, evaluator=ev_res)

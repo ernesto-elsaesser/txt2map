@@ -59,12 +59,12 @@ class PipelineBuilder:
     return pipe
 
   def build_global(self, ner_key):
-    pipe = self.build_rec(ner_key)
+    pipe = self.build_topo(ner_key)
     pipe.add(GlobalGeoparser(self.keep_defaults))
     return pipe
 
   def build(self, ner_key):
-    pipe = self.build_res(ner_key)
+    pipe = self.build_global(ner_key)
     pipe.add(LocalGeoparser())
     return pipe
 
@@ -82,11 +82,10 @@ class WikiResolver(Step):
 
   def annotate(self, doc):
     wiki_anns = doc.annotations_by_position(Layer.wiki)
-    cache = {}
     for a in doc.get_all(Layer.ner, 'loc'):
       if a.pos not in wiki_anns:
         continue
-      url = wik_anns[a.pos].data
+      url = wiki_anns[a.pos].data
       doc.annotate(Layer.lres, a.pos, a.phrase, 'wiki', url)
 
 

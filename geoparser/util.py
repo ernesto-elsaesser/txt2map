@@ -76,6 +76,6 @@ class GeoUtil:
       if 'coordinates' in page:
         lat = page['coordinates'][0]['lat']
         lon = page['coordinates'][0]['lon']
-        coords.append([lat, lon])
+        coords.append((lat, lon))
 
     return coords

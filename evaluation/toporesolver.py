@@ -4,8 +4,8 @@ from geoparser import Pipeline, Step, Layer
 
 class TopoResolverClient(Step):
 
-  key = 'tr'
-  layers = [Layer.gres]
+  key = 'topores'
+  layers = [Layer.lres]
 
   def __init__(self, url):
     self.server_url = url
@@ -27,5 +27,5 @@ class TopoResolverClient(Step):
       pos = int(columns[1])
       phrase = columns[0]
       geoname_id = int(columns[2])
-      doc.annotate(Layer.gres, pos, phrase, 'ext', geoname_id)
+      doc.annotate(Layer.lres, pos, phrase, 'global', geoname_id)
 
