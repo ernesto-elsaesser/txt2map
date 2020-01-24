@@ -69,7 +69,8 @@ class GlobalGeoparser(Step):
     for a in doc.get_all(Layer.topo):
       if a.phrase in resolutions:
         geoname = resolutions[a.phrase]
-        doc.annotate(Layer.gres, a.pos, a.phrase, 'global', geoname.id)
+        data = [geoname.lat, geoname.lon, geoname.id]
+        doc.annotate(Layer.gres, a.pos, a.phrase, 'global', data)
 
   def _find_missed_top_levels(self, doc, resolutions):
     topo_indices = doc.annotations_by_index(Layer.topo)

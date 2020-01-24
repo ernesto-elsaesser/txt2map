@@ -4,7 +4,7 @@ import json
 import sqlite3
 from .util import GeoUtil
 from .geonames import GeoName, GeoNamesAPI
-from .osm import OverpassAPI
+from .osm import OSMElement, OverpassAPI
 
 
 class Datastore:
@@ -68,10 +68,7 @@ class Datastore:
   
   @staticmethod
   def _geonames_db():
-    data_dir = Datastore.data_dir
-    if not os.path.exists(data_dir):
-      os.mkdir(data_dir)
-    db_path = data_dir + '/geonames.db'
+    db_path = Datastore._data_path('geonames.db')
     exists = os.path.exists(db_path)
     sqlite_db = sqlite3.connect(db_path)
     geonames_db = GeoNamesDatabase(sqlite_db)
@@ -81,24 +78,21 @@ class Datastore:
 
   @staticmethod
   def load_osm_database(geoname):
-    data_dir = Datastore.data_dir
-    if not os.path.exists(data_dir):
-      os.mkdir(data_dir)
-
     search_dist = Datastore.osm_search_dist
-    file_path = f'{data_dir}/{geoname.id}-{search_dist}km.db'
-    is_cached = os.path.exists(file_path)
-    if is_cached and os.stat(file_path).st_size == 0:
+    db_name = f'{geoname.id}-{search_dist}km.db'
+    db_path = Datastore._data_path(db_name)
+    is_cached = os.path.exists(db_path)
+    if is_cached and os.stat(db_path).st_size == 0:
       # inconsistent database state
-      os.remove(file_path) 
+      os.remove(db_path) 
       is_cached = False
-    sqlite_db = sqlite3.connect(file_path)
+    sqlite_db = sqlite3.connect(db_path)
     osm_db = OSMDatabase(sqlite_db)
 
     if not is_cached:
       print(f'lres - requesting OSM data for {geoname} ...')
-      box = GeoUtil.bounding_box(geoname.lat, geoname.lon, search_dist)
-      csv_reader = OverpassAPI.load_names_in_bounding_box(box, Datastore.osm_exclusions)
+      bbox = GeoUtil.bounding_box(geoname.lat, geoname.lon, search_dist)
+      csv_reader = OverpassAPI.load_names_in_bounding_box(bbox, Datastore.osm_exclusions)
       name_count = Datastore._store_osm_data(osm_db, csv_reader, 1, [2, 3, 4, 5, 6])
 
     return osm_db
@@ -122,6 +116,79 @@ class Datastore:
     osm_db.commit_changes()
     return name_count
 
+  @staticmethod
+  def load_osm_geometries(elements):
+    file_path = Datastore._data_path('geometries.json')
+    if os.path.exists(file_path):
+      with open(file_path, 'r') as f:
+        cache = json.load(f)
+    else:
+      cache = {}
+
+    geometries = {'node': {}, 'way': {}, 'relation': {}}
+
+    not_cached = []
+    for e in elements:
+      if e.reference in cache:
+        geometries[e.type_name][e.id] = cache[e.reference]
+      else:
+        not_cached.append(e)
+
+    if len(not_cached) > 0:
+      data = OverpassAPI.load_geometries(not_cached)
+      for d in data:
+        type_name = d['type']
+        el_id = d['id']
+        reference = f'{type_name}/{el_id}'
+        if type_name == 'node':
+          geometry = [d['lat'], d['lon']]
+        else:
+          b = d['bounds']
+          geometry = [b['minlat'], b['minlon'], b['maxlat'], b['maxlon']]
+        cache[reference] = geometry
+        geometries[type_name][el_id] = geometry
+
+    with open(file_path, 'w') as f:
+      json.dump(cache, f)
+
+    return geometries
+
+  @staticmethod
+  def geoname_for_wiki_url(self, url):
+    file_path = Datastore._data_path('wiki.json')
+    if os.path.exists(file_path):
+      with open(file_path, 'r') as f:
+        cache = json.load(f)
+    else:
+      cache = {}
+
+    title = url.replace('https://en.wikipedia.org/wiki/', '')
+    title = title.replace('_', ' ')
+    if title in cache:
+      geoname_id = cache[title]
+    else:
+      geoname_id = ''
+      results = Datastore.search_geonames(title)[:25]
+      for g in results:
+        full_geo = GeoNamesAPI.get_geoname(g.id)
+        if full_geo.wiki_url == None:
+          continue
+        wiki_url = full_geo.wiki_url
+        if '%' in wiki_url:
+          print(wiki_url)
+        wiki_url = 'https://' + urllib.parse.unquote(wiki_url)
+        if wiki_url == url:
+          geoname_id = g.id
+          break
+
+      cache[title] = geoname_id
+      with open(file_path, 'w') as f:
+        json.dump(cache, f)
+
+    if geoname_id == '':
+      return None
+    else:
+      return geoname_id
   
   @staticmethod
   def load_gazetteer(file_name):
@@ -137,6 +204,13 @@ class Datastore:
     file_path = f'{dirname}/data/{file_name}.json'
     with open(file_path, 'w') as f:
       json.dump(obj, f)
+
+  @staticmethod
+  def _data_path(file_name):
+    data_dir = Datastore.data_dir
+    if not os.path.exists(data_dir):
+      os.mkdir(data_dir)
+    return f'{data_dir}/{file_name}'
 
 
 class Database:
@@ -248,8 +322,6 @@ class GeoNamesDatabase(Database):
     
 class OSMDatabase(Database):
 
-  type_names = ['node', 'way', 'relation']
-
   def create_tables(self):
     self.initialize(
         ['CREATE TABLE names (name VARCHAR(100) NOT NULL UNIQUE)',
@@ -268,7 +340,7 @@ class OSMDatabase(Database):
       inserted = 1
     except sqlite3.Error:
       rowid = self.get_rowid(name)
-    type_code = self.type_names.index(type_name)
+    type_code = OSMElement.type_names.index(type_name)
     self.cursor.execute('INSERT INTO osm VALUES(?, ?, ?)',
                         (element_id, rowid, type_code))
     return inserted
@@ -288,6 +360,6 @@ class OSMDatabase(Database):
         'SELECT ref,type_code FROM osm WHERE names_rowid = ?', (rowid, ))
     elements = []
     for row in self.cursor.fetchall():
-      type_name = self.type_names[row[1]]
-      elements.append([type_name, row[0]])
+      element = OSMElement(row[1], row[0])
+      elements.append(element)
     return elements

@@ -3,6 +3,8 @@ from .document import Layer
 from .pipeline import Step
 from .matcher import NameMatcher
 from .tree import GeoNamesTree
+from .osm import OverpassAPI
+from .util import BoundingBox, GeoUtil
 
 
 class LocalGeoparser(Step):
@@ -17,7 +19,7 @@ class LocalGeoparser(Step):
     resolutions = {}
     for a in doc.get_all(Layer.gres):
       doc.annotate(Layer.lres, a.pos, a.phrase, 'global', a.data)
-      resolutions[a.phrase] = Datastore.get_geoname(a.data)
+      resolutions[a.phrase] = Datastore.get_geoname(a.data[2])
     tree = GeoNamesTree(resolutions)
 
     entity_indicies = doc.annotations_by_index(Layer.ner)
@@ -40,6 +42,7 @@ class LocalGeoparser(Step):
         seen.append(anchor.id)
         print(f'lres - anchor: {anchor}')
         db = Datastore.load_osm_database(anchor)
+        data_cache = {}
 
         def commit_match(c):
           if c.match.isnumeric():
@@ -49,17 +52,25 @@ class LocalGeoparser(Step):
             ent_ann = entity_indicies[c.pos]
             if len(ent_ann.phrase) > len(c.match):
               return True # part of entity name
-            gres_ann = doc.get(Layer.gres, ent_ann.pos)
-            if gres_ann != None:
-              if gres_ann.data == anchor.id:
+            prev_ann = doc.get(Layer.lres, ent_ann.pos)
+            if prev_ann != None:
+              if prev_ann.group == 'local':
+                return True # already annotated locally
+              geoname_id = prev_ann.data[2]
+              if geoname_id == anchor.id:
                 return True # anchor itself
-              geoname = Datastore.get_geoname(gres_ann.data)
+              geoname = Datastore.get_geoname(geoname_id)
               if geoname.char_match(c.match):
-                return True # exact match
+                return True # exact global resolution
               replace_identical = True
-          osm_refs = db.get_elements(c.lookup_phrase)
           print(f'lres - local match: {c.match}')
-          doc.annotate(Layer.lres, c.pos, c.match, 'local', osm_refs, replace_shorter=True, replace_identical=replace_identical)
+          if c.lookup_phrase in data_cache:
+            data = data_cache[c.lookup_phrase]
+          else:
+            osm_elements = db.get_elements(c.lookup_phrase)
+            data = self._annotation_data(osm_elements)
+            data_cache[c.lookup_phrase] = data
+          doc.annotate(Layer.lres, c.pos, c.match, 'local', data, replace_shorter=True, replace_identical=replace_identical)
           return True
 
         self.matcher.find_matches(doc, db.find_names, commit_match)
@@ -84,4 +95,33 @@ class LocalGeoparser(Step):
         continue
 
       return None
-      
+
+  def _annotation_data(self, osm_elements):
+    geoms = Datastore.load_osm_geometries(osm_elements)
+
+    bboxes = [BoundingBox(*geom) for geom in geoms['relation'].values()]
+    coords = []
+
+    for bbox in bboxes:
+      coords.append((bbox.center_lat, bbox.center_lon))
+
+    for geom in geoms['node'].values():
+      if not self._point_in_boxes(*geom, bboxes):
+        coords.append((geom[0], geom[1]))
+
+    for geom in geoms['way'].values():
+      bbox = BoundingBox(*geom)
+      if not self._point_in_boxes(bbox.center_lat, bbox.center_lon, bboxes):
+        coords.append((bbox.center_lat, bbox.center_lon))
+
+    (lat, lon) = GeoUtil.average_coord(coords)
+    osm_refs = [e.reference for e in osm_elements]
+
+    return [lat, lon, osm_refs]
+
+  def _point_in_boxes(self, lat, lon, boxes):
+    for bbox in boxes:
+      if GeoUtil.point_in_bounding_box(lat, lon, bbox):
+        return True
+    return False
+          

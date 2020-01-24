@@ -188,15 +188,8 @@ class ResolEvaluator(Evaluator):
         corrects.append(g)
         continue
       
-      resolved = False
-      if a.group == 'wiki':
-        resolved = self._wiki_hit(gold_lat, gold_lon, a.data, tolerance)
-      elif a.group == 'global':
-        resolved = self._gns_hit(gold_lat, gold_lon, a.data, tolerance)
-      elif a.group == 'local':
-        resolved = self._osm_hit(gold_lat, gold_lon, a.data, tolerance)
-
-      if resolved:
+      dist = GeoUtil.distance(a.data[0], a.data[1], gold_lat, gold_lon)
+      if dist < tolerance:
         corrects.append(g)
       else:
         incorrects.append(g)
@@ -217,7 +210,7 @@ class ResolEvaluator(Evaluator):
     return dist < tol
 
   def _wiki_hit(self, gold_lat, gold_lon, wiki_url, tol):
-    # geoname_id = self._geoname_for_wiki_url(wiki_url)
+    # geoname_id = Datastore.geoname_for_wiki_url(wiki_url)
     # if geoname_id != None:
     #   if self._gns_hit(gold_lat, gold_lon, geoname_id, tol):
     #     return True
@@ -227,44 +220,6 @@ class ResolEvaluator(Evaluator):
       if dist < tol:
         return True
     return False
-
-  def _geoname_for_wiki_url(self, url):
-    title = url.replace('https://en.wikipedia.org/wiki/', '')
-    title = title.replace('_', ' ')
-
-    dirname = os.path.dirname(__file__)
-    cache_path = f'{dirname}/data/wiki.json'
-    if os.path.exists(cache_path):
-      with open(cache_path, 'r') as f:
-        cache = json.load(f)
-    else:
-      cache = {}
-
-    if title in cache:
-      geoname_id = cache[title]
-    else:
-      geoname_id = ''
-      results = Datastore.search_geonames(title)[:25]
-      for g in results:
-        full_geo = GeoNamesAPI.get_geoname(g.id)
-        if full_geo.wiki_url == None:
-          continue
-        wiki_url = full_geo.wiki_url
-        if '%' in wiki_url:
-          print(wiki_url)
-        wiki_url = 'https://' + urllib.parse.unquote(wiki_url)
-        if wiki_url == url:
-          geoname_id = g.id
-          break
-
-      cache[title] = geoname_id
-      with open(cache_path, 'w') as f:
-        json.dump(cache, f)
-
-    if geoname_id == '':
-      return None
-    else:
-      return geoname_id
 
   def _metrics(self):
     metrics = {'Total': self.total}

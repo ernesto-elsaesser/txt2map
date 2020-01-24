@@ -3,6 +3,19 @@ import math
 import re
 import requests
 
+class BoundingBox:
+
+  def __init__(self, s, w, n, e):
+    self.s = s
+    self.w = w
+    self.n = n
+    self.e = e
+    self.center_lat = (s + n) / 2
+    self.center_lon = (w + e) / 2
+
+  def __str__(self):
+    return f'{self.s},{self.w},{self.n},{self.e}'
+
 class GeoUtil:
 
   dbpedia_patterns = [
@@ -30,7 +43,22 @@ class GeoUtil:
     sw = geojson_utils.destination_point(start, 225, corner_dist)
     s = sw['coordinates'][1]
     w = sw['coordinates'][0]
-    return [s,w,n,e]
+    return BoundingBox(s, w, n, e)
+
+  @staticmethod
+  def average_coord(coords):
+    lat_sum = 0
+    lon_sum = 0
+    count = 0
+    for lat, lon in coords:
+      lat_sum += lat
+      lon_sum += lon
+      count += 1
+    return (lat_sum/count, lon_sum/count)
+
+  @staticmethod
+  def point_in_bounding_box(lat, lon, bbox):
+    return bbox.s < lat < bbox.n and bbox.w < lon < bbox.e
 
   @staticmethod
   def distance(lat1, lon1, lat2, lon2):
@@ -58,7 +86,7 @@ class GeoUtil:
     return min_dist
 
   @staticmethod
-  def coordinates_for_wiki_url(url):
+  def coordinate_for_wiki_url(url):
     title = url.replace('https://en.wikipedia.org/wiki/', '')
     req_url = "https://en.wikipedia.org/w/api.php"
     params = {
@@ -71,11 +99,22 @@ class GeoUtil:
     data = resp.json()
     pages = data['query']['pages']
 
-    coords = []
-    for page in pages.values():
-      if 'coordinates' in page:
-        lat = page['coordinates'][0]['lat']
-        lon = page['coordinates'][0]['lon']
-        coords.append((lat, lon))
+    if len(pages) == 0:
+      return None
 
-    return coords
+    if len(pages) == 1:
+      page = list(pages.values())[0]
+
+    else:
+      p = None
+      for p in pages.values():
+        if p['title'] == title:
+          p = page
+          break
+      if p == None:
+        return None
+      
+    lat = page['coordinates'][0]['lat']
+    lon = page['coordinates'][0]['lon']
+
+    return (lat, lon)

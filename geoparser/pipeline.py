@@ -10,6 +10,7 @@ from .reclassifier import Reclassifier
 from .localparser import LocalGeoparser
 from .globalparser import GlobalGeoparser
 from .gazetteer import Gazetteer
+from .util import GeoUtil
 
 
 class Pipeline:
@@ -86,7 +87,9 @@ class WikiResolver(Step):
       if a.pos not in wiki_anns:
         continue
       url = wiki_anns[a.pos].data
-      doc.annotate(Layer.lres, a.pos, a.phrase, 'wiki', url)
+      (lat, lon) = GeoUtil.coordinate_for_wiki_url(wiki_url)
+      data = [lat, lon, url]
+      doc.annotate(Layer.lres, a.pos, a.phrase, 'wiki', data)
 
 
 class DemonymRemover(Step):
