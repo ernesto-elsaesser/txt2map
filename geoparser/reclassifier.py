@@ -27,6 +27,11 @@ class Reclassifier(Step):
         print(f'topo - using ORG: {a.phrase}')
         doc.annotate(Layer.topo, a.pos, a.phrase, 'recl', a.phrase)
 
+    for a in doc.get_all(Layer.ner, 'fac'):
+      if self._is_toponym(doc, a):
+        print(f'topo - using FAC: {a.phrase}')
+        doc.annotate(Layer.topo, a.pos, a.phrase, 'recl', a.phrase)
+
   def _is_toponym(self, doc, ann):
     if ann.phrase not in self.toponyms:
       return False
