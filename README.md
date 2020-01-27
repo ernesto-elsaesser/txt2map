@@ -26,7 +26,7 @@ The geoparsing system is modular. The central component is the UI server, which 
 
 Server implementations for the first three options are located in the [ner-server](ner-server) directory.
 
-The UI server as well as the stand-alone NER servers come with Dockerfiles ([UI](Dockerfile), [spaCy](ner-server/spacy/Dockerfile), [Stanford](ner-server/cogcomp/Dockerfile), [CogComp](ner-server/stanford/Dockerfile)) for simple distribution. Automated builds are available from [DockerHub](https://hub.docker.com/repository/docker/ernestoelsaesser/txt2map/general).
+The UI server and the stand-alone NER servers come with Dockerfiles ([UI](Dockerfile), [spaCy](ner-server/spacy/Dockerfile), [Stanford](ner-server/cogcomp/Dockerfile), [CogComp](ner-server/stanford/Dockerfile)) for simple distribution. Automated builds are available from [DockerHub](https://hub.docker.com/repository/docker/ernestoelsaesser/txt2map/general).
 
 The text processing pipeline itself is a Python 3 module and can be used directly from code. The repository includes additional modules for evaluation and web servers:
 
@@ -39,7 +39,7 @@ The `run-xxx.sh` scripts in the root directory can be used to build and run all 
 
 ## OpenStreetMap Data
 
-The geoparser dynamically loads substantial amounts of data from OSM. For every mentioned city (or town or hamlet), the system loads location names within a 15km radius from OSM (distance configurable). The data is cached in local SQLite databases to avoid redundant loads. The size of these databases ranges from a few KB to ~15MB per city, depending on its size and population density. This can cause longer response time when the system encounters a city name for the first time. The system uses the [Overpass API](https://wiki.openstreetmap.org/wiki/Overpass_API) to retrieve OSM data. The [Overpass QL](https://wiki.openstreetmap.org/wiki/Overpass_API/Overpass_QL) template can be found [here](geoparser/osm.py#L84). 
+The geoparser dynamically loads substantial amounts of data from OSM. For every mentioned city (or town or hamlet), the system loads location names within a 15km radius from OSM (distance configurable). The data is cached in local SQLite databases to avoid redundant loads. The size of these databases ranges from a few KB to ~15MB per city, depending on its size and population density. This can cause longer response time when the system encounters a city name for the first time. The system uses the [Overpass API](https://wiki.openstreetmap.org/wiki/Overpass_API) to retrieve OSM data. The [Overpass QL](https://wiki.openstreetmap.org/wiki/Overpass_API/Overpass_QL) template can be found [here](geoparser/osm.py#L25). 
 
 
 ## Evaluation
