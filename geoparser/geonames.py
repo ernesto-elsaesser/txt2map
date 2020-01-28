@@ -38,6 +38,7 @@ class GeoName:
       self.toponym_name = row[9]
 
     self.is_city = self.fcl == 'P'
+    self.is_admin = self.fcl == 'A'
     self.is_country = self.fcode.startswith('PCL')
     self.is_continent = self.fcode == 'CONT'
     self.is_ocean = self.fcode == 'OCN'

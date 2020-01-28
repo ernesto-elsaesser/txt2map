@@ -1,6 +1,6 @@
 FROM python:3.8-slim
 
-RUN pip install flask requests google-cloud-language unidecode geojson_utils
+RUN pip install flask requests google-cloud-language sklearn unidecode geojson_utils
  
 WORKDIR /t2mui
 ADD ./annotation annotation

@@ -26,14 +26,14 @@ ev_res = ResolEvaluator()
 ev_res_glob = ResolEvaluator(gold_group='geonames')
 ev_res_street = ResolEvaluator(gold_group='raw')
 ev_res_lgls = ResolEvaluator(gold_group='none')
-ev_res_gritta = ResolEvaluator(gold_group='geonames', geonames_by_dist=True) 
+ev_res_gritta = ResolEvaluator(gold_group='geonames', geonames_by_dist=True)
 
-pipe = builder.build_topo('spacy')
+pipe = builder.build_ner('spacy')
 
 #imp = GeoWebNewsImporter()
 #imp.import_documents(gwn)
 # , 'global', 'local'
-gwn.bulk_process(pipe, saved_steps=['spacy', 'topo'], evaluator=ev_ner_fac)
+gwn.bulk_process(pipe, saved_steps=['spacy'], evaluator=ev_ner)
 #gwn.bulk_process(pipe, saved_steps=['spacy','topo','global','local'] evaluator=ev_res)
 
 #gwn.process(pipe, '312', saved_steps=['spacy','topo','global','local'], evaluator=ev_res)

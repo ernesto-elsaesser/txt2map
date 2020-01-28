@@ -10,7 +10,7 @@ class Evaluator:
     values = [f'{k}: {v:.3f}' for k, v in metrics.items()]
     print(', '.join(values))
 
-  def _matches(self, a, gold):
+  def matches(self, a, gold):
     if a.pos != gold.pos:
       return False
     if a.phrase == gold.phrase:
@@ -69,7 +69,7 @@ class NEREvaluator(Evaluator):
       pending += doc.get_all(Layer.ner, group)
 
     for g in gold_doc.get_all(Layer.gold):
-      matches = [a for a in pending if self._matches(a, g)]
+      matches = [a for a in pending if self.matches(a, g)]
       pending = [a for a in pending if a not in matches]
 
       if len(matches) > 0:
@@ -112,7 +112,7 @@ class RecogEvaluator(Evaluator):
     pending = doc.get_all(Layer.topo)
 
     for g in gold_doc.get_all(Layer.gold):
-      matches = [a for a in pending if self._matches(a, g)]
+      matches = [a for a in pending if self.matches(a, g)]
       pending = [a for a in pending if a not in matches]
 
       if len(matches) > 0:

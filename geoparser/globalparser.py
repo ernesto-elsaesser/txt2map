@@ -5,7 +5,7 @@ from .document import Layer
 from .pipeline import Step
 from .matcher import NameMatcher
 from .gazetteer import Gazetteer
-from .tree import GeoNamesTree
+from .admtree import GeoNamesTree
 from .util import GeoUtil
 
 

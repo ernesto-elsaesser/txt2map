@@ -2,7 +2,7 @@ from .datastore import Datastore
 from .document import Layer
 from .pipeline import Step
 from .matcher import NameMatcher
-from .tree import GeoNamesTree
+from .admtree import GeoNamesTree
 from .osm import OverpassAPI
 from .util import BoundingBox, GeoUtil
 

@@ -2,6 +2,7 @@ import os
 import csv
 import json
 import sqlite3
+import pickle
 from .util import GeoUtil
 from .geonames import GeoName, GeoNamesAPI
 from .osm import OSMElement, OverpassAPI
@@ -18,6 +19,18 @@ class Datastore:
   geonames = {}
   hierarchies = {}
   search_results = {}
+
+  @staticmethod
+  def load_decision_tree(key):
+    model_path = Datastore._persistence_path(key + '.dt')
+    with open(model_path, 'r') as f:
+      return pickle.load(f)
+  
+  @staticmethod
+  def save_decision_tree(key, obj):
+    model_path = Datastore._persistence_path(key + '.dt')
+    with open(model_path, 'w') as f:
+      pickle.dump(obj, f)
 
   @staticmethod
   def get_geoname(geoname_id):
@@ -68,7 +81,7 @@ class Datastore:
   
   @staticmethod
   def _geonames_db():
-    db_path = Datastore._data_path('geonames.db')
+    db_path = Datastore._cache_path('geonames.db')
     exists = os.path.exists(db_path)
     sqlite_db = sqlite3.connect(db_path)
     geonames_db = GeoNamesDatabase(sqlite_db)
@@ -80,7 +93,7 @@ class Datastore:
   def load_osm_database(geoname):
     search_dist = Datastore.osm_search_dist
     db_name = f'{geoname.id}-{search_dist}km.db'
-    db_path = Datastore._data_path(db_name)
+    db_path = Datastore._cache_path(db_name)
     is_cached = os.path.exists(db_path)
     if is_cached and os.stat(db_path).st_size == 0:
       # inconsistent database state
@@ -118,7 +131,7 @@ class Datastore:
 
   @staticmethod
   def load_osm_geometries(elements):
-    file_path = Datastore._data_path('geometries.json')
+    file_path = Datastore._cache_path('geometries.json')
     if os.path.exists(file_path):
       with open(file_path, 'r') as f:
         cache = json.load(f)
@@ -155,7 +168,7 @@ class Datastore:
 
   @staticmethod
   def geoname_for_wiki_url(self, url):
-    file_path = Datastore._data_path('wiki.json')
+    file_path = Datastore._cache_path('wiki.json')
     if os.path.exists(file_path):
       with open(file_path, 'r') as f:
         cache = json.load(f)
@@ -191,23 +204,29 @@ class Datastore:
       return geoname_id
   
   @staticmethod
-  def load_gazetteer(file_name):
-    dirname = os.path.dirname(__file__)
-    file_path = f'{dirname}/data/{file_name}.json'
+  def load_gazetteer(key):
+    file_path = Datastore._persistence_path(key + '.json')
     with open(file_path, 'r') as f:
       data = json.load(f)
     return data
 
   @staticmethod
-  def save_gazetteer(file_name, obj):
-    dirname = os.path.dirname(__file__)
-    file_path = f'{dirname}/data/{file_name}.json'
+  def save_gazetteer(key, obj):
+    file_path = Datastore._persistence_path(key + '.json')
     with open(file_path, 'w') as f:
       json.dump(obj, f)
 
   @staticmethod
-  def _data_path(file_name):
+  def _cache_path(file_name):
     data_dir = Datastore.data_dir
+    if not os.path.exists(data_dir):
+      os.mkdir(data_dir)
+    return f'{data_dir}/{file_name}'
+
+  @staticmethod
+  def _persistence_path(file_name):
+    dirname = os.path.dirname(__file__)
+    data_dir = f'{dirname}/data'
     if not os.path.exists(data_dir):
       os.mkdir(data_dir)
     return f'{data_dir}/{file_name}'
