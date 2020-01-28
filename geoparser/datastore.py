@@ -23,13 +23,13 @@ class Datastore:
   @staticmethod
   def load_decision_tree(key):
     model_path = Datastore._persistence_path(key + '.dt')
-    with open(model_path, 'r') as f:
+    with open(model_path, 'rb') as f:
       return pickle.load(f)
   
   @staticmethod
   def save_decision_tree(key, obj):
     model_path = Datastore._persistence_path(key + '.dt')
-    with open(model_path, 'w') as f:
+    with open(model_path, 'wb') as f:
       pickle.dump(obj, f)
 
   @staticmethod

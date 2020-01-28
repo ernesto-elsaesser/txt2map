@@ -1,5 +1,4 @@
 from sklearn.tree import DecisionTreeClassifier
-from sklearn.tree.export import export_text
 from geoparser import Datastore, Layer, Reclassifier, ReclassificationFeatureExtractor, BinaryDecisionTreeClassifier
 from evaluation import Corpus, Evaluator
 
@@ -37,9 +36,10 @@ for doc_id in corpus.document_ids():
 
 clf = BinaryDecisionTreeClassifier()
 clf.train(feature_vectors, target_classes)
+
 clf.save('entrecl')
 
-#clf.print(feature_names)
+clf.print(extractor.feature_names())
 
 #species = np.array(y_test).argmax(axis=1)
 #predictions = np.array(y_pred).argmax(axis=1)

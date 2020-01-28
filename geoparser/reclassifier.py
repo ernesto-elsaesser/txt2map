@@ -37,6 +37,10 @@ class ReclassificationFeatureExtractor:
     for names in Gazetteer.demonyms().values():
       self.demonyms.update(names)
 
+  def feature_names(self):
+    return ['has_results', 'top_is_city', 'top_is_admin', 'top_is_country', 'top_is_demo', 'top_above_10k', 'top_above_100k', 
+            'top_above_1m', 'top_is_exact', 'before_container', 'before_name', 'after_prep']
+
   def feature_vector(self, doc, ann):
     name = ann.phrase
     results = Datastore.search_geonames(name)
@@ -62,7 +66,12 @@ class ReclassificationFeatureExtractor:
       top_is_exact = False
     before_container = self._succeeded_by_comma_and_upper(doc, ann)
     before_name = self._succeeded_by_upper(doc, ann)
-    after_prep = self._preceded_by_prep(doc, ann)
+    after_to = self._preceded_by_prep(doc, ann, 'to')
+    after_at = self._preceded_by_prep(doc, ann, 'at')
+    after_in = self._preceded_by_prep(doc, ann, 'in')
+    after_of = self._preceded_by_prep(doc, ann, 'of')
+    after_from = self._preceded_by_prep(doc, ann, 'from')
+    after_prep = after_to or after_at or after_in or after_of or after_from # TODO: individual features?
     return [has_results, top_is_city, top_is_admin, top_is_country, top_is_demo, top_above_10k, top_above_100k, 
             top_above_1m, top_is_exact, before_container, before_name, after_prep]
 
@@ -82,13 +91,9 @@ class ReclassificationFeatureExtractor:
       return False
     return doc.text[end+1].isupper()
 
-  def _preceded_by_prep(self, doc, ann):
+  def _preceded_by_prep(self, doc, ann, prep):
     start = ann.pos
-    if start < 3:
+    offset = len(prep) + 1
+    if start < offset:
       return False
-    prev_two = doc.text[start-3:start-1]
-    if prev_two in ['to','at','in','of']:
-      return True
-    if start < 5:
-      return False
-    return doc.text[start-5:start-1] == 'from'
+    return doc.text[start-offset:start-1] == prep
