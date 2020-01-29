@@ -19,15 +19,13 @@ class Reclassifier(Step):
     for a in doc.get_all(Layer.ner, 'loc'):
       print(f'topo - kept {a}')
       doc.annotate(Layer.topo, a.pos, a.phrase, 'orig', a.phrase)
-      toponyms.add(a.phrase)
 
     for a in doc.get_all(Layer.ner):
-      if a.group in ['org', 'fac', 'per']:
-        features = self.extractor.feature_vector(doc, ann)
+      if a.group in self.classes:
+        features = self.extractor.feature_vector(doc, a)
         if self.clf.predict(features):
           print(f'topo - added {a}')
           doc.annotate(Layer.topo, a.pos, a.phrase, 'recl', a.phrase)
-          toponyms.add(a.phrase)
   
 
 class ReclassificationFeatureExtractor:
