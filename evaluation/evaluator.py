@@ -143,12 +143,11 @@ class RecogEvaluator(Evaluator):
 
 class ResolEvaluator(Evaluator):
 
-  def __init__(self, layer=Layer.lres, gold_group=None, tolerance_geonames=161, tolerance_raw=2, geonames_by_dist=True):
+  def __init__(self, layer=Layer.lres, gold_group=None, tolerance_geonames=161, tolerance_raw=2):
     self.layer = layer
     self.gold_group = gold_group
     self.tol_gns = tolerance_geonames
     self.tol_raw = tolerance_raw
-    self.gns_by_dist = geonames_by_dist
     self.wiki_coords_cache = {}
     self.correct = 0
     self.incorrect = 0
