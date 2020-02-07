@@ -3,7 +3,7 @@
     <title>txt2map</title>
     <style>
       a { cursor: pointer; font-weight: bold; color: blue; }
-      .container { max-width: 500px; margin: 0 auto; padding: 20px; text-align: center; }
+      .container { max-width: 800px; margin: 0 auto; padding: 20px; text-align: center; }
       #input { width: 100%; height: 100px; margin-top: 30px; }
       #button { font-size: 18px; color: blue; }
       #layers { width: 100%; margin-top: 40px; }
@@ -123,6 +123,8 @@
       layerButton.style.color = 'white';
       layerButton.style.backgroundColor = 'blue';
       selectedLayerButton = layerButton;
+
+      var converter = document.createElement('div');
       
       var anns = annotations[layer];
       var annsByPos = {};
@@ -136,7 +138,8 @@
         var ann = annsByPos[i];
 
         if (ann == null) {
-          html += text[i];
+          converter.innerText = text[i];
+          html += converter.innerHTML; // escape char
           i += 1;
           continue;
         }
@@ -145,6 +148,9 @@
         var phrase = ann[1];
         var group = ann[2];
         var data = ann[3];
+
+        converter.innerText = phrase;
+        phrase = converter.innerHTML; // escape phrase
 
         var trailer = null;
         if (layer == 'ner') {
