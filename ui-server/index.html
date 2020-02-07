@@ -149,6 +149,7 @@
         var group = ann[2];
         var data = ann[3];
 
+        var origLength = phrase.length;
         converter.innerText = phrase;
         phrase = converter.innerHTML; // escape phrase
 
@@ -173,7 +174,7 @@
         if (trailer != null) {
           html += ' [' + trailer + ']';
         }
-        i += phrase.length;
+        i += origLength;
       }
 
       output.innerHTML = html;
