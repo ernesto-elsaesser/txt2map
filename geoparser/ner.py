@@ -143,6 +143,8 @@ class CogCompEntityRecognizer(EntityRecognizer):
         pos += 1
       elif c == ' ' and oc != ' ':
         i += 1
+      elif oc == ' ' and c != ' ':
+        pos += 1
       elif c == oc or (c == '{' and oc == '[') or (c == '}' and oc == ']'):
         if ent_phrase != None:
           ent_phrase += oc

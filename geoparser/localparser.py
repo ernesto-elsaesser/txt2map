@@ -23,7 +23,7 @@ class LocalGeoparser(Step):
     tree = GeoNamesTree(resolutions)
 
     entity_indicies = doc.annotations_by_index(Layer.ner)
-    seen = []
+    parsed = {}
 
     for leaf in tree.leafs():
       geonames = leaf.geonames.values()
@@ -37,9 +37,19 @@ class LocalGeoparser(Step):
 
       anchors = sorted(anchors, key=lambda g: -g.population)
       for anchor in anchors:
-        if anchor.id in seen:
+        if anchor.id in parsed:
           continue
-        seen.append(anchor.id)
+
+        is_close_to_prev = False
+        for prev in parsed.values():
+          dist = GeoUtil.distance(prev[0], prev[1], anchor.lat, anchor.lon)
+          if dist < Datastore.osm_search_dist / 2:
+            is_close_to_prev = True
+            break
+        if is_close_to_prev:
+          continue
+
+        parsed[anchor.id] = [anchor.lat, anchor.lon]
         print(f'lres - anchor: {anchor}')
         db = Datastore.load_osm_database(anchor)
         data_cache = {}
