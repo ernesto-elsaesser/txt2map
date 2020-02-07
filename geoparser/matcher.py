@@ -136,7 +136,7 @@ class Completion:
 
     if self.suffix == '':
       self.active = False
-      if char.isupper() or char.islower():
+      if char.isupper() or char.islower() or char == '-':
         return False  # end in middle of token
       else:
         self.end = self.pos + len(self.match)
