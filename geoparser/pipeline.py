@@ -111,8 +111,7 @@ class DemonymRemover(Step):
   layers = [Layer.ner]
 
   def __init__(self):
-    dem_map = Datastore.load_data('demonyms')
-    self.demonyms = sum(dem_map.values(), [])
+    self.demonyms = Datastore.load_data('demonyms')
 
   def annotate(self, doc):
     for a in doc.get_all(Layer.ner):
