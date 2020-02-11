@@ -1,10 +1,9 @@
-from .gazetteer import Gazetteer
-
+from .datastore import Datastore
 
 class GeoNamesTree:
 
-  continent_map = Gazetteer.continent_map()
-  country_boxes = Gazetteer.country_boxes()
+  continent_map = Datastore.load_data('continent_map')
+  country_boxes = Datastore.load_data('country_boxes')
 
   def __init__(self, resolutions):
     self.root = TreeNode(None, None)

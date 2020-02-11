@@ -1,8 +1,7 @@
 from .document import Layer
 from .pipeline import Step
 from .datastore import Datastore
-from .gazetteer import Gazetteer
-from .classifier import BinaryDecisionTreeClassifier
+from .classifier import BooleanFeatureClassifier
 
 class Reclassifier(Step):
 
@@ -12,7 +11,7 @@ class Reclassifier(Step):
   classes = ['org', 'fac', 'per']
 
   def __init__(self):
-    self.clf = BinaryDecisionTreeClassifier('entrecl')
+    self.clf = BooleanFeatureClassifier('ent-reclf')
     self.extractor = ReclassificationFeatureExtractor()
 
   def annotate(self, doc):
@@ -30,14 +29,11 @@ class Reclassifier(Step):
 
 class ReclassificationFeatureExtractor:
 
-  def __init__(self):
-    self.demonyms = set()
-    for names in Gazetteer.demonyms().values():
-      self.demonyms.update(names)
+  feature_names = ['has_results', 'top_is_city', 'top_is_admin', 'top_is_country', 'top_is_demo', 'top_is_exact', 'before_container', 
+                    'before_name', 'after_to', 'after_at', 'after_in', 'after_of', 'after_from', 'top_pop']
 
-  def feature_names(self):
-    return ['has_results', 'top_is_city', 'top_is_admin', 'top_is_country', 'top_is_demo', 'top_above_10k', 'top_above_100k', 
-            'top_above_1m', 'top_is_exact', 'before_container', 'before_name', 'after_prep']
+  def __init__(self):
+    self.demonyms = Datastore.load_data('demonyms')
 
   def feature_vector(self, doc, ann):
     name = ann.phrase
@@ -49,18 +45,14 @@ class ReclassificationFeatureExtractor:
       top_is_admin = top_result.is_admin
       top_is_country = top_result.is_country
       top_is_demo = name in self.demonyms
-      top_above_10k = top_result.population > 10_000
-      top_above_100k = top_result.population > 100_000
-      top_above_1m = top_result.population > 1_000_000
+      top_pop = top_result.population
       top_is_exact = top_result.name == name or top_result.toponym_name == name
     else:
       top_is_city = False
       top_is_admin = False
       top_is_country = False
       top_is_demo = False
-      top_above_10k = False
-      top_above_100k = False
-      top_above_1m = False
+      top_pop = 0
       top_is_exact = False
     before_container = self._succeeded_by_comma_and_upper(doc, ann)
     before_name = self._succeeded_by_upper(doc, ann)
@@ -69,9 +61,12 @@ class ReclassificationFeatureExtractor:
     after_in = self._preceded_by_prep(doc, ann, 'in')
     after_of = self._preceded_by_prep(doc, ann, 'of')
     after_from = self._preceded_by_prep(doc, ann, 'from')
-    after_prep = after_to or after_at or after_in or after_of or after_from # TODO: individual features?
-    return [has_results, top_is_city, top_is_admin, top_is_country, top_is_demo, top_above_10k, top_above_100k, 
-            top_above_1m, top_is_exact, before_container, before_name, after_prep]
+
+    bool_features = [has_results, top_is_city, top_is_admin, top_is_country, top_is_demo, top_is_exact, 
+                before_container, before_name, after_to, after_at, after_in, after_of, after_from]
+    num_features = [1 if b else 0 for b in bool_features]
+    num_features.append(top_pop)
+    return num_features
 
   def _succeeded_by_comma_and_upper(self, doc, ann):
     end = ann.end_pos()

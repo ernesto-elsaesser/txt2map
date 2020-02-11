@@ -1,30 +1,21 @@
-from sklearn.tree import DecisionTreeClassifier, export_text
+from sklearn.ensemble import RandomForestClassifier
 from .datastore import Datastore
 
-class BinaryDecisionTreeClassifier:
+class BooleanFeatureClassifier:
 
   def __init__(self, model_name=None):
     if model_name != None:
-      self.dt = Datastore.load_decision_tree(model_name)
+      self.dt = Datastore.load_object(model_name)
     else:
-      self.dt = DecisionTreeClassifier(random_state=0) # max_depth=3 min_samples_leaf=5
+      self.dt = RandomForestClassifier(n_estimators=100, oob_score=True, random_state=0)
 
-  def train(self, feature_vectors, classes):
-    X = list(map(self._bool_to_num, feature_vectors))
-    y = self._bool_to_num(classes)
-    self.dt.fit(X, y)
+  def train(self, feature_vectors, target_classes):
+    self.dt.fit(feature_vectors, target_classes)
 
   def save(self, model_name):
-    Datastore.save_decision_tree(model_name, self.dt)
-
-  def print(self, feature_names):
-    r = export_text(self.dt, feature_names=feature_names)
-    print(r)
+    Datastore.save_object(model_name, self.dt)
 
   def predict(self, feature_vector):
-    x = self._bool_to_num(feature_vector)
-    y_pred = self.dt.predict([x])
+    y_pred = self.dt.predict([feature_vector])
     return y_pred[0] == 1
 
-  def _bool_to_num(self, vec):
-    return [1 if b else 0 for b in vec]

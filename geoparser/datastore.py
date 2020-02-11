@@ -10,7 +10,7 @@ from .osm import OSMElement, OverpassAPI
 
 class Datastore:
 
-  data_dir = 'cache'
+  cache_dir = 'cache'
   geonames_search_classes = ['P', 'A', 'L', 'T', 'H', 'V']
   osm_search_dist = 15 # km
   osm_exclusions = ['shop', 'power', 'office', 'cuisine']
@@ -19,18 +19,6 @@ class Datastore:
   geonames = {}
   hierarchies = {}
   search_results = {}
-
-  @staticmethod
-  def load_decision_tree(key):
-    model_path = Datastore._persistence_path(key + '.dt')
-    with open(model_path, 'rb') as f:
-      return pickle.load(f)
-  
-  @staticmethod
-  def save_decision_tree(key, obj):
-    model_path = Datastore._persistence_path(key + '.dt')
-    with open(model_path, 'wb') as f:
-      pickle.dump(obj, f)
 
   @staticmethod
   def get_geoname(geoname_id):
@@ -81,7 +69,7 @@ class Datastore:
   
   @staticmethod
   def _geonames_db():
-    db_path = Datastore._cache_path('geonames.db')
+    db_path = Datastore._data_path('geonames', 'db', cache=True)
     exists = os.path.exists(db_path)
     sqlite_db = sqlite3.connect(db_path)
     geonames_db = GeoNamesDatabase(sqlite_db)
@@ -92,8 +80,8 @@ class Datastore:
   @staticmethod
   def load_osm_database(geoname):
     search_dist = Datastore.osm_search_dist
-    db_name = f'{geoname.id}-{search_dist}km.db'
-    db_path = Datastore._cache_path(db_name)
+    db_name = f'{geoname.id}-{search_dist}km'
+    db_path = Datastore._data_path(db_name, 'db', cache=True)
     is_cached = os.path.exists(db_path)
     if is_cached and os.stat(db_path).st_size == 0:
       # inconsistent database state
@@ -131,10 +119,9 @@ class Datastore:
 
   @staticmethod
   def load_osm_geometries(elements):
-    file_path = Datastore._cache_path('geometries.json')
-    if os.path.exists(file_path):
-      with open(file_path, 'r') as f:
-        cache = json.load(f)
+    cache_key = 'geometries'
+    if Datastore.data_available(cache_key, in_cache=True):
+      cache = Datastore.load_data(cache_key, from_cache=True)
     else:
       cache = {}
 
@@ -161,75 +148,51 @@ class Datastore:
         cache[reference] = geometry
         geometries[type_name][el_id] = geometry
 
-    with open(file_path, 'w') as f:
-      json.dump(cache, f)
+    Datastore.save_data(cache_key, cache, to_cache=True)
 
     return geometries
 
   @staticmethod
-  def geoname_for_wiki_url(self, url):
-    file_path = Datastore._cache_path('wiki.json')
-    if os.path.exists(file_path):
-      with open(file_path, 'r') as f:
-        cache = json.load(f)
-    else:
-      cache = {}
+  def save_object(key, model, to_cache=False):
+    model_path = Datastore._data_path(key, 'pickle', to_cache)
+    with open(model_path, 'wb') as f:
+      pickle.dump(model, f)
 
-    title = url.replace('https://en.wikipedia.org/wiki/', '')
-    title = title.replace('_', ' ')
-    if title in cache:
-      geoname_id = cache[title]
-    else:
-      geoname_id = ''
-      results = Datastore.search_geonames(title)[:25]
-      for g in results:
-        full_geo = GeoNamesAPI.get_geoname(g.id)
-        if full_geo.wiki_url == None:
-          continue
-        wiki_url = full_geo.wiki_url
-        if '%' in wiki_url:
-          print(wiki_url)
-        wiki_url = 'https://' + urllib.parse.unquote(wiki_url)
-        if wiki_url == url:
-          geoname_id = g.id
-          break
-
-      cache[title] = geoname_id
-      with open(file_path, 'w') as f:
-        json.dump(cache, f)
-
-    if geoname_id == '':
-      return None
-    else:
-      return geoname_id
+  @staticmethod
+  def load_object(key, from_cache=False):
+    model_path = Datastore._data_path(key, 'pickle', from_cache)
+    with open(model_path, 'rb') as f:
+      return pickle.load(f)
   
   @staticmethod
-  def load_gazetteer(key):
-    file_path = Datastore._persistence_path(key + '.json')
+  def load_data(key, from_cache=False):
+    file_path = Datastore._data_path(key, 'json', from_cache)
     with open(file_path, 'r') as f:
       data = json.load(f)
     return data
 
   @staticmethod
-  def save_gazetteer(key, obj):
-    file_path = Datastore._persistence_path(key + '.json')
+  def save_data(key, data, to_cache=False):
+    file_path = Datastore._data_path(key, 'json', to_cache)
     with open(file_path, 'w') as f:
-      json.dump(obj, f)
+      json.dump(data, f)
 
   @staticmethod
-  def _cache_path(file_name):
-    data_dir = Datastore.data_dir
-    if not os.path.exists(data_dir):
-      os.mkdir(data_dir)
-    return f'{data_dir}/{file_name}'
+  def data_available(key, in_cache=False):
+    file_path = Datastore._data_path(key, 'json', in_cache)
+    return os.path.exists(file_path)
 
   @staticmethod
-  def _persistence_path(file_name):
-    dirname = os.path.dirname(__file__)
-    data_dir = f'{dirname}/data'
+  def _data_path(file_name, file_ext, cache):
+    if cache:
+      data_dir = Datastore.cache_dir
+    else:
+      dirname = os.path.dirname(__file__)
+      data_dir = f'{dirname}/data'
+
     if not os.path.exists(data_dir):
       os.mkdir(data_dir)
-    return f'{data_dir}/{file_name}'
+    return f'{data_dir}/{file_name}.{file_ext}'
 
 
 class Database:

@@ -5,6 +5,5 @@ from .ner import NERException
 from .reclassifier import Reclassifier, ReclassificationFeatureExtractor
 from .geonames import GeoNamesAPI, GeoName
 from .osm import OverpassAPI, OSMElement
-from .gazetteer import Gazetteer
 from .util import BoundingBox, GeoUtil
-from .classifier import BinaryDecisionTreeClassifier
+from .classifier import BooleanFeatureClassifier

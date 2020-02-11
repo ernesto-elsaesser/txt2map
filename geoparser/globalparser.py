@@ -4,7 +4,6 @@ from .datastore import Datastore
 from .document import Layer
 from .pipeline import Step
 from .matcher import NameMatcher
-from .gazetteer import Gazetteer
 from .admtree import GeoNamesTree
 from .util import GeoUtil
 
@@ -18,7 +17,24 @@ class GlobalGeoparser(Step):
     self.keep_defaults = keep_defaults
     self.matcher = NameMatcher()
 
-    self.top_level_topos = Gazetteer.top_level()
+    us_states = Datastore.load_data('us_states')
+    demonyms = Datastore.load_data('demonyms')
+    countries = Datastore.load_data('countries')
+    continents = Datastore.load_data('continents')
+    oceans =  Datastore.load_data('oceans')
+
+    self.top_level_topos = {}
+
+    self.top_level_topos.update(us_states)
+    # default senses are the cities, not the states
+    del self.top_level_topos['New York']
+    del self.top_level_topos['Washington']
+
+    self.top_level_topos.update(demonyms)
+    self.top_level_topos.update(countries)
+    self.top_level_topos.update(continents)
+    self.top_level_topos.update(oceans)
+
     self.lookup_tree = {}
     for toponym in self.top_level_topos:
       key = toponym[:2]

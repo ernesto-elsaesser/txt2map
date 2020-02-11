@@ -5,11 +5,11 @@ class Step:
     return
 
 from .document import Layer
+from .datastore import Datastore
 from .ner import SpacyEntityRecognizer, StanfordEntityRecognizer, CogCompEntityRecognizer, GCNLEntityLinker
 from .reclassifier import Reclassifier
 from .localparser import LocalGeoparser
 from .globalparser import GlobalGeoparser
-from .gazetteer import Gazetteer
 from .util import GeoUtil
 
 
@@ -111,7 +111,7 @@ class DemonymRemover(Step):
   layers = [Layer.ner]
 
   def __init__(self):
-    dem_map = Gazetteer.demonyms()
+    dem_map = Datastore.load_data('demonyms')
     self.demonyms = sum(dem_map.values(), [])
 
   def annotate(self, doc):
