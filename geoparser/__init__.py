@@ -6,4 +6,3 @@ from .reclassifier import Reclassifier, ReclassificationFeatureExtractor
 from .geonames import GeoNamesAPI, GeoName
 from .osm import OverpassAPI, OSMElement
 from .util import BoundingBox, GeoUtil
-from .classifier import BooleanFeatureClassifier

@@ -20,8 +20,8 @@ ev_res_glob = ResolEvaluator(gold_group='geonames')
 ev_res_street = ResolEvaluator(gold_group='raw')
 ev_res_lgls = ResolEvaluator(gold_group='none')
 
-pipe = builder.build('spacy')
+pipe = builder.build_topo('spacy')
 
-gwn.bulk_process(pipe, evaluator=ev_ner)
+gwn.bulk_process(pipe, saved_steps=['spacy'], evaluator=ev_rec)
 #gwn.bulk_process(pipe, saved_steps=['spacy','topo','global','local'], evaluator=ev_res)
 #gwn.process(pipe, '312', saved_steps=['spacy','topo','global','local'], evaluator=ev_res)

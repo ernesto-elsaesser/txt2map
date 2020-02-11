@@ -1,7 +1,6 @@
 from .document import Layer
 from .pipeline import Step
 from .datastore import Datastore
-from .classifier import BooleanFeatureClassifier
 
 class Reclassifier(Step):
 
@@ -9,9 +8,10 @@ class Reclassifier(Step):
   layers = [Layer.topo]
 
   classes = ['org', 'fac', 'per']
+  model_name = 'ner-reclf'
 
   def __init__(self):
-    self.clf = BooleanFeatureClassifier('ent-reclf')
+    self.classifier = Datastore.load_object(self.model_name)
     self.extractor = ReclassificationFeatureExtractor()
 
   def annotate(self, doc):
@@ -22,10 +22,11 @@ class Reclassifier(Step):
     for a in doc.get_all(Layer.ner):
       if a.group in self.classes:
         features = self.extractor.feature_vector(doc, a)
-        if self.clf.predict(features):
+        classes = self.classifier.predict([features])
+        if classes[0] == 1:
           print(f'topo - added {a}')
           doc.annotate(Layer.topo, a.pos, a.phrase, 'recl', a.phrase)
-  
+
 
 class ReclassificationFeatureExtractor:
 

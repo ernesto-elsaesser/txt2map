@@ -1,7 +1,7 @@
 from sklearn.ensemble import RandomForestClassifier
 from .datastore import Datastore
 
-class BooleanFeatureClassifier:
+class BinaryRandomForestClassifier:
 
   def __init__(self, model_name=None):
     if model_name != None:

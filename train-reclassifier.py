@@ -1,5 +1,5 @@
-from sklearn.tree import export_text
-from geoparser import Datastore, Layer, Reclassifier, ReclassificationFeatureExtractor, BooleanFeatureClassifier
+from sklearn.ensemble import RandomForestClassifier
+from geoparser import Datastore, Layer, Reclassifier, ReclassificationFeatureExtractor
 from evaluation import Corpus, Evaluator
 
 ner_key = 'spacy' # NER tool to optimize for
@@ -46,7 +46,7 @@ else:
   data = [feature_vectors, target_classes]
   Datastore.save_data(cache_key, data, to_cache=True)
 
-clf = BooleanFeatureClassifier()
-clf.train(feature_vectors, target_classes)
-
-clf.save('ent-reclf')
+rf = RandomForestClassifier(n_estimators=100, oob_score=True, random_state=0)
+rf.fit(feature_vectors, target_classes)
+print('OOB score:', rf.oob_score_)
+Datastore.save_object('ner-reclf', rf)
