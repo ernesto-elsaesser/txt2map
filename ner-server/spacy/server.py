@@ -4,7 +4,7 @@ import json
 import spacy
 from flask import Flask, request
 
-print('Loading large model ...')
+print('Loading large model ...', flush=True)
 nlp = spacy.load('en_core_web_lg', disable=['parser'])
 
 port = sys.argv[1]

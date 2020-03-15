@@ -2,31 +2,35 @@
   <head>
     <title>txt2map</title>
     <style>
+      body { font-family: Arial, Helvetica, sans-serif; font-size: 15px; }
+      .document { font-family: 'Times New Roman', Times, serif; font-size: 15px; line-height: 125%; }
+      h1 { font-size: 28px; }
       a { cursor: pointer; font-weight: bold; color: blue; }
       .container { max-width: 800px; margin: 0 auto; padding: 20px; text-align: center; }
-      #input { width: 100%; height: 100px; margin-top: 30px; }
-      #button { font-size: 18px; color: blue; }
+      #input { width: 100%; height: 100px; margin-top: 20px; }
+      #button { display: block; font-size: 18px; color: blue; margin-bottom: 60px; }
       #layers { width: 100%; margin-top: 40px; }
       #layers a { display: inline-block; margin: 5px; border: 1px solid blue; padding: 3px 7px; }
       #output { width: 100%; min-height: 100px; margin: 20px 0 60px; }
       #output span { background-color: lightgreen; }
+      .footer { font-size: 13px; }
     </style>
   </head>
   <body>
     <div class="container">
       <h1>Input</h1>
-      <textarea id="input">Paris is the county seat of Lamar County, Texas. It is only a 2h drive away from Dallas, the ninth most populous city in the US. Six hours west of Dallas lies Odessa, which has 2014 been ranked the third-fastest growing small city in the US. With a population of ~100,000 Odessa is about four times as large as Paris. The University of Texas of the Permian Basin is located in Odessa.</textarea><br/><br />
+      <textarea class="document" id="input">Paris is the county seat of Lamar County, Texas. It is only a 2h drive away from Dallas, the ninth most populous city in the US. Six hours west of Dallas lies Odessa, which has 2014 been ranked the third-fastest growing small city in the US. With a population of ~100,000 Odessa is about four times as large as Paris. The University of Texas of the Permian Basin is located in Odessa.</textarea><br/><br />
       NER Tool: <select id="endpoint">
         <option value="/spacy" selected>spaCy</option>
         <option value="/cogcomp">CogComp (Illinois NER)</option>
         <option value="/stanford">Stanford NER</option>
         <option value="/gcnl">Google Cloud Natural Language API</option>
       </select><br /><br />
-      <a onclick="post()" id="button">PARSE</a><br /><br />
+      <a onclick="post()" id="button">PARSE</a>
       <h1>Output</h1>
       <div id="layers"></div>
-      <div id="output"></div>
-      <p>Source: <a href="https://github.com/ernesto-elsaesser/txt2map" target="_blank">https://github.com/ernesto-elsaesser/txt2map</a></p>
+      <div class="document" id="output"></div>
+      <p class="footer">Source: <a class="footer" href="https://github.com/ernesto-elsaesser/txt2map" target="_blank">https://github.com/ernesto-elsaesser/txt2map</a></p>
     </div>
 
     <script>
